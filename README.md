@@ -151,14 +151,6 @@ See `.env.example` for all available variables. Key variables include:
 - `X_API_KEY`, `TELEGRAM_BOT_TOKEN`: Social media API keys
 - `SOLANA_PRIVATE_KEY`, `EVM_PRIVATE_KEY`: Blockchain private keys
 
-## Daily Workflow
-
-1. Pull latest changes: `git pull origin main`
-2. Start stack: `docker-compose -f docker-compose.dev.yml up -d`
-3. Develop and test
-4. Run tests: `docker-compose -f docker-compose.dev.yml exec api pytest tests/ -v`
-5. Commit changes: `git add . && git commit -m "feat: description"`
-6. Push to GitHub: `git push origin main`
 
 ## Testing
 
