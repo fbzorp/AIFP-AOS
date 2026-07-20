@@ -1,0 +1,113 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: aifp-postgres
+    environment:
+      POSTGRES_USER: aifp
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: aifp_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aifp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aifp-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: aifp-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - aifp-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: aifp-api
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://aifp:devpassword@postgres:5432/aifp_dev
+      - REDIS_URL=redis://redis:6379/0
+      - ENV=development
+      - LOG_LEVEL=INFO
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps:/app/apps
+      - ./pyproject.toml:/app/pyproject.toml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/apps
+    networks:
+      - aifp-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: aifp-worker
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://aifp:devpassword@postgres:5432/aifp_dev
+      - REDIS_URL=redis://redis:6379/0
+      - ENV=development
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./apps:/app/apps
+      - ./pyproject.toml:/app/pyproject.toml
+    depends_on:
+      - redis
+      - postgres
+    command: dramatiq apps.workers.tasks --processes 1 --threads 2 --watch /app/apps
+    networks:
+      - aifp-network
+
+  frontend:
+    build:
+      context: ./apps/dashboard
+      dockerfile: Dockerfile.dev
+    container_name: aifp-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/dashboard:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - CHOKIDAR_USEPOLLING=true
+    command: npm run dev -- --host 0.0.0.0
+    networks:
+      - aifp-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  aifp-network:
+    driver: bridge
