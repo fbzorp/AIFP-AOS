@@ -1,0 +1,192 @@
+AIFINPAY
+Autonomous Growth OS
+Complete Technical Assignment for Rebuilding the Current AIFP AOS
+
+Core rule: readiness is measured by real actions, publications, MCP calls, payments, analytics, and reproducible deployment. The number of created agents is not a result.
+
+1. Project Objective
+Completely rebuild the current AIFP AOS into an autonomous marketing operating system for AiFinPay. The system must independently identify relevant topics, analyze the information environment, create content, prepare publications, publish approved materials, participate in relevant discussions, track results, and improve future campaigns based on real performance data.
+Partner discovery, partner outreach, and partnership negotiations are outside the scope of this system. Dmitry and Max handle these activities personally.
+2. What Must Be Removed and Stopped
+The current set of 65 mostly identical agents without unique logic, tools, or workflows.
+Roles and capabilities defined as general/general.
+Random agent names without a separate architecture and clear responsibility.
+Mass upvotes, follows, and repetitive comments created only to simulate activity.
+Fake, imported, or unverifiable metrics.
+The production ready label until final acceptance is completed.
+Counting the existing AiFinPay SDK, MCP, or Google ADK as new work performed by the developer.
+SQLite as the primary production database for queues and concurrent execution.
+3. Required Agent Architecture
+Replace the current 65 profiles with 9 specialized agents. Each agent must have a unique purpose, toolset, inputs, outputs, policies, execution history, and measurable KPIs.
+1. Growth Orchestrator
+Receives a marketing objective and creates the execution plan.
+Distributes tasks among agents and controls dependencies.
+Handles retries, stops loops, and records failures.
+Produces a daily report covering completed work, failures, costs, and actions awaiting approval.
+2. Market Intelligence Agent
+Tracks AI agents, agentic commerce, x402, MCP, stablecoin payments, API monetization, AI infrastructure, fintech, and Web3 payments.
+Stores the source URL, date, author or publisher, short summary, relevance score, and possible AiFinPay content angle.
+Uses primary sources whenever possible and removes duplicates.
+3. Content Strategy Agent
+Creates a weekly content plan by channel.
+Defines the target audience, objective, format, CTA, and KPI for every content item.
+Must not create generic AI content without a direct connection to real AiFinPay products or capabilities.
+4. Technical Content Agent
+Creates technical posts, tutorials, SDK examples, MCP use cases, x402 payment examples, GitHub README content, and developer announcements.
+Verifies every technical claim against the actual AiFinPay codebase, SDK, MCP, and documentation.
+Must not invent endpoints, functions, supported networks, transactions, or integrations.
+5. Founder Content Agent
+Creates materials for the founder's official account: product updates, founder insights, positioning, and comments on industry developments.
+Every publication requires manual approval.
+Provides several text variants and explains the intended audience for each.
+6. Social Publishing Agent
+Publishes only approved materials through official APIs or authorized integrations.
+Initial release scope: X, Telegram, and Moltbook. LinkedIn must use a review queue and manual approval if the official API is unavailable.
+Includes duplicate protection, scheduling, retries, limits, logs, status tracking, and a link to each published item.
+7. Community Engagement Agent
+Finds relevant discussions and prepares meaningful replies on behalf of AiFinPay.
+Before publishing, shows the original post, proposed reply, reason for engagement, and risk level.
+Repetitive comments, mass engagement, fake interaction, automated arguments, and impersonation of a human are prohibited.
+8. Analytics Agent
+Collects only real metrics: publications, impressions, clicks, engagement rate, website visits, registrations, SDK installs, MCP activations, GitHub stars, and conversions.
+Links every metric to its actual data source.
+Produces daily and weekly reports with concrete recommendations for the next cycle.
+9. Compliance & Brand Agent
+Reviews every piece of content before publication.
+Blocks false claims, invented partnerships, promises of returns, spam, secret exposure, and brand-tone violations.
+Assigns approved, rejected, or needs revision status with a specific reason.
+4. Required End-to-End Workflows
+4.1 News-to-Content Workflow
+The Market Intelligence Agent finds a relevant development and its primary source.
+The system verifies the date, credibility, and relevance.
+The Content Strategy Agent selects the format and channel.
+The Technical Content Agent or Founder Content Agent creates the draft.
+The Compliance & Brand Agent reviews it.
+The draft enters the Content Queue for manual approval.
+The Social Publishing Agent publishes the approved version.
+The Analytics Agent records the publication URL and performance.
+4.2 Developer Acquisition Through Content
+The system identifies public discussions and content related to MCP, x402, AI agents, and agentic payments.
+It determines what useful technical material AiFinPay can provide to that audience.
+It creates a tutorial, code example, integration guide, or technical explanation.
+The material is reviewed and approved.
+The approved content is published through an official channel.
+The system tracks documentation visits, SDK installs, and MCP activations.
+4.3 Weekly Campaign Workflow
+The user defines a marketing objective and operating constraints.
+The Growth Orchestrator creates a seven-day campaign.
+The system generates topics, a content calendar, drafts, and a list of relevant discussions.
+All external actions pass through an approval workflow.
+The system executes approved actions.
+At the end of the week, the system produces a report covering completed work, results, failures, costs, conclusions, and changes for the next week.
+5. AiFinPay MCP, SDK, and x402
+Use the existing AiFinPay SDK, MCP, and Google ADK. Their development is not counted as new work. Only correct integration, working scenarios, error handling, testing, and observability are counted.
+At least 10 real MCP calls.
+At least 3 confirmed x402 payment flows.
+At least 1 test transaction on Solana.
+At least 1 test transaction on an EVM network.
+An insufficient-balance scenario.
+A user-declined-payment scenario.
+A retry after a temporary failure.
+A transaction hash and explorer link for every on-chain transaction.
+6. Dashboard Requirements
+Main Dashboard
+Active campaigns, today's tasks, approvals pending, successful actions, failures, costs, publications, and real conversions.
+Agents
+Purpose, version, tools, model, current task, recent runs, success rate, failures, average cost, and average duration.
+Campaigns
+Objective, start date, channels, budget, tasks, content, results, and status.
+Content Queue
+Draft, source, channel, author agent, compliance status, approve, reject, edit, schedule, and publish.
+Payments & MCP
+Agent, MCP tool, request ID, latency, status, error, cost, payment-required flag, wallet, network, and transaction hash.
+Audit Log
+Initiator, agent, input data, decision, action, result, timestamp, and cost.
+7. Technical Requirements
+Python with Google ADK.
+FastAPI.
+PostgreSQL with migrations.
+Redis.
+Celery, Dramatiq, or an equivalent task queue.
+React or the current frontend framework.
+Docker Compose.
+Nginx.
+GitHub Actions.
+Separate staging and production environments.
+Structured logs, health checks, retries, idempotency, timeouts, and rate limits.
+Role-based access control.
+Secrets stored only in environment variables. .env files must not be committed to GitHub.
+Automated database backups and a tested restore procedure.
+OpenAPI/API documentation.
+Automated tests for all critical workflows.
+8. Security and Operating Restrictions
+Seed phrases and private keys must never be stored in plaintext.
+Private keys must never appear in the dashboard or logs.
+The system must not send funds automatically without configured limits.
+Use a separate wallet per agent or campaign.
+Implement a daily spending limit, per-transaction limit, recipient allowlist, and human approval above a configurable amount.
+Implement an emergency kill switch.
+Purchased or stolen accounts, CAPTCHA bypassing, and rate-limit violations are prohibited.
+Mass repetitive comments, fake engagement, and false metrics are prohibited.
+Until separately authorized, all publications and community engagement actions require human approval.
+9. Fourteen-Day Delivery Plan
+10. Acceptance Criteria
+The repository and production infrastructure are under AiFinPay control.
+The system can be deployed on a clean server using the documentation.
+At least 8 of the 9 specialized agents are fully operational.
+Every agent has a unique role, tools, and workflow.
+At least 20 high-quality content items are generated from verifiable sources.
+At least 5 content items are published through the system after manual approval.
+Real publication analytics are available.
+The approval workflow is fully operational.
+At least 10 real MCP calls are completed.
+At least 3 confirmed x402 payment flows are completed.
+Transaction hashes are provided for test on-chain transactions.
+Retries, timeouts, and error handling are operational.
+Automated tests cover the main workflows.
+An immutable audit log is available.
+Spending limits and the kill switch are operational.
+There are no fake metrics or mass engagement automation.
+After a VPS restart, the system resumes operation without manual intervention.
+11. Daily Reporting Format
+Link to the commit or pull request.
+What was implemented that day.
+What can be verified in the live system.
+What tests were added and their result.
+What issues remain.
+Plan for the next day.
+12. Conditions for Rejection
+No working end-to-end workflow is demonstrated by Day 7.
+On Day 14, the result consists only of an interface, agent list, or demo data.
+There are no real MCP calls or x402 flows.
+Deployment cannot be reproduced.
+There is no daily GitHub history.
+Metrics cannot be verified against their sources.
+Existing SDK, MCP, or ADK components are presented as original development work.
+Final evaluation is based only on a live demonstration and verifiable results. Screenshots, presentations, and text reports without a working system are not accepted.
+13. Project Handover
+Complete source code.
+README covering local, staging, and production setup.
+Architecture diagram.
+Database schema and migrations.
+List of required environment variables without secret values.
+Deployment, rollback, backup, and restore instructions.
+Access to GitHub Actions, VPS, domain configuration, and monitoring.
+List of known limitations and technical debt.
+
+--- Tables ---
+
+Deadline | 14 calendar days
+Checkpoint | Day 7 — interim live demonstration
+Final acceptance | Day 14 — production deployment and full handover
+Required result | A working autonomous marketing MVP, not a list of agents or demo data
+Period | Required Deliverable
+Days 1–2 | Audit the current codebase, define the new architecture, remove fake agents, implement PostgreSQL, Redis, task queue, Docker Compose, data model, and architecture document.
+Days 3–4 | Implement the Growth Orchestrator, agent registry, task engine, audit log, retries, health checks, and basic dashboard.
+Days 5–6 | Implement Market Intelligence, Content Strategy, source collection, deduplication, and topic scoring.
+Day 7 | Interim live demonstration: at least 3 working agents, one complete news-to-content workflow, one generated content item, approval flow, and audit log.
+Days 8–9 | Implement Technical Content, Founder Content, Compliance, Content Queue, approve/reject/edit workflows.
+Days 10–11 | Implement publishing, community engagement proposals, calendar, and real publications after approval.
+Day 12 | Integrate MCP, SDK, x402 flows, wallets, real test transactions, and the payment dashboard.
+Day 13 | Add automated tests, load testing, security checks, backup/restore, and staging deployment.
+Day 14 | Production deployment, documentation, access handover, final live demonstration, and acceptance review.
