@@ -1,0 +1,39 @@
+# AiFinPay AOS — Python Dependencies
+
+# Web Framework
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+
+# Database
+sqlalchemy[asyncio]==2.0.31
+asyncpg==0.29.0
+alembic==1.13.2
+
+# Task Queue
+dramatiq[redis]==1.17.0
+
+# Validation & Serialization
+pydantic==2.8.2
+pydantic-settings==2.3.4
+
+# HTTP Client
+httpx==0.27.0
+
+# Environment
+python-dotenv==1.0.1
+
+# Google ADK
+google-adk==0.1.0
+
+# Utilities
+python-multipart==0.0.9
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+
+# Testing
+pytest==8.2.2
+pytest-asyncio==0.23.7
+
+# Linting (optional, run in CI)
+# ruff==0.5.0
+# mypy==1.10.0
