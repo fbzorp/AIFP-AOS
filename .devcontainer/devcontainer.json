@@ -1,0 +1,56 @@
+{
+      "name": "AiFinPay AOS",
+        "image": "mcr.microsoft.com/devcontainers/python:3.11",
+          "features": {
+              "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+                  "ghcr.io/devcontainers/features/node:1": {
+                        "version": "20"
+                            },
+                                "ghcr.io/devcontainers/features/github-cli:1": {}
+                                  },
+                                    "customizations": {
+                                        "vscode": {
+                                              "extensions": [
+                                                      "ms-python.python",
+                                                              "ms-python.black-formatter",
+                                                                      "ms-python.vscode-pylance",
+                                                                              "bradlc.vscode-tailwindcss",
+                                                                                      "dbaeumer.vscode-eslint",
+                                                                                              "esbenp.prettier-vscode",
+                                                                                                      "ms-vscode.vscode-json"
+                                                                                                            ],
+                                                                                                                  "settings": {
+                                                                                                                          "python.defaultInterpreterPath": "/usr/local/bin/python",
+                                                                                                                                  "python.linting.enabled": true,
+                                                                                                                                          "editor.formatOnSave": true,
+                                                                                                                                                  "editor.tabSize": 4,
+                                                                                                                                                          "terminal.integrated.defaultProfile.linux": "bash"
+                                                                                                                                                                }
+                                                                                                                                                                    }
+                                                                                                                                                                      },
+                                                                                                                                                                        "postCreateCommand": "pip install --user -r requirements.txt",
+                                                                                                                                                                          "forwardPorts": [8000, 3000, 5432, 6379],
+                                                                                                                                                                            "portsAttributes": {
+                                                                                                                                                                                "8000": {
+                                                                                                                                                                                      "label": "FastAPI Backend",
+                                                                                                                                                                                            "onAutoForward": "notify"
+                                                                                                                                                                                                },
+                                                                                                                                                                                                    "3000": {
+                                                                                                                                                                                                          "label": "React Frontend",
+                                                                                                                                                                                                                "onAutoForward": "notify"
+                                                                                                                                                                                                                    },
+                                                                                                                                                                                                                        "5432": {
+                                                                                                                                                                                                                              "label": "PostgreSQL",
+                                                                                                                                                                                                                                    "onAutoForward": "silent"
+                                                                                                                                                                                                                                        },
+                                                                                                                                                                                                                                            "6379": {
+                                                                                                                                                                                                                                                  "label": "Redis",
+                                                                                                                                                                                                                                                        "onAutoForward": "silent"
+                                                                                                                                                                                                                                                            }
+                                                                                                                                                                                                                                                              },
+                                                                                                                                                                                                                                                                "remoteUser": "vscode",
+                                                                                                                                                                                                                                                                  "runArgs": ["--init"],
+                                                                                                                                                                                                                                                                    "mounts": [
+                                                                                                                                                                                                                                                                        "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached"
+                                                                                                                                                                                                                                                                          ]
+                                                                                                                                                                                                                                                                          }
