@@ -75,3 +75,4 @@ REPO_MAP.md
 .devcontainer/devcontainer.json
 .devcontainer/
 .devcontainer/devcontainer.json.devcontainer/devcontainer.json
+.aider*
