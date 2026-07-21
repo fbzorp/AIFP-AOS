@@ -72,3 +72,5 @@ Thumbs.db
 # Aider Studio (auto-added)
 REPO_MAP.md
 .aider/
+.devcontainer/devcontainer.json
+.devcontainer/
