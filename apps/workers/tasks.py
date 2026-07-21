@@ -1,11 +1,16 @@
+import os
+import logging
+
 import dramatiq
 from dramatiq.brokers.redis import RedisBroker
-import logging
+
+from apps.api.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Configure Dramatiq with Redis
-redis_broker = RedisBroker(url="redis://localhost:6379/0")
+# Configure Dramatiq with Redis using the environment-aware settings.
+redis_url = os.getenv("REDIS_URL", settings.REDIS_URL)
+redis_broker = RedisBroker(url=redis_url)
 dramatiq.set_broker(redis_broker)
 
 
