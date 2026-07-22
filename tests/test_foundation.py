@@ -3,6 +3,10 @@ from apps.models.agent import AgentModel
 from apps.models.campaign import CampaignModel
 from apps.models.content_item import ContentItemModel
 from apps.models.audit_event import AuditEventModel
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from apps.models.base import Base
+import uuid
 
 
 def test_agent_registry_registers_specialized_agents():
@@ -30,3 +34,29 @@ def test_models_have_expected_columns():
     assert campaign.objective == "Launch content"
     assert content_item.channel == "x"
     assert audit_event.event_type == "created"
+
+
+def test_sqlite_models_and_uuid_uniqueness():
+    # In-memory SQLite
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    # Insert two agents with JSON
+    agent1 = AgentModel(
+        name="Test1", role="test", tools=[{"tool": "read"}], inputs={}, outputs={}, policies={}, kpis={}, execution_history=[]
+    )
+    agent2 = AgentModel(
+        name="Test2", role="test", tools=[{"tool": "write"}], inputs={}, outputs={}, policies={}, kpis={}, execution_history=[]
+    )
+    session.add(agent1)
+    session.add(agent2)
+    session.commit()
+
+    # Re-query and assert distinct IDs
+    agents = session.query(AgentModel).all()
+    assert len(agents) == 2
+    assert agents[0].id != agents[1].id
+    assert "agent-" in agents[0].id
+    session.close()
