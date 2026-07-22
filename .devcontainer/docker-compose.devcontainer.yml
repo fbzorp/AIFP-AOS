@@ -1,0 +1,6 @@
+services:  
+  api:  
+      volumes:  
+            - ..:/workspaces/AIFP-AOS:cached  
+                working_dir: /workspaces/AIFP-AOS  
+                    command: sleep infinity

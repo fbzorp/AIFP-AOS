@@ -64,7 +64,6 @@ htmlcov/
 
 # Docker
 .dockerignore
-.devcontainer/devcontainer.json
 
 # OS
 Thumbs.db

@@ -1,0 +1,34 @@
+{  
+          "name": "AiFinPay AOS",  
+            "dockerComposeFile": [  
+                "../docker-compose.dev.yml",  
+                    "docker-compose.devcontainer.yml"  
+                      ],  
+                        "service": "api",  
+                          "workspaceFolder": "/workspaces/AIFP-AOS",  
+                            "runServices": ["api", "worker", "frontend", "postgres", "redis"],  
+                              "overrideCommand": false,  
+                                "forwardPorts": [8000, 3000, 5432, 6379],  
+                                  "portsAttributes": {  
+                                      "8000": { "label": "FastAPI Backend", "onAutoForward": "notify" },  
+                                          "3000": { "label": "React Frontend", "onAutoForward": "notify" },  
+                                              "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },  
+                                                  "6379": { "label": "Redis", "onAutoForward": "silent" }  
+                                                    },  
+                                                      "customizations": {  
+                                                          "vscode": {  
+                                                                "extensions": [  
+                                                                        "ms-python.python", "ms-python.black-formatter", "ms-python.vscode-pylance",  
+                                                                                "bradlc.vscode-tailwindcss", "dbaeumer.vscode-eslint", "esbenp.prettier-vscode"  
+                                                                                      ],  
+                                                                                            "settings": {  
+                                                                                                    "python.defaultInterpreterPath": "/usr/local/bin/python",  
+                                                                                                            "editor.formatOnSave": true,  
+                                                                                                                    "editor.tabSize": 4,  
+                                                                                                                            "terminal.integrated.defaultProfile.linux": "bash"  
+                                                                                                                                  }  
+                                                                                                                                      }  
+                                                                                                                                        },  
+                                                                                                                                          "postCreateCommand": "pip install -e '.[dev]' ",  
+                                                                                                                                            "remoteUser": "root"  
+                                                                                                                                            }
