@@ -5,6 +5,7 @@ RUN pip install --no-cache-dir uv
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen
 COPY . .
-RUN useradd -r -u 10001 appuser && chown -R appuser:appuser /app
+RUN useradd -m -u 10001 appuser && chown -R appuser:appuser /app
 USER appuser
+ENV UV_CACHE_DIR=/home/appuser/.cache/uv
 CMD ["uv", "run", "uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
