@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 from apps.api.main import app
 
 client = TestClient(app)
@@ -20,7 +20,8 @@ def test_create_campaign_endpoint(mock_orchestrator_result):
     Test POST /api/v1/campaigns returns the correct response from the orchestrator.
     """
     mock_agent = MagicMock()
-    mock_agent.execute = MagicMock(return_value=mock_orchestrator_result)
+    # Use AsyncMock because execute is awaited
+    mock_agent.execute = AsyncMock(return_value=mock_orchestrator_result)
     
     with patch('apps.api.routers.system.get_agent', return_value=mock_agent):
         response = client.post(

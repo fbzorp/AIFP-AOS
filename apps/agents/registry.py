@@ -8,7 +8,9 @@ class AgentRegistry:
         self._initialized = False
     
     def register(self, agent_cls: Type[BaseAgent]) -> None:
-        name = getattr(agent_cls, 'name', agent_cls.__name__)
+        # Instantiate once to get the display name set in __init__
+        instance = agent_cls()
+        name = instance.name
         self._agents[name] = agent_cls
         
     def register_default_agents(self) -> None:
