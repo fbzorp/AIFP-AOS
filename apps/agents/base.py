@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class BaseAgent(ABC):
     """Base class for all AI agents in the system."""
     
-    def __init__(self, name: str, model: str = "deepseek-chat"):
+    def __init__(self, name: str, model: Optional[str] = None):
         self.name = name
         self.model = model
         self.tools = []
