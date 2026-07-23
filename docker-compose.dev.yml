@@ -69,5 +69,20 @@ services:
       redis:
         condition: service_healthy
 
+  dashboard:
+    build:
+      context: ./apps/dashboard
+      dockerfile: Dockerfile.dev
+    container_name: aifp_dashboard_dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/dashboard:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=${VITE_API_URL}
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
