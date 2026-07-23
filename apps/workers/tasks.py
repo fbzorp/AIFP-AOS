@@ -8,7 +8,6 @@ from apps.models.base import get_sync_session
 from apps.models.task import TaskModel
 from apps.core.policy.engine import PolicyEngine
 from apps.core.audit.service import record_event
-from apps.agents.registry import get_agent
 
 # Setup Dramatiq Redis Broker
 broker = RedisBroker(url=settings.REDIS_URL)
@@ -21,6 +20,9 @@ def run_agent_task(task_id: str):
     """
     Generic task runner with retries and audit logging.
     """
+    # Lazy import to break circular dependency
+    from apps.agents.registry import get_agent
+
     with get_sync_session() as session:
         task = session.query(TaskModel).filter(TaskModel.id == task_id).first()
         if not task:
