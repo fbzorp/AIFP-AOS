@@ -8,8 +8,10 @@ logger = logging.getLogger(__name__)
 class BaseAgent(ABC):
     """Base class for all AI agents in the system."""
     
-    def __init__(self, name: str, model: Optional[str] = None):
+    def __init__(self, name: str, role: str = "Agent", description: str = "", model: Optional[Any] = None):
         self.name = name
+        self.role = role
+        self.description = description
         self.model = model
         self.tools = []
         self.version = "0.1.0"

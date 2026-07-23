@@ -11,7 +11,12 @@ logger = logging.getLogger(__name__)
 
 class GrowthOrchestratorAgent(BaseAgent):
     def __init__(self) -> None:
-        super().__init__(name="Growth Orchestrator", model=deepseek_reasoning())
+        super().__init__(
+            name="Growth Orchestrator", 
+            role="Orchestrator",
+            description="Receives marketing objectives and dispatches specialized tasks.",
+            model=deepseek_reasoning()
+        )
 
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         objective = input_data.get('objective', 'default_campaign')
@@ -46,7 +51,12 @@ class GrowthOrchestratorAgent(BaseAgent):
 
 class MarketIntelligenceAgent(BaseAgent):
     def __init__(self) -> None:
-        super().__init__(name="Market Intelligence", model=deepseek_fast())
+        super().__init__(
+            name="Market Intelligence", 
+            role="Researcher",
+            description="Tracks AI agents, MCP, and market trends.",
+            model=deepseek_fast()
+        )
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         topic = input_data.get('topic', 'ai_agents')
         return {"agent": self.name, "outcome": "intelligence_gathered", "topic": topic}
@@ -55,7 +65,12 @@ class MarketIntelligenceAgent(BaseAgent):
 
 class ContentStrategyAgent(BaseAgent):
     def __init__(self) -> None:
-        super().__init__(name="Content Strategy", model=deepseek_fast())
+        super().__init__(
+            name="Content Strategy", 
+            role="Strategist",
+            description="Creates weekly content plans across multiple channels.",
+            model=deepseek_fast()
+        )
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         return {"agent": self.name, "outcome": "weekly_plan_created"}
     def get_capabilities(self) -> Dict[str, Any]:
@@ -63,7 +78,12 @@ class ContentStrategyAgent(BaseAgent):
 
 class TechnicalContentAgent(BaseAgent):
     def __init__(self) -> None:
-        super().__init__(name="Technical Content", model=deepseek_fast())
+        super().__init__(
+            name="Technical Content", 
+            role="Technical Writer",
+            description="Generates technical tutorials and SDK documentation.",
+            model=deepseek_fast()
+        )
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         return {"agent": self.name, "outcome": "tutorial_generated"}
     def get_capabilities(self) -> Dict[str, Any]:
@@ -71,7 +91,12 @@ class TechnicalContentAgent(BaseAgent):
 
 class FounderContentAgent(BaseAgent):
     def __init__(self) -> None:
-        super().__init__(name="Founder Content", model=deepseek_fast())
+        super().__init__(
+            name="Founder Content", 
+            role="Ghostwriter",
+            description="Crafts high-impact content for leadership accounts.",
+            model=deepseek_fast()
+        )
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         return {"agent": self.name, "outcome": "founder_draft_ready"}
     def get_capabilities(self) -> Dict[str, Any]:
@@ -79,7 +104,12 @@ class FounderContentAgent(BaseAgent):
 
 class SocialPublishingAgent(BaseAgent):
     def __init__(self) -> None:
-        super().__init__(name="Social Publishing", model=deepseek_fast())
+        super().__init__(
+            name="Social Publishing", 
+            role="Publisher",
+            description="Handles distribution of approved content to social channels.",
+            model=deepseek_fast()
+        )
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         return {"agent": self.name, "outcome": "publish_queued"}
     def get_capabilities(self) -> Dict[str, Any]:
@@ -87,7 +117,12 @@ class SocialPublishingAgent(BaseAgent):
 
 class CommunityEngagementAgent(BaseAgent):
     def __init__(self) -> None:
-        super().__init__(name="Community Engagement", model=deepseek_fast())
+        super().__init__(
+            name="Community Engagement", 
+            role="Community Manager",
+            description="Monitors and responds to relevant community discussions.",
+            model=deepseek_fast()
+        )
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         return {"agent": self.name, "outcome": "reply_prepared"}
     def get_capabilities(self) -> Dict[str, Any]:
@@ -95,7 +130,12 @@ class CommunityEngagementAgent(BaseAgent):
 
 class AnalyticsAgent(BaseAgent):
     def __init__(self) -> None:
-        super().__init__(name="Analytics", model=deepseek_fast())
+        super().__init__(
+            name="Analytics", 
+            role="Data Analyst",
+            description="Measures and reports on campaign performance metrics.",
+            model=deepseek_fast()
+        )
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         return {"agent": self.name, "outcome": "report_generated"}
     def get_capabilities(self) -> Dict[str, Any]:
@@ -103,7 +143,12 @@ class AnalyticsAgent(BaseAgent):
 
 class ComplianceBrandAgent(BaseAgent):
     def __init__(self) -> None:
-        super().__init__(name="Compliance & Brand", model=deepseek_fast())
+        super().__init__(
+            name="Compliance & Brand", 
+            role="Brand Guardian",
+            description="Ensures all content adheres to brand and regulatory standards.",
+            model=deepseek_fast()
+        )
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         return {"agent": self.name, "outcome": "reviewed", "status": "approved"}
     def get_capabilities(self) -> Dict[str, Any]:
