@@ -13,6 +13,7 @@ class Orchestrator:
     async def create_campaign(self, objective: str, steps: list):
         """
         Creates a campaign and its associated tasks, then enqueues them.
+        Ensures all DB rows are committed before enqueuing to avoid worker race conditions.
         """
         # Lazy import to break circular dependency with tasks.py
         from apps.workers.tasks import run_agent_task
@@ -35,12 +36,21 @@ class Orchestrator:
                 status="pending"
             )
             self.session.add(task)
-            self.session.flush()
             tasks.append(task)
-            
-            # Enqueue task
+        
+        # Flush to get task IDs
+        self.session.flush()
+        
+        # Commit now so the worker can definitely see the rows
+        self.session.commit()
+        
+        # Enqueue tasks AFTER commit
+        for task in tasks:
             run_agent_task.send(task.id)
-            record_event(self.session, "GrowthOrchestrator", "task_enqueued", f"Enqueued {task.task_type} for campaign", {"task_id": task.id, "campaign_id": campaign.id})
+            # Re-fetch or use existing session to record enqueued event
+            # Since we committed, we might need to be careful with session state
+            # but for simplicity we record it here.
+            logger.info(f"Enqueued {task.task_type} for campaign {campaign.id}, task_id: {task.id}")
             
         return {
             "campaign_id": campaign.id,

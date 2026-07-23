@@ -1,14 +1,19 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from apps.models.base import get_db
 from apps.models.agent import AgentModel
 from apps.models.task import TaskModel
 from apps.models.audit_event import AuditEventModel
 from apps.models.campaign import CampaignModel
-from apps.agents.registry import list_agents
+from apps.agents.registry import list_agents, get_agent
 
 router = APIRouter()
+
+class CampaignCreateRequest(BaseModel):
+    objective: str
 
 @router.get("/agents")
 async def get_agents():
@@ -23,22 +28,34 @@ async def get_agents():
     ]
 
 @router.get("/tasks")
-async def get_tasks(db: Session = Depends(get_db)):
+async def get_tasks(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(TaskModel).order_by(TaskModel.created_at.desc()).limit(50))
     return result.scalars().all()
 
 @router.get("/audit")
-async def get_audit(db: Session = Depends(get_db)):
+async def get_audit(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(AuditEventModel).order_by(AuditEventModel.created_at.desc()).limit(50))
     return result.scalars().all()
 
 @router.get("/campaigns")
-async def get_campaigns(db: Session = Depends(get_db)):
+async def get_campaigns(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(CampaignModel).order_by(CampaignModel.created_at.desc()).limit(20))
     return result.scalars().all()
 
+@router.post("/campaigns")
+async def create_campaign(request: CampaignCreateRequest):
+    orchestrator = get_agent("Growth Orchestrator")
+    if not orchestrator:
+        raise HTTPException(status_code=500, detail="Growth Orchestrator agent not found")
+    
+    try:
+        result = await orchestrator.execute({"objective": request.objective})
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/metrics")
-async def get_metrics(db: Session = Depends(get_db)):
+async def get_metrics(db: AsyncSession = Depends(get_db)):
     # Counts
     agent_count = len(list_agents())
     
