@@ -11,7 +11,11 @@ class AgentRegistry:
         name = getattr(agent_cls, 'name', agent_cls.__name__)
         self._agents[name] = agent_cls
         
-    def ensure_initialized(self) -> None:
+    def register_default_agents(self) -> None:
+        """
+        Lazily registers all default specialized agents.
+        This method is idempotent via the self._initialized guard.
+        """
         if self._initialized:
             return
             
@@ -40,6 +44,10 @@ class AgentRegistry:
             self.register(cls)
         self._initialized = True
             
+    def ensure_initialized(self) -> None:
+        """Internal alias for lazy initialization."""
+        self.register_default_agents()
+            
     def list_agents(self) -> List[BaseAgent]:
         self.ensure_initialized()
         return [agent_cls() for agent_cls in self._agents.values()]
@@ -49,7 +57,7 @@ class AgentRegistry:
         agent_cls = self._agents.get(name)
         return agent_cls() if agent_cls else None
 
-# Singleton instance
+# Singleton instance - LAZY: do NOT call register_default_agents() here
 _registry = AgentRegistry()
 
 def list_agents() -> List[BaseAgent]:
