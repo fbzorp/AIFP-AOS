@@ -4,7 +4,7 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = 'new_revision_id_placeholder'
+revision = '20260722_enriched_agents'
 down_revision = '4cc0d2d8f55e'
 branch_labels = None
 depends_on = None
@@ -12,7 +12,7 @@ depends_on = None
 def upgrade():
     op.add_column('agents', sa.Column('tools', sa.JSON(), nullable=True))
     op.add_column('agents', sa.Column('inputs', sa.JSON(), nullable=True))
-    op.add_column('agents', sa.Column('outputs', sa.Column('outputs', sa.JSON(), nullable=True)))
+    op.add_column('agents', sa.Column('outputs', sa.JSON(), nullable=True))
     op.add_column('agents', sa.Column('policies', sa.JSON(), nullable=True))
     op.add_column('agents', sa.Column('kpis', sa.JSON(), nullable=True))
     op.add_column('agents', sa.Column('execution_history', sa.JSON(), nullable=True))
