@@ -34,6 +34,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     container_name: aifp_api_dev
+    restart: unless-stopped
     read_only: false
     tmpfs:
       - /tmp
@@ -56,6 +57,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     container_name: aifp_worker_dev
+    restart: unless-stopped
     command: ["uv", "run", "dramatiq", "apps.workers.tasks"]
     environment:
       - APP_ENV=development
