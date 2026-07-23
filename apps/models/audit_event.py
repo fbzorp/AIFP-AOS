@@ -13,4 +13,5 @@ class AuditEventModel(Base):
     agent_name = Column(String, nullable=False)
     event_type = Column(String, nullable=False)
     message = Column(Text, nullable=True)
+    metadata_json = Column(JSON, nullable=True)  # Renamed to avoid conflict with Base.metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -1,4 +1,7 @@
 import logging
+from datetime import datetime, timezone
+from sqlalchemy.orm import Session
+from apps.models.approval import ApprovalModel
 
 logger = logging.getLogger(__name__)
 
@@ -8,22 +11,25 @@ class PolicyEngine:
     Validates autonomous actions against defined policies and human approvals.
     """
     
-    def validate_approval(self, approval_id: str, draft_hash: str) -> bool:
+    def validate_approval(self, session: Session, approval_id: str, draft_hash: str) -> bool:
         """
         Validates if a specific draft has a valid and signed human approval.
-        
-        Args:
-            approval_id: The unique ID of the approval event.
-            draft_hash: SHA-256 hash of the content to be published.
-            
-        Returns:
-            bool: True if approval is valid, False otherwise.
         """
-        # TODO: Implement actual validation logic with DB/Secret check in Day 3-4
         logger.info(f"Validating approval {approval_id} for draft hash {draft_hash}")
         
-        # For Day 1-2, we accept all non-empty IDs as a placeholder
-        if approval_id and draft_hash:
-            return True
+        approval = session.query(ApprovalModel).filter(ApprovalModel.id == approval_id).first()
+        
+        if not approval:
+            logger.error(f"Approval {approval_id} not found")
+            return False
             
-        return False
+        if approval.draft_hash != draft_hash:
+            logger.error(f"Hash mismatch: expected {approval.draft_hash}, got {draft_hash}")
+            return False
+            
+        if approval.expires_at and approval.expires_at < datetime.now(timezone.utc):
+            logger.error(f"Approval {approval_id} has expired")
+            return False
+            
+        logger.info(f"Approval {approval_id} validated successfully")
+        return True
