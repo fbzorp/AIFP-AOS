@@ -1,17 +1,14 @@
 from google.adk.models.lite_llm import LiteLlm
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
-from pydantic import Field
 
 class Settings(BaseSettings):
-    deepseek_api_key: Optional[str] = Field(default=None, env="DEEPSEEK_API_KEY")
+    deepseek_api_key: Optional[str] = None
     deepseek_primary_model: str = "deepseek/deepseek-v4-flash"
     deepseek_reasoning_model: str = "deepseek/deepseek-v4-pro"
     deepseek_api_base: str = "https://api.deepseek.com"
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 # Defer full instantiation or use lazy
 settings = Settings()  # Will use defaults/env; no crash if key missing for imports
