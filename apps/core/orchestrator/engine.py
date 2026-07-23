@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from apps.models.task import TaskModel
 from apps.models.campaign import CampaignModel
 from apps.core.audit.service import record_event
-from apps.workers.tasks import run_agent_task
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +14,9 @@ class Orchestrator:
         """
         Creates a campaign and its associated tasks, then enqueues them.
         """
+        # Lazy import to break circular dependency with tasks.py
+        from apps.workers.tasks import run_agent_task
+        
         campaign = CampaignModel(
             name=f"Campaign: {objective[:30]}...",
             objective=objective,
@@ -28,7 +30,7 @@ class Orchestrator:
         tasks = []
         for step in steps:
             task = TaskModel(
-                task_type=step.get("agent", "research_agent"),
+                task_type=step.get("agent", "Market Intelligence"),
                 input_data=step.get("input", {}),
                 status="pending"
             )
