@@ -28,16 +28,22 @@ class GrowthOrchestratorAgent(BaseAgent):
             {"agent": "Social Publishing", "input": {"action": "distribute"}}
         ]
         
+        # Offload synchronous DB work to a thread to avoid blocking the event loop
+        result = await asyncio.to_thread(self._dispatch_campaign, objective, steps)
+        
+        return {
+            "agent": self.name,
+            "outcome": "campaign_dispatched",
+            "campaign_id": result["campaign_id"],
+            "tasks": result["tasks"],
+            "status": "executing"
+        }
+
+    def _dispatch_campaign(self, objective: str, steps: list) -> Dict[str, Any]:
+        """Synchronous helper for campaign dispatch."""
         with get_sync_session() as session:
             orch = Orchestrator(session)
-            result = await orch.create_campaign(objective, steps)
-            return {
-                "agent": self.name,
-                "outcome": "campaign_dispatched",
-                "campaign_id": result["campaign_id"],
-                "tasks": result["tasks"],
-                "status": "executing"
-            }
+            return orch.create_campaign(objective, steps)
 
     def get_capabilities(self) -> Dict[str, Any]:
         return {
