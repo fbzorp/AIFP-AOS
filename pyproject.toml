@@ -7,7 +7,8 @@ dependencies = [
     "sqlalchemy",
     "alembic",
     "pydantic-settings",
-    # add others
+    "litellm",
+    "google-adk",
 ]
 
 [tool.setuptools.packages.find]

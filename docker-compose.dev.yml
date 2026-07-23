@@ -1,11 +1,71 @@
-# Updated with Postgres 17, Redis 8, security hardening
+version: "3.8"
+
 services:
   postgres:
     image: postgres:17-alpine
+    container_name: aifp_postgres_dev
+    environment:
+      POSTGRES_DB: aifp_dev
+      POSTGRES_USER: aifp
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aifp -d aifp_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:8-alpine
+    container_name: aifp_redis_dev
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   api:
-    read_only: true
-    tmpfs: ["/tmp"]
-    security_opt: ["no-new-privileges:true"]
-# ... rest as before
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: aifp_api_dev
+    read_only: false
+    tmpfs:
+      - /tmp
+    security_opt:
+      - "no-new-privileges:true"
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+      - DATABASE_URL=postgresql+asyncpg://aifp:devpassword@postgres:5432/aifp_dev
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: aifp_worker_dev
+    command: ["uv", "run", "dramatiq", "apps.workers.tasks"]
+    environment:
+      - APP_ENV=development
+      - DATABASE_URL=postgresql+asyncpg://aifp:devpassword@postgres:5432/aifp_dev
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
