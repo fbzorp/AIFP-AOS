@@ -4,6 +4,24 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-surface-950 text-surface-50 antialiased;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-surface-900/50 backdrop-blur-md border border-surface-800 rounded-2xl shadow-glass transition-all duration-300;
+  }
+  
+  .glass-card:hover {
+    @apply bg-surface-800/60 border-surface-700 shadow-glass-hover scale-[1.01];
+  }
+
+  .stat-card {
+    @apply glass-card p-6 flex flex-col justify-between;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-400 to-primary-600;
   }
 }
