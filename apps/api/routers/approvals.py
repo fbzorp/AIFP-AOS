@@ -10,6 +10,7 @@ from apps.models.approval import ApprovalModel
 from apps.models.audit_event import AuditEventModel
 from apps.core.policy.engine import compute_draft_hash
 from apps.core.audit.service import record_event
+from apps.workers.tasks import publish_content
 
 router = APIRouter()
 
@@ -26,7 +27,7 @@ async def list_approvals(db: AsyncSession = Depends(get_db)):
 @router.post("/content/{content_id}/submit")
 async def submit_content(content_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
-    content = result.scalar_one_or_none()
+    content = result.scalars().first()
     if not content:
         raise HTTPException(status_code=404, detail="Content item not found")
     
@@ -37,7 +38,7 @@ async def submit_content(content_id: str, db: AsyncSession = Depends(get_db)):
 @router.post("/content/{content_id}/approve")
 async def approve_content(content_id: str, request: ApprovalDecisionRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
-    content = result.scalar_one_or_none()
+    content = result.scalars().first()
     if not content:
         raise HTTPException(status_code=404, detail="Content item not found")
     
@@ -77,7 +78,7 @@ async def approve_content(content_id: str, request: ApprovalDecisionRequest, db:
 @router.post("/content/{content_id}/reject")
 async def reject_content(content_id: str, request: ApprovalDecisionRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
-    content = result.scalar_one_or_none()
+    content = result.scalars().first()
     if not content:
         raise HTTPException(status_code=404, detail="Content item not found")
     
@@ -103,3 +104,33 @@ async def reject_content(content_id: str, request: ApprovalDecisionRequest, db: 
     
     await db.commit()
     return {"status": "rejected", "content_id": content_id}
+
+@router.post("/content/{content_id}/publish")
+async def trigger_publish(content_id: str, db: AsyncSession = Depends(get_db)):
+    # 1. Load content item
+    result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
+    content = result.scalars().first()
+    if not content:
+        raise HTTPException(status_code=404, detail="Content item not found")
+    
+    # 2. Find the latest approved approval for this content
+    appr_result = await db.execute(
+        select(ApprovalModel)
+        .filter(ApprovalModel.content_id == content_id, ApprovalModel.status == "approved")
+        .order_by(ApprovalModel.created_at.desc())
+        .limit(1)
+    )
+    approval = appr_result.scalars().first()
+    
+    if not approval:
+        raise HTTPException(status_code=400, detail="No valid approval found for this content")
+    
+    # 3. Enqueue the publish task
+    # Note: .send is the Dramatiq way to enqueue a task
+    publish_content.send(content.id, approval.id, approval.draft_hash)
+    
+    return {
+        "status": "publish_enqueued",
+        "content_id": content_id,
+        "approval_id": approval.id
+    }

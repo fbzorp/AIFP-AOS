@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import create_engine
@@ -12,6 +13,8 @@ from apps.models.approval import ApprovalModel
 from apps.models.audit_event import AuditEventModel
 from apps.core.policy.engine import PolicyEngine, compute_draft_hash
 from apps.workers.tasks import publish_content
+from apps.api.main import app
+from httpx import AsyncClient, ASGITransport
 
 # Setup in-memory SQLite for testing with StaticPool to share connection across threads
 engine = create_engine(
@@ -20,6 +23,29 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+
+class AsyncSessionMock:
+    """A mock to wrap sync session to look like an async session for FastAPI tests."""
+    def __init__(self, sync_session):
+        self.sync_session = sync_session
+    
+    async def execute(self, query):
+        return self.sync_session.execute(query)
+    
+    def add(self, obj):
+        return self.sync_session.add(obj)
+    
+    async def flush(self):
+        return self.sync_session.flush()
+    
+    async def commit(self):
+        return self.sync_session.commit()
+    
+    async def rollback(self):
+        return self.sync_session.rollback()
+    
+    async def close(self):
+        return self.sync_session.close()
 
 @contextmanager
 def mock_get_sync_session():
@@ -143,3 +169,51 @@ def test_publish_gate(mock_session):
         session.commit()
         with pytest.raises(ValueError, match="must be approved"):
             publish_content("content-1", "appr-1", draft_hash)
+
+async def override_get_db():
+    sync_session = TestingSessionLocal()
+    async_session = AsyncSessionMock(sync_session)
+    try:
+        yield async_session
+    finally:
+        await async_session.close()
+
+@pytest.mark.asyncio
+async def test_api_approval_and_publish_trigger():
+    # Use the FastAPI test client with the mocked DB session
+    from apps.models.base import get_db
+    app.dependency_overrides[get_db] = override_get_db
+
+    transport = ASGITransport(app=app)
+    # Mock Redis to avoid connection errors in test environment
+    with patch("apps.api.main.Redis.from_url") as mock_redis:
+        mock_redis.return_value.ping.return_value = True
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            with mock_get_sync_session() as session:
+                # 1. Create draft
+                content = ContentItemModel(
+                    id="api-content-1",
+                    title="API Test",
+                    body="Hello",
+                    channel="X",
+                    status="draft"
+                )
+                session.add(content)
+                session.commit()
+                
+                # 2. Approve via API
+                response = await ac.post("/api/v1/content/api-content-1/approve", json={"approved_by": "Tester"})
+                assert response.status_code == 200
+                data = response.json()
+                assert data["status"] == "approved"
+                
+                # 3. Trigger Publish via API
+                # Mock the dramatiq .send method
+                with patch("apps.workers.tasks.publish_content.send") as mock_send:
+                    pub_response = await ac.post("/api/v1/content/api-content-1/publish")
+                    assert pub_response.status_code == 200
+                    assert pub_response.json()["status"] == "publish_enqueued"
+                    mock_send.assert_called_once()
+    
+    # Clean up
+    app.dependency_overrides.clear()
