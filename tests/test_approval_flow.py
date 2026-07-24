@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -35,8 +35,16 @@ class AsyncSessionMock:
     def add(self, obj):
         return self.sync_session.add(obj)
     
-    async def flush(self):
-        return self.sync_session.flush()
+    def flush(self):
+        # This is the magic part: we return an object that is both 
+        # a result (for sync calls) and awaitable (for async calls).
+        self.sync_session.flush()
+        
+        class AwaitableNone:
+            def __await__(self):
+                async def _wrap(): return None
+                return _wrap().__await__()
+        return AwaitableNone()
     
     async def commit(self):
         return self.sync_session.commit()
@@ -46,6 +54,12 @@ class AsyncSessionMock:
     
     async def close(self):
         return self.sync_session.close()
+    
+    def scalars(self):
+        return self
+    
+    def first(self):
+        return self
 
 @contextmanager
 def mock_get_sync_session():
