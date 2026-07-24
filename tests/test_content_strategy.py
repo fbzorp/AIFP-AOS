@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch, AsyncMock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
 
 from apps.models.base import Base
@@ -9,8 +10,12 @@ from apps.models.source import SourceModel
 from apps.models.content_item import ContentItemModel
 from apps.agents.specialized import ContentStrategyAgent
 
-# Setup in-memory SQLite for testing
-engine = create_engine("sqlite:///:memory:")
+# Setup in-memory SQLite for testing with StaticPool to share connection across threads
+engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(bind=engine)
 
 @contextmanager
