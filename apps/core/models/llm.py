@@ -24,8 +24,9 @@ async def complete_json(
     global _session_spend
     
     # Budget guard
-    if _session_spend >= settings.DAILY_LLM_BUDGET_USD:
-        logger.warning(f"Daily LLM budget of ${settings.DAILY_LLM_BUDGET_USD} exceeded. Session spend: ${_session_spend}")
+    budget = getattr(settings, "DAILY_LLM_BUDGET_USD", 25.0)
+    if _session_spend >= budget:
+        logger.warning(f"Daily LLM budget of ${budget} exceeded. Session spend: ${_session_spend}")
         return _fallback_heuristic(system_prompt, user_content)
 
     # Check for API key (via model factory check)

@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     DAILY_SPENDING_LIMIT: float = 100.00
     PER_TRANSACTION_LIMIT: float = 50.00
     HUMAN_APPROVAL_THRESHOLD: float = 25.00
+    DAILY_LLM_BUDGET_USD: float = 25.00
     
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
