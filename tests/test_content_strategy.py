@@ -16,7 +16,7 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
-TestingSessionLocal = sessionmaker(bind=engine)
+TestingSessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 @contextmanager
 def mock_get_sync_session():
