@@ -14,6 +14,8 @@ from apps.models.campaign import CampaignModel
 from apps.models.content_item import ContentItemModel
 from apps.models.audit_event import AuditEventModel
 from apps.models.task import TaskModel
+from apps.models.approval import ApprovalModel
+from apps.models.source import SourceModel
 
 config = context.config
 if config.config_file_name is not None:
