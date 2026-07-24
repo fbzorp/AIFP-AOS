@@ -9,9 +9,13 @@ import {
   BarChart3,
   Zap,
   ShieldCheck,
-  Search
+  Search,
+  Database,
+  FileText,
+  ExternalLink,
+  Target
 } from 'lucide-react';
-import { fetchMetrics, fetchAgents, fetchHealth, cn } from '../lib/api';
+import { fetchMetrics, fetchAgents, fetchHealth, fetchSources, fetchContent, cn } from '../lib/api';
 
 const Dashboard: React.FC = () => {
   const { data: metrics, isLoading: metricsLoading } = useQuery({
@@ -20,9 +24,21 @@ const Dashboard: React.FC = () => {
     refetchInterval: 5000,
   });
 
-  const { data: agents, isLoading: agentsLoading } = useQuery({
+  const { data: agents } = useQuery({
     queryKey: ['agents'],
     queryFn: fetchAgents,
+  });
+
+  const { data: sources } = useQuery({
+    queryKey: ['sources'],
+    queryFn: fetchSources,
+    refetchInterval: 10000,
+  });
+
+  const { data: content } = useQuery({
+    queryKey: ['content'],
+    queryFn: fetchContent,
+    refetchInterval: 10000,
   });
 
   const { data: health } = useQuery({
@@ -33,8 +49,8 @@ const Dashboard: React.FC = () => {
 
   const stats = [
     { label: 'Active Agents', value: metrics?.agents || 0, icon: Users, color: 'text-blue-400' },
+    { label: 'Intelligence Sources', value: metrics?.sources || 0, icon: Database, color: 'text-indigo-400' },
     { label: 'Tasks Succeeded', value: metrics?.tasks?.succeeded || 0, icon: CheckCircle, color: 'text-green-400' },
-    { label: 'Pending Tasks', value: metrics?.tasks?.pending || 0, icon: Clock, color: 'text-amber-400' },
     { label: 'Active Campaigns', value: metrics?.campaigns || 0, icon: Zap, color: 'text-purple-400' },
   ];
 
@@ -75,106 +91,120 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Activity Feed */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Left Column: Activity & Sources */}
+        <div className="lg:col-span-2 space-y-8">
+          
+          {/* Recent Intelligence Sources */}
           <div className="glass-card p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-2">
-                <Activity size={20} className="text-primary-400" />
-                <h2 className="text-xl font-semibold">Live Agent Activity</h2>
+                <Database size={20} className="text-indigo-400" />
+                <h2 className="text-xl font-semibold">Market Intelligence Feed</h2>
               </div>
-              <span className="text-xs text-surface-500">Auto-refreshing</span>
             </div>
-            
             <div className="space-y-4">
-              {metrics?.recent_activity?.map((event) => (
-                <div key={event.id} className="flex items-start space-x-4 p-3 rounded-xl hover:bg-surface-800/40 transition-colors">
-                  <div className="mt-1">
-                    {event.event_type.includes('success') ? <ShieldCheck size={16} className="text-green-400" /> : 
-                     event.event_type.includes('fail') ? <AlertCircle size={16} className="text-red-400" /> :
-                     <Zap size={16} className="text-primary-400" />}
+              {sources?.slice(0, 3).map((source) => (
+                <div key={source.id} className="p-4 rounded-xl bg-surface-800/30 border border-surface-700/50 hover:border-indigo-500/30 transition-all">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold text-surface-100 flex items-center gap-2">
+                      {source.title}
+                      <a href={source.url} target="_blank" rel="noreferrer" className="text-surface-500 hover:text-indigo-400">
+                        <ExternalLink size={14} />
+                      </a>
+                    </h3>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400">
+                      Score: {source.relevance_score.toFixed(2)}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm font-medium text-surface-100">{event.agent_name}</p>
-                      <span className="text-[10px] text-surface-500">
-                        {new Date(event.created_at).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-surface-400 truncate">{event.message}</p>
+                  <p className="text-sm text-surface-400 line-clamp-2 mb-2">{source.summary}</p>
+                  <div className="flex items-center gap-4 text-[10px] text-surface-500 uppercase tracking-wider">
+                    <span className="flex items-center gap-1"><Target size={10} /> {source.topic}</span>
+                    <span>{new Date(source.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
-              )) || (
-                <div className="py-8 text-center text-surface-500 italic">No recent activity detected</div>
-              )}
+              )) || <div className="text-center py-8 text-surface-500 italic">No intelligence gathered yet</div>}
             </div>
           </div>
 
-          {/* Task Breakdown */}
+          {/* Planned Content Queue */}
           <div className="glass-card p-6">
-            <div className="flex items-center space-x-2 mb-6">
-              <BarChart3 size={20} className="text-primary-400" />
-              <h2 className="text-xl font-semibold">Task Execution Status</h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-2">
+                <FileText size={20} className="text-green-400" />
+                <h2 className="text-xl font-semibold">Planned Content Queue</h2>
+              </div>
             </div>
-            <div className="space-y-4">
-              {['succeeded', 'running', 'pending', 'failed'].map((status) => {
-                const count = metrics?.tasks?.[status] || 0;
-                const total = Object.values(metrics?.tasks || {}).reduce((a, b) => a + b, 0) || 1;
-                const percent = Math.round((count / total) * 100);
-                
-                return (
-                  <div key={status} className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="capitalize text-surface-300">{status}</span>
-                      <span className="text-surface-500">{count} tasks</span>
-                    </div>
-                    <div className="h-2 w-full bg-surface-800 rounded-full overflow-hidden">
-                      <div 
-                        className={cn(
-                          "h-full transition-all duration-500",
-                          status === 'succeeded' ? "bg-green-500" :
-                          status === 'running' ? "bg-primary-500" :
-                          status === 'pending' ? "bg-amber-500" : "bg-red-500"
-                        )}
-                        style={{ width: `${percent}%` }}
-                      />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {content?.slice(0, 4).map((item) => (
+                <div key={item.id} className="p-4 rounded-xl bg-surface-800/30 border border-surface-700/50">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-surface-700 text-surface-300 uppercase">
+                      {item.channel}
+                    </span>
+                    <span className="text-[10px] text-surface-500">
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h3 className="font-medium text-surface-100 mb-1">{item.title}</h3>
+                  <p className="text-xs text-surface-400 mb-3 line-clamp-1">{item.objective}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-primary-400 font-medium">By {item.author_agent}</span>
+                    <div className="flex items-center gap-1 text-[10px] text-surface-500">
+                      <ShieldCheck size={10} /> {item.status}
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              )) || <div className="col-span-2 text-center py-8 text-surface-500 italic">No content planned yet</div>}
             </div>
           </div>
         </div>
 
-        {/* Agent Grid */}
-        <div className="space-y-6">
-          <div className="flex items-center space-x-2">
-            <Search size={20} className="text-primary-400" />
-            <h2 className="text-xl font-semibold">Specialized Agents</h2>
+        {/* Right Column: Agents & Activity */}
+        <div className="space-y-8">
+          {/* Activity Feed */}
+          <div className="glass-card p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-2">
+                <Activity size={20} className="text-primary-400" />
+                <h2 className="text-xl font-semibold">Live Activity</h2>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {metrics?.recent_activity?.slice(0, 5).map((event) => (
+                <div key={event.id} className="flex items-start space-x-3 text-xs">
+                  <div className="mt-1">
+                    {event.event_type.includes('success') ? <ShieldCheck size={14} className="text-green-400" /> : 
+                     event.event_type.includes('fail') ? <AlertCircle size={14} className="text-red-400" /> :
+                     <Zap size={14} className="text-primary-400" />}
+                  </div>
+                  <div>
+                    <p className="font-medium text-surface-200">{event.agent_name}</p>
+                    <p className="text-surface-500">{event.message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* Specialized Agents */}
           <div className="space-y-4">
-            {agents?.map((agent) => (
-              <div key={agent.name} className="glass-card p-4 hover:translate-x-1">
-                <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              <Search size={20} className="text-primary-400" />
+              <h2 className="text-xl font-semibold text-surface-100">Agent Fleet</h2>
+            </div>
+            {agents?.slice(0, 4).map((agent) => (
+              <div key={agent.name} className="glass-card p-4">
+                <div className="flex items-center justify-between mb-1">
                   <h3 className="text-sm font-bold text-primary-400">{agent.name}</h3>
-                  <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-surface-800 text-surface-400">
+                  <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-surface-800 text-surface-400">
                     {agent.role}
                   </span>
                 </div>
-                <p className="text-xs text-surface-400 line-clamp-2 mb-3">
+                <p className="text-[11px] text-surface-400 line-clamp-2">
                   {agent.description}
                 </p>
-                <div className="flex flex-wrap gap-1">
-                  {Object.keys(agent.capabilities).slice(0, 3).map(cap => (
-                    <span key={cap} className="text-[9px] px-1.5 py-0.5 rounded-sm bg-surface-800/50 text-surface-500 border border-surface-700/50">
-                      {cap}
-                    </span>
-                  ))}
-                </div>
               </div>
-            )) || <div className="animate-pulse space-y-4">
-                {[1,2,3].map(i => <div key={i} className="h-24 bg-surface-900 rounded-2xl" />)}
-              </div>}
+            ))}
           </div>
         </div>
       </div>

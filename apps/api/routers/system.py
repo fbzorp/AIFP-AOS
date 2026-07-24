@@ -2,12 +2,14 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, desc
 from apps.models.base import get_db
 from apps.models.agent import AgentModel
 from apps.models.task import TaskModel
 from apps.models.audit_event import AuditEventModel
 from apps.models.campaign import CampaignModel
+from apps.models.source import SourceModel
+from apps.models.content_item import ContentItemModel
 from apps.agents.registry import list_agents, get_agent
 
 router = APIRouter()
@@ -54,6 +56,16 @@ async def create_campaign(request: CampaignCreateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/sources")
+async def get_sources(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(SourceModel).order_by(desc(SourceModel.relevance_score)).limit(50))
+    return result.scalars().all()
+
+@router.get("/content")
+async def get_content(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ContentItemModel).order_by(ContentItemModel.created_at.desc()).limit(50))
+    return result.scalars().all()
+
 @router.get("/metrics")
 async def get_metrics(db: AsyncSession = Depends(get_db)):
     # Counts
@@ -66,6 +78,9 @@ async def get_metrics(db: AsyncSession = Depends(get_db)):
     campaign_count_query = select(func.count(CampaignModel.id))
     campaign_count = (await db.execute(campaign_count_query)).scalar()
     
+    source_count_query = select(func.count(SourceModel.id))
+    source_count = (await db.execute(source_count_query)).scalar()
+    
     recent_audit_query = select(AuditEventModel).order_by(AuditEventModel.created_at.desc()).limit(10)
     recent_audit = (await db.execute(recent_audit_query)).scalars().all()
     
@@ -73,5 +88,6 @@ async def get_metrics(db: AsyncSession = Depends(get_db)):
         "agents": agent_count,
         "tasks": task_stats,
         "campaigns": campaign_count,
+        "sources": source_count,
         "recent_activity": recent_audit
     }
