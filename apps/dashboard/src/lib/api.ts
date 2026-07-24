@@ -9,7 +9,27 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  if (window.location.hostname.endsWith('.app.github.dev')) {
+    const hostname = window.location.hostname;
+    const parts = hostname.split('-');
+    if (parts.length > 1) {
+      const portPart = parts[parts.length - 1].split('.')[0];
+      if (portPart === '3000') {
+        const apiHostname = hostname.replace('-3000.app.github.dev', '-8000.app.github.dev');
+        return `https://${apiHostname}`;
+      }
+    }
+  }
+
+  return 'http://localhost:8000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 const API_V1_URL = `${API_BASE_URL}/api/v1`;
 
 export const api = axios.create({
