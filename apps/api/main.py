@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from redis import Redis
 from apps.api.config import settings
 from apps.models.base import get_db
-from apps.api.routers import system
+from apps.api.routers import system, approvals
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,6 +34,7 @@ app.add_middleware(
 )
 
 app.include_router(system.router, prefix="/api/v1")
+app.include_router(approvals.router, prefix="/api/v1")
 
 @app.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)):

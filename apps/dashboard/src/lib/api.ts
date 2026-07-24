@@ -123,6 +123,21 @@ export const fetchContent = async (): Promise<ContentItem[]> => {
   return data;
 };
 
+export const submitContent = async (contentId: string) => {
+  const { data } = await api.post(`/content/${contentId}/submit`);
+  return data;
+};
+
+export const approveContent = async (contentId: string, approvedBy: string) => {
+  const { data } = await api.post(`/content/${contentId}/approve`, { approved_by: approvedBy });
+  return data;
+};
+
+export const rejectContent = async (contentId: string, approvedBy: string, reason?: string) => {
+  const { data } = await api.post(`/content/${contentId}/reject`, { approved_by: approvedBy, reason });
+  return data;
+};
+
 export const fetchHealth = async (): Promise<Health> => {
   const { data } = await axios.get(`${API_BASE_URL}/health`);
   return data;

@@ -6,6 +6,7 @@ from dramatiq.brokers.redis import RedisBroker
 from apps.api.config import settings
 from apps.models.base import get_sync_session
 from apps.models.task import TaskModel
+from apps.models.content_item import ContentItemModel
 from apps.core.policy.engine import PolicyEngine
 from apps.core.audit.service import record_event
 from apps.agents.registry import get_agent
@@ -64,9 +65,18 @@ def publish_content(content_id: str, approval_id: str, draft_hash: str):
     with get_sync_session() as session:
         record_event(session, "System", "publish_requested", f"Publish requested for {content_id}", {"approval_id": approval_id})
         
+        content = session.query(ContentItemModel).filter(ContentItemModel.id == content_id).first()
+        if not content:
+            record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: content not found", {"content_id": content_id})
+            raise ValueError("Content not found")
+
+        if content.status != "approved":
+            record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: status is {content.status}", {"content_id": content_id})
+            raise ValueError(f"Content status is {content.status}, must be approved")
+
         engine = PolicyEngine()
         if not engine.validate_approval(session, approval_id, draft_hash):
-            record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: invalid approval", {"approval_id": approval_id})
+            record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: invalid approval hash or expiry", {"approval_id": approval_id})
             raise ValueError("Invalid approval")
             
         # Integration point for Days 10-12
