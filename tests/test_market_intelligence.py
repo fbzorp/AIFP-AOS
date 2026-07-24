@@ -3,14 +3,19 @@ import hashlib
 from unittest.mock import patch, AsyncMock, MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
 
 from apps.models.base import Base
 from apps.models.source import SourceModel
 from apps.agents.specialized import MarketIntelligenceAgent
 
-# Setup in-memory SQLite for testing
-engine = create_engine("sqlite:///:memory:")
+# Setup in-memory SQLite for testing with StaticPool to share connection across threads
+engine = create_engine(
+    "sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(bind=engine)
 
 @contextmanager
@@ -119,11 +124,10 @@ async def test_market_intelligence_prompt_injection_sanitization():
         await agent.execute(input_data)
         
         # Verify that the content passed to LLM was sanitized
-        # The first argument to mock_llm is model, then system_prompt, then user_content
         call_args = mock_llm.call_args
         user_content = call_args[1]['user_content']
         
         assert "EXTERNAL_UNTRUSTED_CONTENT" in user_content
         assert "<script>" not in user_content
         assert "[STRIPPED_INSTRUCTION]" in user_content
-        assert "DEEPSEEK_API_KEY" in user_content # Sanitizer doesn't strip the key name itself, just the command
+        assert "DEEPSEEK_API_KEY" in user_content
