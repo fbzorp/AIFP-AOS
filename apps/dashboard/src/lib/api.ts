@@ -41,10 +41,36 @@ export interface AuditEvent {
   metadata_json?: any;
 }
 
+export interface Source {
+  id: string;
+  url: string;
+  title: string;
+  summary: string;
+  relevance_score: number;
+  content_angle: string;
+  topic: string;
+  created_at: string;
+}
+
+export interface ContentItem {
+  id: string;
+  title: string;
+  channel: string;
+  status: string;
+  objective: string;
+  target_audience: string;
+  format: string;
+  cta: string;
+  source_id: string;
+  author_agent: string;
+  created_at: string;
+}
+
 export interface Metrics {
   agents: number;
   tasks: Record<string, number>;
   campaigns: number;
+  sources: number;
   recent_activity: AuditEvent[];
 }
 
@@ -57,25 +83,26 @@ export interface Health {
   };
 }
 
-/**
- * Fetches high-level system metrics for the dashboard stats cards.
- */
 export const fetchMetrics = async (): Promise<Metrics> => {
   const { data } = await api.get('/metrics');
   return data;
 };
 
-/**
- * Fetches the list of specialized agents and their capabilities.
- */
 export const fetchAgents = async (): Promise<Agent[]> => {
   const { data } = await api.get('/agents');
   return data;
 };
 
-/**
- * Fetches the system health status from the root /health endpoint.
- */
+export const fetchSources = async (): Promise<Source[]> => {
+  const { data } = await api.get('/sources');
+  return data;
+};
+
+export const fetchContent = async (): Promise<ContentItem[]> => {
+  const { data } = await api.get('/content');
+  return data;
+};
+
 export const fetchHealth = async (): Promise<Health> => {
   const { data } = await axios.get(`${API_BASE_URL}/health`);
   return data;

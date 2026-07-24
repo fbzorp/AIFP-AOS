@@ -1,11 +1,18 @@
 from __future__ import annotations
 import logging
 import asyncio
-from typing import Any, Dict
+import hashlib
+from typing import Any, Dict, List
+from sqlalchemy import select, desc
 from .base import BaseAgent
 from apps.core.models.factory import deepseek_fast, deepseek_reasoning
 from apps.models.base import get_sync_session
+from apps.models.source import SourceModel
+from apps.models.content_item import ContentItemModel
 from apps.core.orchestrator.engine import Orchestrator
+from apps.core.models.llm import complete_json
+from apps.core.sanitizer import sanitize_external
+from apps.core.audit.service import record_event
 
 logger = logging.getLogger(__name__)
 
@@ -63,11 +70,92 @@ class MarketIntelligenceAgent(BaseAgent):
             description="Tracks AI agents, MCP, and market trends.",
             model=deepseek_fast()
         )
+
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        topic = input_data.get('topic', 'ai_agents')
-        return {"agent": self.name, "outcome": "intelligence_gathered", "topic": topic}
+        topic = input_data.get('topic', 'AI agents, agentic commerce, MCP, stablecoin payments')
+        raw_sources = input_data.get('sources', [
+            {"url": "https://aifinpay.com/blog/agentic-commerce", "title": "The Future of Agentic Commerce", "content": "AiFinPay is leading the way in AI-driven payments..."},
+            {"url": "https://techcrunch.com/2026/ai-fintech", "title": "AI Infrastructure in Fintech", "content": "New trends in AI infrastructure are shaping the fintech landscape..."}
+        ])
+        
+        stored_count = 0
+        skipped_count = 0
+        top_sources = []
+
+        for item in raw_sources:
+            url = item.get("url")
+            if not url: continue
+            
+            url_hash = hashlib.sha256(url.encode()).hexdigest()
+            
+            # Sanitization
+            clean_content = sanitize_external(item.get("content", ""))
+            
+            # Sync DB check and storage
+            def _check_and_store():
+                with get_sync_session() as session:
+                    existing = session.query(SourceModel).filter(SourceModel.url_hash == url_hash).first()
+                    if existing:
+                        return False, existing.id
+                    
+                    return True, None
+            
+            is_new, existing_id = await asyncio.to_thread(_check_and_store)
+            
+            if not is_new:
+                skipped_count += 1
+                continue
+
+            # LLM Scoring
+            scoring_prompt = "Analyze this source for market intelligence relevance to AiFinPay's growth."
+            schema_hint = "{summary: string, relevance_score: float, content_angle: string}"
+            
+            analysis = await complete_json(
+                model=self.model,
+                system_prompt=scoring_prompt,
+                user_content=clean_content,
+                schema_hint=schema_hint
+            )
+            
+            def _persist_source():
+                with get_sync_session() as session:
+                    new_source = SourceModel(
+                        url=url,
+                        url_hash=url_hash,
+                        title=item.get("title"),
+                        summary=analysis.get("summary"),
+                        relevance_score=analysis.get("relevance_score", 0.0),
+                        content_angle=analysis.get("content_angle"),
+                        topic=topic,
+                        raw_content=item.get("content")
+                    )
+                    session.add(new_source)
+                    session.flush()
+                    record_event(session, self.name, "source_stored", f"Stored source: {url}", {"source_id": new_source.id})
+                    session.commit()
+                    return new_source.id
+
+            source_id = await asyncio.to_thread(_persist_source)
+            stored_count += 1
+            top_sources.append({"id": source_id, "url": url, "score": analysis.get("relevance_score")})
+
+        return {
+            "agent": self.name,
+            "outcome": "intelligence_gathered",
+            "sources_stored": stored_count,
+            "duplicates_skipped": skipped_count,
+            "top_sources": top_sources
+        }
+
     def get_capabilities(self) -> Dict[str, Any]:
-        return {"purpose": "Tracks AI agents, MCP, x402...", "tools": ["web_search"], "inputs": ["topics"], "outputs": ["structured_intel"], "policies": ["primary_sources_only"], "kpis": ["sources_tracked"]}
+        return {
+            "purpose": "Tracks AI agents, MCP, x402, and fintech trends.",
+            "tools": ["web_search", "deduplication", "llm_scoring"],
+            "inputs": ["topic", "sources"],
+            "outputs": ["intelligence_gathered", "sources_stored", "relevance_score"],
+            "policies": ["primary_sources_only", "sanitize_untrusted"],
+            "kpis": ["sources_tracked", "unique_source_rate"]
+        }
 
 class ContentStrategyAgent(BaseAgent):
     def __init__(self) -> None:
@@ -77,10 +165,66 @@ class ContentStrategyAgent(BaseAgent):
             description="Creates weekly content plans across multiple channels.",
             model=deepseek_fast()
         )
+
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        return {"agent": self.name, "outcome": "weekly_plan_created"}
+        objective = input_data.get('objective', 'AiFinPay brand awareness')
+        
+        def _get_top_sources():
+            with get_sync_session() as session:
+                return session.query(SourceModel).order_by(desc(SourceModel.relevance_score)).limit(5).all()
+        
+        sources = await asyncio.to_thread(_get_top_sources)
+        source_context = "\n".join([f"- {s.title}: {s.summary} (ID: {s.id})" for s in sources])
+        
+        planning_prompt = f"Create a weekly content plan for objective: {objective}. Rule: Every item must link to an AiFinPay connection and a provided source ID."
+        schema_hint = "{items: [{channel: string, target_audience: string, objective: string, format: string, cta: string, kpi: string, source_id: string, title: string}]}"
+        
+        plan = await complete_json(
+            model=self.model,
+            system_prompt=planning_prompt,
+            user_content=f"Available Sources:\n{source_context}",
+            schema_hint=schema_hint
+        )
+        
+        item_ids = []
+        def _persist_plan():
+            with get_sync_session() as session:
+                for item in plan.get("items", []):
+                    new_item = ContentItemModel(
+                        title=item.get("title", "Planned Content"),
+                        channel=item.get("channel", "X"),
+                        status="draft",
+                        objective=item.get("objective"),
+                        target_audience=item.get("target_audience"),
+                        format=item.get("format"),
+                        cta=item.get("cta"),
+                        kpi=item.get("kpi"),
+                        source_id=item.get("source_id"),
+                        author_agent=self.name
+                    )
+                    session.add(new_item)
+                    session.flush()
+                    item_ids.append(new_item.id)
+                    record_event(session, self.name, "content_planned", f"Planned item for {item.get('channel')}", {"item_id": new_item.id})
+                session.commit()
+        
+        await asyncio.to_thread(_persist_plan)
+        
+        return {
+            "agent": self.name,
+            "outcome": "weekly_plan_created",
+            "items": item_ids
+        }
+
     def get_capabilities(self) -> Dict[str, Any]:
-        return {"purpose": "Creates weekly content plan by channel.", "tools": ["planning"], "inputs": ["audience"], "outputs": ["content_calendar"], "policies": [], "kpis": ["plan_coverage"]}
+        return {
+            "purpose": "Creates weekly content plan by channel based on intelligence.",
+            "tools": ["planning", "source_mapping"],
+            "inputs": ["objective", "intelligence"],
+            "outputs": ["content_calendar", "source_id_links"],
+            "policies": ["no_generic_ai_content", "must_link_aifinpay"],
+            "kpis": ["plan_coverage", "source_utilization"]
+        }
 
 class TechnicalContentAgent(BaseAgent):
     def __init__(self) -> None:
