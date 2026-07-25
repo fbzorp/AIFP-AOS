@@ -77,12 +77,16 @@ export interface ContentItem {
   title: string;
   channel: string;
   status: string;
+  body?: string;
+  variants?: Array<{ audience: string; text: string }>;
   objective: string;
   target_audience: string;
   format: string;
   cta: string;
   source_id: string;
   author_agent: string;
+  compliance_status?: string;
+  compliance_reason?: string;
   created_at: string;
 }
 
@@ -135,6 +139,11 @@ export const approveContent = async (contentId: string, approvedBy: string) => {
 
 export const rejectContent = async (contentId: string, approvedBy: string, reason?: string) => {
   const { data } = await api.post(`/content/${contentId}/reject`, { approved_by: approvedBy, reason });
+  return data;
+};
+
+export const editContent = async (contentId: string, updates: { title?: string; body?: string; variants?: any[] }) => {
+  const { data } = await api.patch(`/content/${contentId}`, updates);
   return data;
 };
 

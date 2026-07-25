@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -19,10 +19,57 @@ class ApprovalDecisionRequest(BaseModel):
     expires_in_hours: Optional[int] = 24
     reason: Optional[str] = None
 
+class ContentEditRequest(BaseModel):
+    title: Optional[str] = None
+    body: Optional[str] = None
+    variants: Optional[List[Dict[str, Any]]] = None
+
 @router.get("/approvals")
 async def list_approvals(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ApprovalModel).order_by(ApprovalModel.created_at.desc()).limit(50))
     return result.scalars().all()
+
+@router.get("/content")
+async def list_content_queue(db: AsyncSession = Depends(get_db)):
+    """Returns content items ordered by status and creation date for the queue."""
+    # Prioritize pending_review and draft statuses
+    result = await db.execute(
+        select(ContentItemModel)
+        .order_by(
+            desc(ContentItemModel.status == "pending_review"),
+            desc(ContentItemModel.status == "draft"),
+            ContentItemModel.created_at.desc()
+        )
+        .limit(50)
+    )
+    return result.scalars().all()
+
+@router.patch("/content/{content_id}")
+async def edit_content(content_id: str, request: ContentEditRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
+    content = result.scalars().first()
+    if not content:
+        raise HTTPException(status_code=404, detail="Content item not found")
+    
+    if request.title is not None:
+        content.title = request.title
+    if request.body is not None:
+        content.body = request.body
+    if request.variants is not None:
+        content.variants = request.variants
+        
+    content.status = "draft" # Reset to draft after edit
+    
+    record_event(
+        db, 
+        agent_name="Human", 
+        event_type="content_edited", 
+        message=f"Content edited: {content.title}",
+        metadata={"content_id": content_id}
+    )
+    
+    await db.commit()
+    return content
 
 @router.post("/content/{content_id}/submit")
 async def submit_content(content_id: str, db: AsyncSession = Depends(get_db)):
@@ -126,7 +173,6 @@ async def trigger_publish(content_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=400, detail="No valid approval found for this content")
     
     # 3. Enqueue the publish task
-    # Note: .send is the Dramatiq way to enqueue a task
     publish_content.send(content.id, approval.id, approval.draft_hash)
     
     return {
