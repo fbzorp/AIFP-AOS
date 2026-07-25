@@ -50,6 +50,46 @@ def run_agent_task(task_id: str):
             task.result = result
             record_event(session, agent_instance.name, "task_succeeded", f"Completed task {task_id}", {"task_id": task_id})
             
+            # Day 8-9: Connect news-to-content chain
+            if task.task_type == "Content Strategy" and result.get("outcome") == "weekly_plan_created":
+                item_ids = result.get("items", [])
+                for item_id in item_ids:
+                    # Get the item to decide Technical vs Founder routing
+                    item = session.query(ContentItemModel).filter(ContentItemModel.id == item_id).first()
+                    if not item: continue
+                    
+                    # Decide routing: Technical for developer/SDK/technical formats, Founder otherwise
+                    target_agent = "Founder Content"
+                    tech_keywords = ["technical", "sdk", "tutorial", "code", "mcp", "x402", "developer"]
+                    if any(kw in (item.format or "").lower() for kw in tech_keywords) or \
+                       any(kw in (item.objective or "").lower() for kw in tech_keywords):
+                        target_agent = "Technical Content"
+                    
+                    # Enqueue content generation task
+                    new_task = TaskModel(
+                        task_type=target_agent,
+                        input_data={"content_item_id": item_id},
+                        status="pending"
+                    )
+                    session.add(new_task)
+                    session.flush()
+                    record_event(session, "System", "task_enqueued", f"Enqueued {target_agent} for item {item_id}", {"task_id": new_task.id, "item_id": item_id})
+                    run_agent_task.send(new_task.id)
+
+            elif task.task_type in ["Technical Content", "Founder Content"] and result.get("outcome") in ["tutorial_generated", "founder_draft_ready"]:
+                item_id = result.get("item_id")
+                if item_id:
+                    # Enqueue Compliance & Brand task
+                    new_task = TaskModel(
+                        task_type="Compliance & Brand",
+                        input_data={"content_item_id": item_id},
+                        status="pending"
+                    )
+                    session.add(new_task)
+                    session.flush()
+                    record_event(session, "System", "task_enqueued", f"Enqueued Compliance & Brand for item {item_id}", {"task_id": new_task.id, "item_id": item_id})
+                    run_agent_task.send(new_task.id)
+
         except Exception as e:
             logger.error(f"Task {task_id} failed: {e}")
             task.status = "failed"
