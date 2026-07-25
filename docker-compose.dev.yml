@@ -3,6 +3,7 @@ services:
   postgres:
     image: postgres:17-alpine
     container_name: aifp_postgres_dev
+    restart: unless-stopped
     environment:
       POSTGRES_DB: aifp_dev
       POSTGRES_USER: aifp
@@ -20,6 +21,7 @@ services:
   redis:
     image: redis:8-alpine
     container_name: aifp_redis_dev
+    restart: unless-stopped
     ports:
       - "6379:6379"
     healthcheck:
@@ -41,6 +43,8 @@ services:
       - "no-new-privileges:true"
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - APP_ENV=development
       - DATABASE_URL=postgresql+asyncpg://aifp:devpassword@postgres:5432/aifp_dev
@@ -60,6 +64,8 @@ services:
     container_name: aifp_worker_dev
     restart: unless-stopped
     command: ["uv", "run", "dramatiq", "apps.workers.tasks"]
+    env_file:
+      - .env
     environment:
       - APP_ENV=development
       - DATABASE_URL=postgresql+asyncpg://aifp:devpassword@postgres:5432/aifp_dev
@@ -77,6 +83,7 @@ services:
       context: ./apps/dashboard
       dockerfile: Dockerfile.dev
     container_name: aifp_dashboard_dev
+    restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:

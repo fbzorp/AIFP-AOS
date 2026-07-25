@@ -29,8 +29,8 @@ async def complete_json(
         logger.warning(f"Daily LLM budget of ${budget} exceeded. Session spend: ${_session_spend}")
         return _fallback_heuristic(system_prompt, user_content)
 
-    # Check for API key (via model factory check)
-    if not os.getenv("DEEPSEEK_API_KEY"):
+    # Check for API key (via pydantic settings)
+    if not settings.DEEPSEEK_API_KEY:
         logger.info("DEEPSEEK_API_KEY not found, using local fallback heuristic")
         return _fallback_heuristic(system_prompt, user_content)
 
@@ -73,5 +73,3 @@ def _fallback_heuristic(system_prompt: str, user_content: str) -> Dict[str, Any]
             ]
         }
     return {"status": "mock_success", "data": "fallback_triggered"}
-
-import os
