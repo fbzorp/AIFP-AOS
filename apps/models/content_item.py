@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, JSON
 from sqlalchemy.sql import func
 from uuid import uuid4
 from .base import Base
@@ -11,6 +11,11 @@ class ContentItemModel(Base):
     channel = Column(String, nullable=False)
     status = Column(String, nullable=False, default="draft")
     body = Column(Text, nullable=True)
+    variants = Column(JSON, nullable=True)
+    
+    # Compliance
+    compliance_status = Column(String, nullable=True)
+    compliance_reason = Column(Text, nullable=True)
     
     # Strategy & Attribution
     objective = Column(Text)

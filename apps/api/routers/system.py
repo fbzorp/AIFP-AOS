@@ -61,10 +61,7 @@ async def get_sources(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(SourceModel).order_by(desc(SourceModel.relevance_score)).limit(50))
     return result.scalars().all()
 
-@router.get("/content")
-async def get_content(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ContentItemModel).order_by(ContentItemModel.created_at.desc()).limit(50))
-    return result.scalars().all()
+# Note: GET /content moved to approvals.py for better queue management
 
 @router.get("/metrics")
 async def get_metrics(db: AsyncSession = Depends(get_db)):
