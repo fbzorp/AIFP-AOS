@@ -16,9 +16,14 @@ async def get_test_db():
     async with AsyncSessionLocal() as session:
         yield session
 
-app.dependency_overrides[get_db] = get_test_db
+@pytest_asyncio.fixture(autouse=True)
+async def db_override():
+    app.dependency_overrides[get_db] = get_test_db
+    yield
+    if get_db in app.dependency_overrides:
+        del app.dependency_overrides[get_db]
 
-@pytest.fixture(autouse=True, scope="function")
+@pytest_asyncio.fixture(autouse=True, scope="function")
 async def setup_db():
     from apps.models.base import Base
     async with async_engine.begin() as conn:
