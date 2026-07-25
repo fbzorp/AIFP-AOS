@@ -63,7 +63,6 @@ htmlcov/
 .tox/
 
 # Docker
-.dockerignore
 
 # OS
 Thumbs.db
