@@ -107,6 +107,9 @@ async def approve_content(content_id: str, request: ApprovalDecisionRequest, db:
     await db.flush() # Get approval.id
     
     content.status = "approved"
+    # Gap C: Set scheduled_at to a target date (e.g., 24h from now) so it appears on the Calendar
+    if not content.scheduled_at:
+        content.scheduled_at = now + timedelta(days=1)
     
     # Record audit event
     record_event(
