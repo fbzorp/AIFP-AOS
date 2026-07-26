@@ -1,3 +1,4 @@
+
 import os
 import logging
 import asyncio
@@ -113,72 +114,77 @@ def run_agent_task(task_id: str):
         logger.info(f"Dispatching follow-on task {next_task_id}")
         run_agent_task.send(next_task_id)
 
+async def _perform_publish_logic(session, content_id: str, approval_id: str, draft_hash: str):
+    record_event(session, "System", "publish_requested", f"Publish requested for {content_id}", {"approval_id": approval_id})
+    
+    content = session.query(ContentItemModel).filter(ContentItemModel.id == content_id).first()
+    if not content:
+        record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: content not found", {"content_id": content_id})
+        raise ValueError("Content not found")
+
+    # Idempotency check
+    if content.status == "published" or content.post_id:
+        record_event(session, "System", "publish_skipped_idempotent", f"Publish skipped for {content_id}: already published", {"content_id": content_id, "existing_post_id": content.post_id})
+        return {"status": "already_published", "content_id": content_id, "post_id": content.post_id}
+
+    if content.status != "approved":
+        record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: status is {content.status}", {"content_id": content_id})
+        raise ValueError(f"Content status is {content.status}, must be approved")
+
+    engine = PolicyEngine()
+    if not engine.validate_approval(session, approval_id, draft_hash):
+        record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: invalid approval hash or expiry", {"approval_id": approval_id})
+        raise ValueError("Invalid approval")
+        
+    # Real publication logic
+    from apps.integrations.moltbook.client import MoltbookClient
+    
+    # Enforce allowlist
+    target_submolt = content.channel.lower()
+    allowed_submolts = getattr(settings, "MOLTBOOK_ALLOWED_SUBMOLTS", "general").split(",")
+    if target_submolt not in [s.strip().lower() for s in allowed_submolts]:
+        record_event(session, "System", "publish_denied", f"Submolt {target_submolt} not in allowlist", {"content_id": content_id})
+        raise ValueError(f"Submolt {target_submolt} not in allowlist")
+
+    try:
+        async with MoltbookClient() as client:
+            pub_result = await client.publish_post(
+                submolt=target_submolt,
+                title=content.title,
+                body=content.body or str(content.variants)
+            )
+        
+        content.post_id = pub_result.get("post_id")
+        content.post_url = pub_result.get("post_url")
+        content.published_at = func.now()
+        content.status = "published"
+        
+        record_event(
+            session, 
+            "System", 
+            "content_published", 
+            f"Published {content_id} to {target_submolt}", 
+            {
+                "content_id": content_id, 
+                "post_id": content.post_id, 
+                "post_url": content.post_url,
+                "dry_run": pub_result.get("dry_run", False)
+            }
+        )
+        session.commit()
+        return {"status": "published", "content_id": content_id, "post_id": content.post_id, "post_url": content.post_url, "dry_run": pub_result.get("dry_run", False)}
+        
+    except Exception as e:
+        logger.error(f"Publishing failed for {content_id}: {e}")
+        content.publish_error = str(e)
+        record_event(session, "System", "publish_failed", f"Failed to publish {content_id}: {e}", {"content_id": content_id})
+        session.commit()
+        raise
+
 @dramatiq.actor
 def publish_content(content_id: str, approval_id: str, draft_hash: str):
     """
     Gated executor for publishing content.
     """
     with get_sync_session() as session:
-        record_event(session, "System", "publish_requested", f"Publish requested for {content_id}", {"approval_id": approval_id})
-        
-        content = session.query(ContentItemModel).filter(ContentItemModel.id == content_id).first()
-        if not content:
-            record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: content not found", {"content_id": content_id})
-            raise ValueError("Content not found")
-
-        if content.status != "approved":
-            record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: status is {content.status}", {"content_id": content_id})
-            raise ValueError(f"Content status is {content.status}, must be approved")
-
-        engine = PolicyEngine()
-        if not engine.validate_approval(session, approval_id, draft_hash):
-            record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: invalid approval hash or expiry", {"approval_id": approval_id})
-            raise ValueError("Invalid approval")
-            
-        # Real publication logic
-        from apps.integrations.moltbook.client import MoltbookClient
-        
-        # Enforce allowlist
-        target_submolt = content.channel.lower()
-        allowed_submolts = getattr(settings, "MOLTBOOK_ALLOWED_SUBMOLTS", "general").split(",")
-        if target_submolt not in [s.strip().lower() for s in allowed_submolts]:
-            record_event(session, "System", "publish_denied", f"Submolt {target_submolt} not in allowlist", {"content_id": content_id})
-            raise ValueError(f"Submolt {target_submolt} not in allowlist")
-
-        try:
-            async def _do_publish():
-                async with MoltbookClient() as client:
-                    return await client.publish_post(
-                        submolt=target_submolt,
-                        title=content.title,
-                        body=content.body or str(content.variants)
-                    )
-            
-            pub_result = asyncio.run(_do_publish())
-            
-            content.post_id = pub_result.get("post_id")
-            content.post_url = pub_result.get("post_url")
-            content.published_at = func.now()
-            content.status = "published"
-            
-            record_event(
-                session, 
-                "System", 
-                "content_published", 
-                f"Published {content_id} to {target_submolt}", 
-                {
-                    "content_id": content_id, 
-                    "post_id": content.post_id, 
-                    "post_url": content.post_url,
-                    "dry_run": pub_result.get("dry_run", False)
-                }
-            )
-            session.commit()
-            return {"status": "published", "content_id": content_id, "post_id": content.post_id}
-            
-        except Exception as e:
-            logger.error(f"Publishing failed for {content_id}: {e}")
-            content.publish_error = str(e)
-            record_event(session, "System", "publish_failed", f"Failed to publish {content_id}: {e}", {"content_id": content_id})
-            session.commit()
-            raise
+        return asyncio.run(_perform_publish_logic(session, content_id, approval_id, draft_hash))
