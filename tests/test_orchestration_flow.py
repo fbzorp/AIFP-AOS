@@ -133,6 +133,7 @@ def test_dispatch_happens_after_commit_regression(mock_get_agent, mock_asyncio_r
     
     # Mock agent execution to return a follow-on trigger
     mock_agent = MagicMock()
+    mock_agent.name = "Content Strategy"
     mock_get_agent.return_value = mock_agent
     mock_asyncio_run.return_value = {"outcome": "weekly_plan_created", "items": ["item_1"]}
     
