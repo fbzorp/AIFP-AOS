@@ -65,11 +65,11 @@ def test_news_to_content_orchestration_flow(mock_send, mock_complete_json, mock_
                 ]
             }
         elif "technical tutorial" in system_prompt.lower():
-            return {"outcome": "tutorial_generated", "body": "This is a technical tutorial about the SDK.", "item_id": user_content.get("content_item_id")}
+            return {"body": "This is a technical tutorial about the SDK."}
         elif "high-impact leadership post" in system_prompt.lower():
-            return {"outcome": "founder_draft_ready", "variants": [{"audience": "Investors", "text": "We are growing fast!"}], "item_id": user_content.get("content_item_id")}
+            return {"variants": [{"audience": "Investors", "text": "We are growing fast!"}]}
         elif "compliance and brand violations" in system_prompt.lower():
-            return {"outcome": "compliance_reviewed", "status": "approved", "reason": "Looks good"}
+            return {"status": "approved", "reason": "Looks good"}
         return {}
 
     mock_complete_json.side_effect = side_effect
@@ -137,7 +137,7 @@ def test_dispatch_happens_after_commit_regression(mock_get_agent, mock_asyncio_r
     mock_asyncio_run.return_value = {"outcome": "weekly_plan_created", "items": ["item_1"]}
     
     # Mock a content item so the query succeeds
-    item = ContentItemModel(id="item_1", title="Test", format="Technical")
+    item = ContentItemModel(id="item_1", title="Test", channel="X", format="Technical")
     db_session.add(item)
     db_session.commit()
     
