@@ -2,6 +2,7 @@ import os
 import logging
 import asyncio
 import dramatiq
+from sqlalchemy.sql import func
 from dramatiq.brokers.redis import RedisBroker
 from apps.api.config import settings
 from apps.models.base import get_sync_session
@@ -134,8 +135,50 @@ def publish_content(content_id: str, approval_id: str, draft_hash: str):
             record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: invalid approval hash or expiry", {"approval_id": approval_id})
             raise ValueError("Invalid approval")
             
-        # Integration point for Days 10-12
-        logger.info(f"Content {content_id} ready for Moltbook publication")
-        record_event(session, "System", "publish_ready", f"Content {content_id} validated and ready for Moltbook", {"content_id": content_id})
+        # Real publication logic
+        from apps.integrations.moltbook.client import MoltbookClient
         
-        return {"status": "ready_for_integration", "content_id": content_id}
+        # Enforce allowlist
+        target_submolt = content.channel.lower()
+        allowed_submolts = getattr(settings, "MOLTBOOK_ALLOWED_SUBMOLTS", "general").split(",")
+        if target_submolt not in [s.strip().lower() for s in allowed_submolts]:
+            record_event(session, "System", "publish_denied", f"Submolt {target_submolt} not in allowlist", {"content_id": content_id})
+            raise ValueError(f"Submolt {target_submolt} not in allowlist")
+
+        try:
+            async def _do_publish():
+                async with MoltbookClient() as client:
+                    return await client.publish_post(
+                        submolt=target_submolt,
+                        title=content.title,
+                        body=content.body or str(content.variants)
+                    )
+            
+            pub_result = asyncio.run(_do_publish())
+            
+            content.post_id = pub_result.get("post_id")
+            content.post_url = pub_result.get("post_url")
+            content.published_at = func.now()
+            content.status = "published"
+            
+            record_event(
+                session, 
+                "System", 
+                "content_published", 
+                f"Published {content_id} to {target_submolt}", 
+                {
+                    "content_id": content_id, 
+                    "post_id": content.post_id, 
+                    "post_url": content.post_url,
+                    "dry_run": pub_result.get("dry_run", False)
+                }
+            )
+            session.commit()
+            return {"status": "published", "content_id": content_id, "post_id": content.post_id}
+            
+        except Exception as e:
+            logger.error(f"Publishing failed for {content_id}: {e}")
+            content.publish_error = str(e)
+            record_event(session, "System", "publish_failed", f"Failed to publish {content_id}: {e}", {"content_id": content_id})
+            session.commit()
+            raise

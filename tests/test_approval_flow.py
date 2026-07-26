@@ -175,8 +175,11 @@ def test_publish_gate(mock_session):
         session.commit()
         
         # 3. Publish approved -> Ready
+        # Patch channel to be in allowlist for test
+        content.channel = "general"
+        session.commit()
         result = publish_content("content-1", "appr-1", draft_hash)
-        assert result["status"] == "ready_for_integration"
+        assert result["status"] == "published"
         
         # 4. Reject and try to publish -> Denied
         content.status = "rejected"

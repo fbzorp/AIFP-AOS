@@ -6,6 +6,7 @@ from .audit_event import AuditEventModel
 from .task import TaskModel
 from .approval import ApprovalModel
 from .source import SourceModel
+from .engagement_proposal import EngagementProposalModel
 
 __all__ = [
     "Base",
@@ -15,5 +16,6 @@ __all__ = [
     "AuditEventModel",
     "TaskModel",
     "ApprovalModel",
-    "SourceModel"
+    "SourceModel",
+    "EngagementProposalModel"
 ]

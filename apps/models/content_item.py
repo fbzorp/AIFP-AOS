@@ -27,6 +27,13 @@ class ContentItemModel(Base):
     source_id = Column(String, index=True) # Soft reference or FK
     author_agent = Column(String)
     
+    # Publication & Calendar
+    scheduled_at = Column(DateTime(timezone=True), nullable=True)
+    published_at = Column(DateTime(timezone=True), nullable=True)
+    post_url = Column(String, nullable=True)
+    post_id = Column(String, nullable=True)
+    publish_error = Column(Text, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 

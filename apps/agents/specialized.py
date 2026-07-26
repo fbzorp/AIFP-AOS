@@ -359,7 +359,48 @@ class CommunityEngagementAgent(BaseAgent):
             model=deepseek_fast()
         )
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        return {"agent": self.name, "outcome": "reply_prepared"}
+        discussions = input_data.get('discussions', [])
+        from apps.models.engagement_proposal import EngagementProposalModel
+        
+        proposal_ids = []
+        for disc in discussions:
+            source_url = disc.get("url")
+            submolt = disc.get("submolt", "general")
+            content = sanitize_external(disc.get("content", ""))
+            
+            system_prompt = (
+                "You are the Community Engagement Agent for AiFinPay. "
+                "Analyze the discussion and draft a meaningful, helpful reply. "
+                "RULE: No repetitive comments, mass engagement, or impersonating a human."
+            )
+            schema_hint = "{discussion_summary: string, proposed_reply: string}"
+            
+            draft = await complete_json(
+                model=self.model,
+                system_prompt=system_prompt,
+                user_content=content,
+                schema_hint=schema_hint
+            )
+            
+            def _persist_proposal():
+                with get_sync_session() as session:
+                    proposal = EngagementProposalModel(
+                        source_url=source_url,
+                        submolt=submolt,
+                        discussion_summary=draft.get("discussion_summary"),
+                        proposed_reply=draft.get("proposed_reply"),
+                        status="proposed"
+                    )
+                    session.add(proposal)
+                    session.flush()
+                    proposal_ids.append(proposal.id)
+                    record_event(session, self.name, "engagement_proposed", f"Proposed reply for {submolt}", {"proposal_id": proposal.id})
+                    session.commit()
+            
+            await asyncio.to_thread(_persist_proposal)
+            
+        return {"agent": self.name, "outcome": "proposals_created", "proposal_ids": proposal_ids}
+
     def get_capabilities(self) -> Dict[str, Any]:
         return {"purpose": "Finds relevant discussions and prepares meaningful replies...", "tools": ["engagement_scan"], "inputs": ["discussion"], "outputs": ["proposed_reply"], "policies": ["no_mass_comments"], "kpis": ["engagement_quality"]}
 
