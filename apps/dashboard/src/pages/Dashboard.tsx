@@ -29,6 +29,7 @@ import {
   fetchContent, 
   approveContent, 
   rejectContent,
+  publishContentItem,
   cn 
 } from '../lib/api';
 
@@ -74,7 +75,17 @@ const Dashboard: React.FC = () => {
     },
   });
 
+  const publishMutation = useMutation({
+    mutationFn: ({ id }: { id: string }) => publishContentItem(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content'] });
+      queryClient.invalidateQueries({ queryKey: ['metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+    },
+  });
+
   const pendingApprovals = content?.filter(item => item.status === 'draft' || item.status === 'pending_review') || [];
+  const readyToPublish = content?.filter(item => item.status === 'approved') || [];
 
   const { data: health } = useQuery({
     queryKey: ['health'],
@@ -177,7 +188,47 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
               )) : (
-                <div className="text-center py-8 text-surface-500 italic">No content awaiting approval</div>
+                <div className="text-center py-4 text-surface-500 italic text-sm">No content awaiting approval</div>
+              )}
+            </div>
+          </div>
+
+          {/* Ready to Publish Queue */}
+          <div className="glass-card p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-2">
+                <CheckCircle size={20} className="text-green-400" />
+                <h2 className="text-xl font-semibold">Ready to Publish</h2>
+              </div>
+              <span className="px-2 py-1 rounded-md bg-green-500/10 text-green-400 text-xs font-bold">
+                {readyToPublish.length} Approved
+              </span>
+            </div>
+            <div className="space-y-4">
+              {readyToPublish.length > 0 ? readyToPublish.map((item) => (
+                <div key={item.id} className="p-4 rounded-xl bg-surface-800/30 border border-surface-700/50 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-surface-700 text-surface-300 uppercase">
+                        {item.channel}
+                      </span>
+                      <h3 className="font-medium text-surface-100">{item.title}</h3>
+                    </div>
+                    <p className="text-xs text-surface-400 line-clamp-1">{item.objective}</p>
+                    <p className="text-[10px] text-surface-500">Scheduled for {item.scheduled_at ? new Date(item.scheduled_at).toLocaleDateString() : 'immediate'}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => publishMutation.mutate({ id: item.id })}
+                      disabled={publishMutation.isPending}
+                      className="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-bold flex items-center gap-2"
+                    >
+                      <Zap size={14} /> Publish Now
+                    </button>
+                  </div>
+                </div>
+              )) : (
+                <div className="text-center py-4 text-surface-500 italic text-sm">No approved content ready for publication</div>
               )}
             </div>
           </div>

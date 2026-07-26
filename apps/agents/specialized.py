@@ -32,9 +32,25 @@ class GrowthOrchestratorAgent(BaseAgent):
         # Content Strategy -> Technical/Founder Content -> Compliance review -> Content Queue
         # Note: Since the orchestrator is simple, we chain these via sequential tasks
         # In a real system, some might be triggered by events.
+        # Gap B: Add Community Engagement step to campaign flow
+        # Use injected sample discussions list gated for offline consistency
+        sample_discussions = [
+            {
+                "url": "https://www.moltbook.com/posts/aifp-aos-discussion-1",
+                "submolt": "aifintech",
+                "content": "Does anyone know if AiFinPay AOS supports automated SDK integration for AI agents?"
+            },
+            {
+                "url": "https://www.moltbook.com/posts/aifp-aos-discussion-2",
+                "submolt": "aiagents",
+                "content": "Looking for a secure way to handle agent-to-agent payments. Any recommendations?"
+            }
+        ]
+
         steps = [
             {"agent": "Market Intelligence", "input": {"topic": objective}},
-            {"agent": "Content Strategy", "input": {"objective": objective}}
+            {"agent": "Content Strategy", "input": {"objective": objective}},
+            {"agent": "Community Engagement", "input": {"discussions": sample_discussions}}
         ]
         
         # Offload synchronous DB work to a thread to avoid blocking the event loop
