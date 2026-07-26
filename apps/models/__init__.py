@@ -7,6 +7,8 @@ from .task import TaskModel
 from .approval import ApprovalModel
 from .source import SourceModel
 from .engagement_proposal import EngagementProposalModel
+from .payment import PaymentModel
+from .payment import PaymentModel
 
 __all__ = [
     "Base",
@@ -17,5 +19,7 @@ __all__ = [
     "TaskModel",
     "ApprovalModel",
     "SourceModel",
-    "EngagementProposalModel"
+    "EngagementProposalModel",
+    "PaymentModel",
+    "PaymentModel"
 ]
