@@ -22,6 +22,8 @@ def run_agent_task(task_id: str):
     """
     Generic task runner with retries and audit logging.
     """
+    follow_on_tasks = []
+    
     with get_sync_session() as session:
         task = session.query(TaskModel).filter(TaskModel.id == task_id).first()
         if not task:
@@ -65,30 +67,38 @@ def run_agent_task(task_id: str):
                        any(kw in (item.objective or "").lower() for kw in tech_keywords):
                         target_agent = "Technical Content"
                     
-                    # Enqueue content generation task
+                    # Create follow-on task row
                     new_task = TaskModel(
                         task_type=target_agent,
                         input_data={"content_item_id": item_id},
                         status="pending"
                     )
                     session.add(new_task)
-                    session.flush()
+                    session.flush() # Ensure ID is generated
+                    
+                    # Record audit event inside the transaction
                     record_event(session, "System", "task_enqueued", f"Enqueued {target_agent} for item {item_id}", {"task_id": new_task.id, "item_id": item_id})
-                    run_agent_task.send(new_task.id)
+                    
+                    # Collect ID for dispatch AFTER commit
+                    follow_on_tasks.append(new_task.id)
 
             elif task.task_type in ["Technical Content", "Founder Content"] and result.get("outcome") in ["tutorial_generated", "founder_draft_ready"]:
                 item_id = result.get("item_id")
                 if item_id:
-                    # Enqueue Compliance & Brand task
+                    # Create follow-on task row
                     new_task = TaskModel(
                         task_type="Compliance & Brand",
                         input_data={"content_item_id": item_id},
                         status="pending"
                     )
                     session.add(new_task)
-                    session.flush()
+                    session.flush() # Ensure ID is generated
+                    
+                    # Record audit event inside the transaction
                     record_event(session, "System", "task_enqueued", f"Enqueued Compliance & Brand for item {item_id}", {"task_id": new_task.id, "item_id": item_id})
-                    run_agent_task.send(new_task.id)
+                    
+                    # Collect ID for dispatch AFTER commit
+                    follow_on_tasks.append(new_task.id)
 
         except Exception as e:
             logger.error(f"Task {task_id} failed: {e}")
@@ -96,6 +106,11 @@ def run_agent_task(task_id: str):
             task.error = str(e)
             record_event(session, "System", "task_failed", f"Failed task {task_id}: {e}", {"task_id": task_id})
             raise # Re-raise for Dramatiq retry
+
+    # Dispatch follow-on tasks AFTER the session block has committed
+    for next_task_id in follow_on_tasks:
+        logger.info(f"Dispatching follow-on task {next_task_id}")
+        run_agent_task.send(next_task_id)
 
 @dramatiq.actor
 def publish_content(content_id: str, approval_id: str, draft_hash: str):
