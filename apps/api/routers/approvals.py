@@ -8,9 +8,11 @@ from apps.models.base import get_db
 from apps.models.content_item import ContentItemModel
 from apps.models.approval import ApprovalModel
 from apps.models.audit_event import AuditEventModel
+from apps.models.engagement_proposal import EngagementProposalModel
 from apps.core.policy.engine import compute_draft_hash
 from apps.core.audit.service import record_event
 from apps.workers.tasks import publish_content
+from sqlalchemy import or_
 
 router = APIRouter()
 
@@ -180,3 +182,55 @@ async def trigger_publish(content_id: str, db: AsyncSession = Depends(get_db)):
         "content_id": content_id,
         "approval_id": approval.id
     }
+
+# Days 10-11: Engagement Proposals & Calendar
+
+@router.get("/engagement/proposals")
+async def list_proposals(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(EngagementProposalModel)
+        .order_by(EngagementProposalModel.created_at.desc())
+        .limit(50)
+    )
+    return result.scalars().all()
+
+@router.post("/engagement/proposals/{proposal_id}/approve")
+async def approve_proposal(proposal_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(EngagementProposalModel).filter(EngagementProposalModel.id == proposal_id))
+    proposal = result.scalars().first()
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    
+    proposal.status = "approved"
+    record_event(db, "Human", "engagement_approved", f"Approved proposal {proposal_id}", {"proposal_id": proposal_id})
+    await db.commit()
+    return {"status": "approved", "proposal_id": proposal_id}
+
+@router.post("/engagement/proposals/{proposal_id}/reject")
+async def reject_proposal(proposal_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(EngagementProposalModel).filter(EngagementProposalModel.id == proposal_id))
+    proposal = result.scalars().first()
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+    
+    proposal.status = "rejected"
+    record_event(db, "Human", "engagement_rejected", f"Rejected proposal {proposal_id}", {"proposal_id": proposal_id})
+    await db.commit()
+    return {"status": "rejected", "proposal_id": proposal_id}
+
+@router.get("/calendar")
+async def get_calendar(db: AsyncSession = Depends(get_db)):
+    """Returns content items that are scheduled or published."""
+    result = await db.execute(
+        select(ContentItemModel)
+        .filter(
+            or_(
+                ContentItemModel.scheduled_at.isnot(None),
+                ContentItemModel.published_at.isnot(None),
+                ContentItemModel.status == "published"
+            )
+        )
+        .order_by(ContentItemModel.published_at.desc(), ContentItemModel.scheduled_at.desc())
+        .limit(100)
+    )
+    return result.scalars().all()

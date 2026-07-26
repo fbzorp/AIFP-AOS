@@ -87,6 +87,21 @@ export interface ContentItem {
   author_agent: string;
   compliance_status?: string;
   compliance_reason?: string;
+  scheduled_at?: string;
+  published_at?: string;
+  post_url?: string;
+  post_id?: string;
+  publish_error?: string;
+  created_at: string;
+}
+
+export interface EngagementProposal {
+  id: string;
+  source_url: string;
+  submolt: string;
+  discussion_summary: string;
+  proposed_reply: string;
+  status: string;
   created_at: string;
 }
 
@@ -149,5 +164,30 @@ export const editContent = async (contentId: string, updates: { title?: string; 
 
 export const fetchHealth = async (): Promise<Health> => {
   const { data } = await axios.get(`${API_BASE_URL}/health`);
+  return data;
+};
+
+export const fetchCalendar = async (): Promise<ContentItem[]> => {
+  const { data } = await api.get('/calendar');
+  return data;
+};
+
+export const fetchProposals = async (): Promise<EngagementProposal[]> => {
+  const { data } = await api.get('/engagement/proposals');
+  return data;
+};
+
+export const approveProposal = async (proposalId: string) => {
+  const { data } = await api.post(`/engagement/proposals/${proposalId}/approve`);
+  return data;
+};
+
+export const rejectProposal = async (proposalId: string) => {
+  const { data } = await api.post(`/engagement/proposals/${proposalId}/reject`);
+  return data;
+};
+
+export const publishContentItem = async (contentId: string) => {
+  const { data } = await api.post(`/content/${contentId}/publish`);
   return data;
 };

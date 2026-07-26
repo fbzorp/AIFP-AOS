@@ -15,8 +15,11 @@ import {
   ExternalLink,
   Target,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Calendar,
+  MessageSquare
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   fetchMetrics, 
@@ -95,6 +98,10 @@ const Dashboard: React.FC = () => {
           <p className="text-surface-400 mt-1">Autonomous Marketing Operations Center</p>
         </div>
         <div className="flex items-center space-x-4">
+          <Link to="/calendar" className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-surface-900 border border-surface-800 hover:border-primary-500/50 transition-colors">
+            <Calendar size={16} className="text-blue-400" />
+            <span className="text-xs font-medium text-surface-300">Calendar & Engagement</span>
+          </Link>
           <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-surface-900 border border-surface-800">
             <div className={cn(
               "w-2 h-2 rounded-full",

@@ -30,12 +30,12 @@ class Settings(BaseSettings):
     AIFP_BASE_URL: str = "https://api.aifinpay.com"
     
     # Moltbook / Social
-    MOLTBOOK_BASE_URL: Optional[str] = None
+    MOLTBOOK_BASE_URL: str = "https://www.moltbook.com"
     MOLTBOOK_API_KEY: Optional[str] = None
     MOLTBOOK_AGENT_API_KEY: Optional[str] = None
     MOLTBOOK_APP_KEY: Optional[str] = None
     MOLTBOOK_AUTOPUBLISH: bool = False
-    MOLTBOOK_ALLOWED_SUBMOLTS: Optional[str] = None
+    MOLTBOOK_ALLOWED_SUBMOLTS: str = "general,aifintech,aiagents"
     
     # Other Social Media APIs
     X_API_KEY: Optional[str] = None
