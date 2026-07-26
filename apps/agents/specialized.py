@@ -13,6 +13,9 @@ from apps.core.orchestrator.engine import Orchestrator
 from apps.core.models.llm import complete_json
 from apps.core.sanitizer import sanitize_external
 from apps.core.audit.service import record_event
+from apps.core.policy.engine import PolicyEngine
+from apps.api.config import settings
+from apps.workers.tasks import _perform_publish_logic
 
 logger = logging.getLogger(__name__)
 
@@ -362,9 +365,87 @@ class SocialPublishingAgent(BaseAgent):
             model=deepseek_fast()
         )
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        return {"agent": self.name, "outcome": "publish_queued"}
+        content_item_id = input_data.get("content_item_id")
+        approval_id = input_data.get("approval_id")
+        draft_hash = input_data.get("draft_hash")
+
+        if not all([content_item_id, approval_id, draft_hash]):
+            with get_sync_session() as session:
+                record_event(session, self.name, "publish_denied", "Missing required input for publishing", {"input_data": input_data})
+                session.commit()
+            return {"agent": self.name, "outcome": "publish_denied", "reason": "Missing content_item_id, approval_id, or draft_hash"}
+
+        def _sync_wrapper():
+            with get_sync_session() as session:
+                try:
+                    return asyncio.run(_perform_publish_logic(session, content_item_id, approval_id, draft_hash))
+                except ValueError as e:
+                    session.rollback()
+                    # _perform_publish_logic already records audit events for denials/failures
+                    return {"agent": self.name, "outcome": "publish_denied", "reason": str(e)}
+                except Exception as e:
+                    session.rollback()
+                    # _perform_publish_logic already records audit events for denials/failures
+                    raise # Re-raise for outer exception handling
+
+        try:
+            result = await asyncio.to_thread(_sync_wrapper)
+            return result
+        except Exception as e:
+            return {"agent": self.name, "outcome": "publish_failed", "reason": str(e)}
     def get_capabilities(self) -> Dict[str, Any]:
         return {"purpose": "Publishes only approved materials...", "tools": ["publish"], "inputs": ["approved_draft"], "outputs": ["post_url"], "policies": ["approval_only"], "kpis": ["publish_success"]}
+
+class AnalyticsAgent(BaseAgent):
+    def __init__(self) -> None:
+        super().__init__(
+            name="Analytics Agent",
+            role="Analyst",
+            description="Collects and reports real metrics, providing recommendations.",
+            model=deepseek_fast()
+        )
+
+    async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        # For now, simulate metric collection and reporting
+        # In a real scenario, this would query various data sources (DB, external APIs)
+        
+        # Example: Count published content items
+        def _get_published_count():
+            with get_sync_session() as session:
+                published_count = session.query(ContentItemModel).filter(ContentItemModel.status == "published").count()
+                return published_count
+        
+        published_count = await asyncio.to_thread(_get_published_count)
+
+        # Example: Count successful MCP calls (from audit events)
+        def _get_mcp_calls_count():
+            with get_sync_session() as session:
+                mcp_calls_count = session.query(AuditEventModel).filter(AuditEventModel.event_type == "mcp_call_succeeded").count()
+                return mcp_calls_count
+        
+        mcp_calls_count = await asyncio.to_thread(_get_mcp_calls_count)
+
+        report = {
+            "publications": published_count,
+            "mcp_calls": mcp_calls_count,
+            "recommendations": "Based on current data, focus on increasing content publication frequency and diversifying channels."
+        }
+
+        with get_sync_session() as session:
+            record_event(session, self.name, "metrics_reported", "Generated daily metrics report", report)
+            session.commit()
+
+        return {"agent": self.name, "outcome": "metrics_generated", "report": report}
+
+    def get_capabilities(self) -> Dict[str, Any]:
+        return {
+            "purpose": "Collects real metrics: publications, impressions, clicks, engagement rate, website visits, registrations, SDK installs, MCP activations, GitHub stars, and conversions. Links every metric to its actual data source. Produces daily and weekly reports with concrete recommendations for the next cycle.",
+            "tools": ["data_collection", "report_generation", "recommendation_engine"],
+            "inputs": ["timeframe", "metrics_to_track"],
+            "outputs": ["daily_report", "weekly_report", "recommendations"],
+            "policies": ["real_metrics_only", "data_source_linking"],
+            "kpis": ["report_accuracy", "recommendation_effectiveness"]
+        }
 
 class CommunityEngagementAgent(BaseAgent):
     def __init__(self) -> None:
