@@ -155,6 +155,7 @@ class MoltbookClient:
     async def publish_post(self, submolt: str, title: str, body: str, identity_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Confirmed endpoint from live skill.md: POST /api/v1/posts
+        Authorization: Bearer <AGENT_KEY> (per skill.md)
         Fields: submolt_name (or submolt), title, content
         """
         # Enforce dry-run if autopublish is disabled
@@ -173,8 +174,9 @@ class MoltbookClient:
             "content": body
         }
         
-        # Prefer identity token if provided, otherwise use raw agent key
-        headers = {"Authorization": f"Bearer {identity_token or self.agent_key}"}
+        # Per skill.md, all requests after registration require your API key.
+        # Dev-guide also notes identity token is for target backends, not Moltbook itself.
+        headers = {"Authorization": f"Bearer {self.agent_key}"}
         
         r = await self.http.post(
             f"{self.base_url}/api/v1/posts",
@@ -195,8 +197,13 @@ class MoltbookClient:
                 logger.info(f"Verification required for post. Challenge: {challenge}")
                 # We need an LLM to solve the obfuscated math problem
                 from apps.core.models.factory import deepseek_fast
+                llm = deepseek_fast()
+                if not llm:
+                    logger.error("LLM factory returned None (missing API key?) - cannot solve challenge")
+                    return data
+
                 prompt = f"Solve this Moltbook AI verification challenge. It is an obfuscated math problem. Extract the two numbers and the operation, compute the result, and respond with ONLY the number (e.g., '15.00').\n\nChallenge: {challenge}"
-                answer = await deepseek_fast.complete(prompt)
+                answer = await llm.complete(prompt)
                 answer = answer.strip()
                 
                 logger.info(f"Submitting verification answer: {answer}")

@@ -148,18 +148,10 @@ async def _perform_publish_logic(session, content_id: str, approval_id: str, dra
 
     try:
         async with MoltbookClient() as client:
-            identity_token = None
-            try:
-                token_data = await client.create_identity_token()
-                identity_token = token_data.get("token")
-            except Exception:
-                logger.warning("Failed to create identity token, falling back to agent key")
-
             pub_result = await client.publish_post(
                 submolt=target_submolt,
                 title=content.title,
-                body=content.body or str(content.variants),
-                identity_token=identity_token
+                body=content.body or str(content.variants)
             )
         
         content.post_id = pub_result.get("post_id")
