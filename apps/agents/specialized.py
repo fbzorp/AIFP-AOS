@@ -9,6 +9,7 @@ from apps.core.models.factory import deepseek_fast, deepseek_reasoning
 from apps.models.base import get_sync_session
 from apps.models.source import SourceModel
 from apps.models.content_item import ContentItemModel
+from apps.models.audit_event import AuditEventModel
 from apps.core.orchestrator.engine import Orchestrator
 from apps.core.models.llm import complete_json
 from apps.core.sanitizer import sanitize_external
@@ -16,6 +17,7 @@ from apps.core.audit.service import record_event
 from apps.core.policy.engine import PolicyEngine
 from apps.api.config import settings
 from apps.workers.tasks import _perform_publish_logic
+from apps.integrations.moltbook.client import MoltbookClient
 
 logger = logging.getLogger(__name__)
 
@@ -35,25 +37,15 @@ class GrowthOrchestratorAgent(BaseAgent):
         # Content Strategy -> Technical/Founder Content -> Compliance review -> Content Queue
         # Note: Since the orchestrator is simple, we chain these via sequential tasks
         # In a real system, some might be triggered by events.
-        # Gap B: Add Community Engagement step to campaign flow
-        # Use injected sample discussions list gated for offline consistency
-        sample_discussions = [
-            {
-                "url": "https://www.moltbook.com/posts/aifp-aos-discussion-1",
-                "submolt": "aifintech",
-                "content": "Does anyone know if AiFinPay AOS supports automated SDK integration for AI agents?"
-            },
-            {
-                "url": "https://www.moltbook.com/posts/aifp-aos-discussion-2",
-                "submolt": "aiagents",
-                "content": "Looking for a secure way to handle agent-to-agent payments. Any recommendations?"
-            }
-        ]
-
+        # Community discovery runs inside the specialist task so the campaign
+        # can be scheduled without reading external content during planning.
         steps = [
             {"agent": "Market Intelligence", "input": {"topic": objective}},
             {"agent": "Content Strategy", "input": {"objective": objective}},
-            {"agent": "Community Engagement", "input": {"discussions": sample_discussions}}
+            {
+                "agent": "Community Engagement",
+                "input": {"query": objective, "limit": 20},
+            },
         ]
         
         # Offload synchronous DB work to a thread to avoid blocking the event loop
@@ -456,9 +448,23 @@ class CommunityEngagementAgent(BaseAgent):
             model=deepseek_fast()
         )
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        discussions = input_data.get('discussions', [])
+        discussions = input_data.get("discussions")
+        if discussions is None:
+            query = input_data.get("query", "")
+            limit = input_data.get("limit", 20)
+            cursor = input_data.get("cursor")
+            async with MoltbookClient() as client:
+                discussions = await client.discover_discussions(
+                    query=query,
+                    limit=limit,
+                    cursor=cursor,
+                )
+
+        if not isinstance(discussions, list):
+            raise ValueError("Community engagement discussions must be a list")
+
         from apps.models.engagement_proposal import EngagementProposalModel
-        
+
         proposal_ids = []
         for disc in discussions:
             source_url = disc.get("url")
@@ -500,19 +506,6 @@ class CommunityEngagementAgent(BaseAgent):
 
     def get_capabilities(self) -> Dict[str, Any]:
         return {"purpose": "Finds relevant discussions and prepares meaningful replies...", "tools": ["engagement_scan"], "inputs": ["discussion"], "outputs": ["proposed_reply"], "policies": ["no_mass_comments"], "kpis": ["engagement_quality"]}
-
-class AnalyticsAgent(BaseAgent):
-    def __init__(self) -> None:
-        super().__init__(
-            name="Analytics", 
-            role="Data Analyst",
-            description="Measures and reports on campaign performance metrics.",
-            model=deepseek_fast()
-        )
-    async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        return {"agent": self.name, "outcome": "report_generated"}
-    def get_capabilities(self) -> Dict[str, Any]:
-        return {"purpose": "Collects only real metrics...", "tools": ["metric_collection"], "inputs": ["publication_url"], "outputs": ["report"], "policies": ["verifiable_sources"], "kpis": ["conversion_rate"]}
 
 class ComplianceBrandAgent(BaseAgent):
     def __init__(self) -> None:
