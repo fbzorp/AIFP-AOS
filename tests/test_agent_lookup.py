@@ -13,6 +13,10 @@ def test_get_agent_by_display_name():
     assert market_intel is not None
     assert market_intel.name == "Market Intelligence"
 
+    analytics = get_agent("Analytics Agent")
+    assert analytics is not None
+    assert analytics.name == "Analytics Agent"
+
 def test_get_agent_not_found():
     """
     Test that get_agent returns None for non-existent agent names.

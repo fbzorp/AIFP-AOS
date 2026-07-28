@@ -63,7 +63,7 @@ async def override_get_db():
 @patch("apps.agents.specialized.get_sync_session")
 @patch("apps.core.orchestrator.engine.Orchestrator.create_campaign")
 @pytest.mark.asyncio
-async def test_gap_b_orchestrator_includes_engagement(mock_create_campaign, mock_get_session):
+async def test_gap_b_orchestrator_enqueues_semantic_discovery(mock_create_campaign, mock_get_session):
     # Setup mocks
     session = TestingSessionLocal()
     mock_get_session.return_value.__enter__.return_value = session
@@ -78,10 +78,9 @@ async def test_gap_b_orchestrator_includes_engagement(mock_create_campaign, mock
     agent_names = [s["agent"] for s in steps]
     assert "Community Engagement" in agent_names
     
-    # Verify sample discussions were passed
+    # Verify the engagement task performs live semantic discovery when it runs.
     engagement_step = next(s for s in steps if s["agent"] == "Community Engagement")
-    assert "discussions" in engagement_step["input"]
-    assert len(engagement_step["input"]["discussions"]) > 0
+    assert engagement_step["input"] == {"query": "Test Gap B", "limit": 20}
 
 @patch("apps.agents.specialized.get_sync_session")
 @patch("apps.agents.specialized.complete_json")
