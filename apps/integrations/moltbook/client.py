@@ -125,6 +125,89 @@ class MoltbookClient:
 
         return discussions
 
+    @retry(
+        retry=retry_if_exception_type(httpx.HTTPError),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(min=1, max=8),
+    )
+    async def list_discussions(
+        self,
+        submolt: str,
+        limit: int = 10,
+    ) -> List[Dict[str, str]]:
+        """List recent posts from one Moltbook submolt without sanitizing them.
+
+        The live Moltbook skill documents this read-only endpoint as
+        ``GET /api/v1/posts?submolt=<name>&sort=new``. Callers are responsible
+        for treating the returned content as external, untrusted data.
+        """
+        if not isinstance(submolt, str) or not submolt.strip():
+            raise ValueError("Moltbook submolt must be a non-empty string")
+        if len(submolt.strip()) > 100:
+            raise ValueError("Moltbook submolt must contain at most 100 characters")
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 50:
+            raise ValueError("Moltbook discussion limit must be an integer from 1 to 50")
+
+        normalized_submolt = submolt.strip()
+        response = await self.http.get(
+            f"{self.base_url}/api/v1/posts",
+            headers={"Authorization": f"Bearer {self.agent_key}"},
+            params={
+                "submolt": normalized_submolt,
+                "sort": "new",
+                "limit": limit,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        if isinstance(data, list):
+            posts = data
+        elif isinstance(data, dict):
+            if data.get("success") is False:
+                raise ValueError("Moltbook discussion listing was unsuccessful")
+            posts = data.get("posts")
+            if posts is None:
+                nested_data = data.get("data")
+                if isinstance(nested_data, dict):
+                    posts = nested_data.get("posts")
+                elif isinstance(nested_data, list):
+                    posts = nested_data
+        else:
+            posts = None
+
+        if not isinstance(posts, list):
+            raise ValueError("Moltbook discussion listing returned an invalid posts payload")
+
+        discussions: List[Dict[str, str]] = []
+        for post in posts:
+            if not isinstance(post, dict):
+                continue
+
+            post_id = post.get("post_id") or post.get("id")
+            post_submolt = post.get("submolt")
+            if isinstance(post_submolt, dict):
+                post_submolt = post_submolt.get("name")
+            post_submolt = post.get("submolt_name") or post_submolt or normalized_submolt
+            content = post.get("content")
+
+            if not isinstance(post_id, str) or not post_id:
+                continue
+            if not isinstance(post_submolt, str) or not post_submolt.strip():
+                continue
+            if not isinstance(content, str) or not content.strip():
+                continue
+
+            discussions.append(
+                {
+                    "url": f"{self.base_url}/posts/{post_id}",
+                    "submolt": post_submolt.strip(),
+                    "content": content,
+                }
+            )
+
+        return discussions
+
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8))
     async def publish_post(self, submolt: str, title: str, body: str) -> Dict[str, Any]:
         """

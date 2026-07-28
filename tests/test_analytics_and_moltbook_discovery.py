@@ -3,9 +3,15 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
-from apps.agents.specialized import AnalyticsAgent, CommunityEngagementAgent
+from apps.agents.registry import get_agent, list_agents
+from apps.agents.specialized import (
+    AnalyticsAgent,
+    CommunityEngagementAgent,
+    GrowthOrchestratorAgent,
+)
+from apps.api.config import settings
 from apps.integrations.moltbook.client import MoltbookClient
 from apps.models.audit_event import AuditEventModel
 from apps.models.base import Base
@@ -105,6 +111,77 @@ async def test_discover_discussions_uses_read_only_semantic_search_and_normalize
 
 
 @pytest.mark.asyncio
+async def test_list_discussions_uses_read_only_posts_feed_and_normalizes_posts():
+    observed_request = {}
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        observed_request["method"] = request.method
+        observed_request["path"] = request.url.path
+        observed_request["authorization"] = request.headers.get("Authorization")
+        observed_request["params"] = dict(request.url.params)
+        return httpx.Response(
+            200,
+            json={
+                "success": True,
+                "posts": [
+                    {
+                        "id": "post-123",
+                        "submolt": {"name": "aifintech"},
+                        "content": "How can an AI agent safely use x402 payments?",
+                    },
+                    {
+                        "id": "post-456",
+                        "submolt_name": "aifintech",
+                        "content": "",
+                    },
+                    {
+                        "id": "post-789",
+                        "submolt_name": "aifintech",
+                        "content": "This post includes a supplied canonical URL.",
+                        "url": "https://www.moltbook.com/posts/post-789",
+                    },
+                ],
+            },
+        )
+
+    client = MoltbookClient(
+        base_url="https://www.moltbook.com",
+        agent_key="unit-test-agent-key",
+        app_key="unit-test-app-key",
+    )
+    await client.close()
+    client.http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+    try:
+        discussions = await client.list_discussions(submolt="aifintech", limit=10)
+    finally:
+        await client.close()
+
+    assert observed_request == {
+        "method": "GET",
+        "path": "/api/v1/posts",
+        "authorization": "Bearer unit-test-agent-key",
+        "params": {
+            "submolt": "aifintech",
+            "sort": "new",
+            "limit": "10",
+        },
+    }
+    assert discussions == [
+        {
+            "url": "https://www.moltbook.com/posts/post-123",
+            "submolt": "aifintech",
+            "content": "How can an AI agent safely use x402 payments?",
+        },
+        {
+            "url": "https://www.moltbook.com/posts/post-789",
+            "submolt": "aifintech",
+            "content": "This post includes a supplied canonical URL.",
+        },
+    ]
+
+
+@pytest.mark.asyncio
 async def test_discover_discussions_rejects_invalid_search_parameters_without_network_calls():
     client = MoltbookClient(
         base_url="https://www.moltbook.com",
@@ -116,8 +193,20 @@ async def test_discover_discussions_rejects_invalid_search_parameters_without_ne
             await client.discover_discussions(query="x" * 501)
         with pytest.raises(ValueError, match="integer from 1 to 50"):
             await client.discover_discussions(query="x402", limit=51)
+        with pytest.raises(ValueError, match="non-empty string"):
+            await client.list_discussions(submolt="")
     finally:
         await client.close()
+
+
+def test_registry_has_one_real_analytics_agent_and_get_agent_resolves_it():
+    analytics_agents = [agent for agent in list_agents() if agent.name == "Analytics Agent"]
+
+    assert len(analytics_agents) == 1
+    assert type(analytics_agents[0]) is AnalyticsAgent
+
+    resolved_agent = get_agent("Analytics Agent")
+    assert type(resolved_agent) is AnalyticsAgent
 
 
 @patch("apps.agents.specialized.get_sync_session")
@@ -169,14 +258,141 @@ async def test_analytics_agent_counts_real_published_content_and_successful_mcp_
     ).count() == 1
 
 
-@patch("apps.agents.specialized.MoltbookClient")
+@patch("apps.agents.specialized.get_sync_session")
+@pytest.mark.asyncio
+async def test_growth_orchestrator_uses_list_discussions_and_filters_allowed_submolts(
+    mock_get_session,
+):
+    session = TestingSessionLocal()
+    mock_get_session.return_value.__enter__.return_value = session
+    mock_client = MagicMock()
+    mock_client.list_discussions = AsyncMock(
+        side_effect=[
+            [
+                {
+                    "url": "https://www.moltbook.com/posts/allowed-1",
+                    "submolt": "aifintech",
+                    "content": "Relevant x402 discussion",
+                },
+                {
+                    "url": "https://www.moltbook.com/posts/blocked-1",
+                    "submolt": "blocked-community",
+                    "content": "This must not enter the task payload",
+                },
+            ],
+            [
+                {
+                    "url": "https://www.moltbook.com/posts/allowed-2",
+                    "submolt": "aiagents",
+                    "content": "Relevant agentic-commerce discussion",
+                }
+            ],
+        ]
+    )
+    mock_context = MagicMock()
+    mock_context.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_context.__aexit__ = AsyncMock(return_value=None)
+
+    agent = GrowthOrchestratorAgent()
+    with (
+        patch("apps.agents.specialized.MoltbookClient", return_value=mock_context),
+        patch.object(
+            settings,
+            "MOLTBOOK_ALLOWED_SUBMOLTS",
+            "aifintech, aiagents",
+        ),
+        patch.object(
+            agent,
+            "_dispatch_campaign",
+            return_value={"campaign_id": "campaign-1", "tasks": []},
+        ) as mock_dispatch_campaign,
+    ):
+        result = await agent.execute({"objective": "Grow verified x402 adoption"})
+
+    assert mock_client.list_discussions.await_args_list == [
+        call(submolt="aifintech", limit=10),
+        call(submolt="aiagents", limit=10),
+    ]
+    dispatched_steps = mock_dispatch_campaign.call_args.args[1]
+    engagement_step = next(
+        step for step in dispatched_steps if step["agent"] == "Community Engagement"
+    )
+    assert engagement_step["input"] == {
+        "discussions": [
+            {
+                "url": "https://www.moltbook.com/posts/allowed-1",
+                "submolt": "aifintech",
+                "content": "Relevant x402 discussion",
+            },
+            {
+                "url": "https://www.moltbook.com/posts/allowed-2",
+                "submolt": "aiagents",
+                "content": "Relevant agentic-commerce discussion",
+            },
+        ]
+    }
+    assert result["discussions_discovered"] == 2
+
+    discovery_audit = session.query(AuditEventModel).filter(
+        AuditEventModel.event_type == "discussion_discovery_attempted"
+    ).one()
+    assert discovery_audit.metadata_json == {
+        "allowed_submolts": ["aifintech", "aiagents"],
+        "attempted_submolts": ["aifintech", "aiagents"],
+        "failed_submolts": [],
+        "discovered_count": 2,
+        "limit_per_submolt": 10,
+    }
+
+
+@patch("apps.agents.specialized.get_sync_session")
+@pytest.mark.asyncio
+async def test_growth_orchestrator_handles_discovery_failure_without_fake_discussions(
+    mock_get_session,
+):
+    session = TestingSessionLocal()
+    mock_get_session.return_value.__enter__.return_value = session
+    mock_client = MagicMock()
+    mock_client.list_discussions = AsyncMock(
+        side_effect=httpx.ConnectError("Moltbook is unavailable")
+    )
+    mock_context = MagicMock()
+    mock_context.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_context.__aexit__ = AsyncMock(return_value=None)
+
+    agent = GrowthOrchestratorAgent()
+    with (
+        patch("apps.agents.specialized.MoltbookClient", return_value=mock_context),
+        patch.object(settings, "MOLTBOOK_ALLOWED_SUBMOLTS", "aifintech"),
+        patch.object(
+            agent,
+            "_dispatch_campaign",
+            return_value={"campaign_id": "campaign-2", "tasks": []},
+        ) as mock_dispatch_campaign,
+    ):
+        result = await agent.execute({"objective": "Remain resilient offline"})
+
+    engagement_step = next(
+        step
+        for step in mock_dispatch_campaign.call_args.args[1]
+        if step["agent"] == "Community Engagement"
+    )
+    assert engagement_step["input"] == {"discussions": []}
+    assert result["discussions_discovered"] == 0
+
+    discovery_audit = session.query(AuditEventModel).filter(
+        AuditEventModel.event_type == "discussion_discovery_attempted"
+    ).one()
+    assert discovery_audit.metadata_json["failed_submolts"] == ["aifintech"]
+    assert discovery_audit.metadata_json["discovered_count"] == 0
+
+
 @patch("apps.agents.specialized.get_sync_session")
 @patch("apps.agents.specialized.complete_json")
 @pytest.mark.asyncio
-async def test_community_engagement_discovers_posts_before_creating_approval_gated_proposals(
+async def test_community_engagement_persists_approval_gated_proposals(
     mock_complete_json,
     mock_get_session,
-    mock_moltbook_client,
 ):
     session = TestingSessionLocal()
     mock_get_session.return_value.__enter__.return_value = session
@@ -185,30 +401,18 @@ async def test_community_engagement_discovers_posts_before_creating_approval_gat
         "proposed_reply": "AiFinPay can help with an approval-gated x402 payment flow.",
     }
 
-    discovered_discussions = [
-        {
-            "url": "https://www.moltbook.com/posts/post-123",
-            "post_id": "post-123",
-            "submolt": "aifintech",
-            "content": "How can an AI agent safely use x402 payments?",
-            "author": "PaymentMolty",
-            "similarity": 0.92,
-        }
-    ]
-    mock_client = MagicMock()
-    mock_client.discover_discussions = AsyncMock(return_value=discovered_discussions)
-    mock_moltbook_client.return_value.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_moltbook_client.return_value.__aexit__ = AsyncMock(return_value=None)
-
     result = await CommunityEngagementAgent().execute(
-        {"query": "safe x402 payment flows for AI agents", "limit": 20}
+        {
+            "discussions": [
+                {
+                    "url": "https://www.moltbook.com/posts/post-123",
+                    "submolt": "aifintech",
+                    "content": "How can an AI agent safely use x402 payments?",
+                }
+            ]
+        }
     )
 
-    mock_client.discover_discussions.assert_awaited_once_with(
-        query="safe x402 payment flows for AI agents",
-        limit=20,
-        cursor=None,
-    )
     assert result["outcome"] == "proposals_created"
     assert len(result["proposal_ids"]) == 1
 
@@ -218,3 +422,14 @@ async def test_community_engagement_discovers_posts_before_creating_approval_gat
     assert proposal.submolt == "aifintech"
     assert "approval-gated" in proposal.proposed_reply
     assert mock_complete_json.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_community_engagement_with_no_discovered_discussions_creates_zero_proposals():
+    result = await CommunityEngagementAgent().execute({})
+
+    assert result == {
+        "agent": "Community Engagement",
+        "outcome": "proposals_created",
+        "proposal_ids": [],
+    }

@@ -32,32 +32,117 @@ class GrowthOrchestratorAgent(BaseAgent):
 
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         objective = input_data.get('objective', 'default_campaign')
-        
+        discussions = await self._discover_allowed_discussions()
+
         # Define the campaign plan (Day 8: News-to-Content Flow)
         # Content Strategy -> Technical/Founder Content -> Compliance review -> Content Queue
-        # Note: Since the orchestrator is simple, we chain these via sequential tasks
-        # In a real system, some might be triggered by events.
-        # Community discovery runs inside the specialist task so the campaign
-        # can be scheduled without reading external content during planning.
+        # Discussion content is fetched read-only during planning and is passed
+        # unchanged to the specialist, which sanitizes it before model use.
         steps = [
             {"agent": "Market Intelligence", "input": {"topic": objective}},
             {"agent": "Content Strategy", "input": {"objective": objective}},
             {
                 "agent": "Community Engagement",
-                "input": {"query": objective, "limit": 20},
+                "input": {"discussions": discussions},
             },
         ]
-        
+
         # Offload synchronous DB work to a thread to avoid blocking the event loop
         result = await asyncio.to_thread(self._dispatch_campaign, objective, steps)
-        
+
         return {
             "agent": self.name,
             "outcome": "campaign_dispatched",
             "campaign_id": result["campaign_id"],
             "tasks": result["tasks"],
-            "status": "executing"
+            "status": "executing",
+            "discussions_discovered": len(discussions),
         }
+
+    async def _discover_allowed_discussions(self, limit: int = 10) -> List[Dict[str, str]]:
+        """Read recent discussions from allowlisted submolts without blocking a campaign.
+
+        Discovery is read-only and produces no synthetic fallback records. The
+        Community Engagement Agent remains responsible for sanitization and
+        approval-gated proposal creation.
+        """
+        allowed_submolts = [
+            submolt.strip().lower()
+            for submolt in settings.MOLTBOOK_ALLOWED_SUBMOLTS.split(",")
+            if submolt.strip()
+        ]
+        allowed_submolts = list(dict.fromkeys(allowed_submolts))
+        discussions: List[Dict[str, str]] = []
+        failed_submolts: List[str] = []
+
+        if not allowed_submolts:
+            logger.warning("Skipping Moltbook discussion discovery: no allowed submolts configured")
+        else:
+            try:
+                async with MoltbookClient() as client:
+                    for submolt in allowed_submolts:
+                        try:
+                            candidates = await client.list_discussions(
+                                submolt=submolt,
+                                limit=limit,
+                            )
+                        except Exception:
+                            failed_submolts.append(submolt)
+                            logger.warning(
+                                "Moltbook discussion discovery failed for allowlisted submolt %s",
+                                submolt,
+                                exc_info=True,
+                            )
+                            continue
+
+                        for candidate in candidates:
+                            candidate_submolt = candidate.get("submolt")
+                            if (
+                                isinstance(candidate_submolt, str)
+                                and candidate_submolt.strip().lower() in allowed_submolts
+                            ):
+                                discussions.append(candidate)
+                            else:
+                                logger.warning(
+                                    "Ignoring Moltbook discussion outside the configured allowlist"
+                                )
+            except Exception:
+                failed_submolts = allowed_submolts
+                logger.warning(
+                    "Moltbook discussion discovery is unavailable; continuing campaign with zero proposals",
+                    exc_info=True,
+                )
+
+        event_type = "discussion_discovery_attempted"
+        message = "Completed read-only Moltbook discussion discovery"
+        metadata = {
+            "allowed_submolts": allowed_submolts,
+            "attempted_submolts": allowed_submolts,
+            "failed_submolts": failed_submolts,
+            "discovered_count": len(discussions),
+            "limit_per_submolt": limit,
+        }
+        try:
+            await asyncio.to_thread(
+                self._record_discovery_audit,
+                event_type,
+                message,
+                metadata,
+            )
+        except Exception:
+            logger.warning("Failed to record the Moltbook discovery audit event", exc_info=True)
+
+        return discussions
+
+    def _record_discovery_audit(
+        self,
+        event_type: str,
+        message: str,
+        metadata: Dict[str, Any],
+    ) -> None:
+        with get_sync_session() as session:
+            record_event(session, self.name, event_type, message, metadata)
+            session.commit()
 
     def _dispatch_campaign(self, objective: str, steps: list) -> Dict[str, Any]:
         """Synchronous helper for campaign dispatch."""
@@ -398,10 +483,7 @@ class AnalyticsAgent(BaseAgent):
         )
 
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        # For now, simulate metric collection and reporting
-        # In a real scenario, this would query various data sources (DB, external APIs)
-        
-        # Example: Count published content items
+        # Count persisted, verifiable publication and MCP audit records.
         def _get_published_count():
             with get_sync_session() as session:
                 published_count = session.query(ContentItemModel).filter(ContentItemModel.status == "published").count()
@@ -409,7 +491,7 @@ class AnalyticsAgent(BaseAgent):
         
         published_count = await asyncio.to_thread(_get_published_count)
 
-        # Example: Count successful MCP calls (from audit events)
+        # Count successful MCP calls from persisted audit events.
         def _get_mcp_calls_count():
             with get_sync_session() as session:
                 mcp_calls_count = session.query(AuditEventModel).filter(AuditEventModel.event_type == "mcp_call_succeeded").count()
@@ -450,15 +532,10 @@ class CommunityEngagementAgent(BaseAgent):
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         discussions = input_data.get("discussions")
         if discussions is None:
-            query = input_data.get("query", "")
-            limit = input_data.get("limit", 20)
-            cursor = input_data.get("cursor")
-            async with MoltbookClient() as client:
-                discussions = await client.discover_discussions(
-                    query=query,
-                    limit=limit,
-                    cursor=cursor,
-                )
+            logger.warning(
+                "Community Engagement received no discovered discussions; creating zero proposals"
+            )
+            discussions = []
 
         if not isinstance(discussions, list):
             raise ValueError("Community engagement discussions must be a list")
