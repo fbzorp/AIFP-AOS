@@ -57,7 +57,7 @@ async def main():
     
     with get_sync_session() as session:
         # 2. Create Content Item
-        submolt = "aifintech" # targeting an allowlisted submolt
+        submolt = "general" # targeting an allowlisted submolt
         content = ContentItemModel(
             title="AiFinPay Autonomous Growth OS - Day 10-11 Live Publication",
             channel=submolt,
