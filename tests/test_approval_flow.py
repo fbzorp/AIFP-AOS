@@ -145,14 +145,20 @@ def test_rejection_logic():
 
 @patch("apps.workers.tasks.get_sync_session", side_effect=mock_get_sync_session)
 def test_publish_gate(mock_session):
-    with mock_get_sync_session() as session:
-        content = ContentItemModel(
-            id="content-1",
-            title="Title",
-            body="Body",
-            channel="X",
-            status="draft"
-        )
+    # Ensure MOLTBOOK_BASE_URL has a protocol to avoid UnsupportedProtocol error in dry-run
+    from apps.api.config import settings
+    original_url = settings.MOLTBOOK_BASE_URL
+    settings.MOLTBOOK_BASE_URL = "https://www.moltbook.com"
+    
+    try:
+        with mock_get_sync_session() as session:
+            content = ContentItemModel(
+                id="content-1",
+                title="Title",
+                body="Body",
+                channel="X",
+                status="draft"
+            )
         session.add(content)
         session.commit()
         
@@ -186,6 +192,8 @@ def test_publish_gate(mock_session):
         session.commit()
         with pytest.raises(ValueError, match="must be approved"):
             publish_content("content-1", "appr-1", draft_hash)
+    finally:
+        settings.MOLTBOOK_BASE_URL = original_url
 
 async def override_get_db():
     sync_session = TestingSessionLocal()

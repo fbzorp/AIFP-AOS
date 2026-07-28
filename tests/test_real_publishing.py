@@ -26,8 +26,9 @@ async def test_real_publish_flow_non_dry_run():
             201, 
             json={
                 "success": True,
-                "post_id": "real-post-123",
-                "post_url": "https://www.moltbook.com/posts/real-post-123"
+                "post": {
+                    "id": "real-post-123"
+                }
             }
         ))
         
