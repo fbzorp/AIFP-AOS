@@ -63,24 +63,31 @@ async def override_get_db():
 @patch("apps.agents.specialized.get_sync_session")
 @patch("apps.core.orchestrator.engine.Orchestrator.create_campaign")
 @pytest.mark.asyncio
-async def test_gap_b_orchestrator_enqueues_semantic_discovery(mock_create_campaign, mock_get_session):
-    # Setup mocks
+async def test_gap_b_orchestrator_enqueues_discovered_discussions(
+    mock_create_campaign,
+    mock_get_session,
+):
     session = TestingSessionLocal()
     mock_get_session.return_value.__enter__.return_value = session
     mock_create_campaign.return_value = {"campaign_id": "camp_1", "tasks": []}
-    
+    mock_client = MagicMock()
+    mock_client.list_discussions = AsyncMock(return_value=[])
+    mock_context = MagicMock()
+    mock_context.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_context.__aexit__ = AsyncMock(return_value=None)
+
     agent = GrowthOrchestratorAgent()
-    await agent.execute({"objective": "Test Gap B"})
-    
-    # Verify Community Engagement was included in the steps
+    with patch("apps.agents.specialized.MoltbookClient", return_value=mock_context):
+        await agent.execute({"objective": "Test Gap B"})
+
+    # Verify Community Engagement is included and receives only discovered records.
     args, kwargs = mock_create_campaign.call_args
     steps = args[1]
     agent_names = [s["agent"] for s in steps]
     assert "Community Engagement" in agent_names
-    
-    # Verify the engagement task performs live semantic discovery when it runs.
+
     engagement_step = next(s for s in steps if s["agent"] == "Community Engagement")
-    assert engagement_step["input"] == {"query": "Test Gap B", "limit": 20}
+    assert engagement_step["input"] == {"discussions": []}
 
 @patch("apps.agents.specialized.get_sync_session")
 @patch("apps.agents.specialized.complete_json")
