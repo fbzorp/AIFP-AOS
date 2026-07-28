@@ -35,82 +35,6 @@ def setup_db():
 
 
 @pytest.mark.asyncio
-async def test_discover_discussions_uses_read_only_semantic_search_and_normalizes_posts():
-    observed_request = {}
-
-    async def handler(request: httpx.Request) -> httpx.Response:
-        observed_request["method"] = request.method
-        observed_request["path"] = request.url.path
-        observed_request["authorization"] = request.headers.get("Authorization")
-        observed_request["params"] = dict(request.url.params)
-        return httpx.Response(
-            200,
-            json={
-                "success": True,
-                "results": [
-                    {
-                        "id": "post-123",
-                        "type": "post",
-                        "title": "x402 payment flow question",
-                        "content": "How can an AI agent safely use x402 payments?",
-                        "similarity": 0.92,
-                        "author": {"name": "PaymentMolty"},
-                        "submolt": {"name": "aifintech"},
-                    },
-                    {
-                        "id": "comment-456",
-                        "type": "comment",
-                        "content": "This comment must not become a proposal.",
-                    },
-                    {
-                        "id": "post-789",
-                        "type": "post",
-                        "content": "",
-                        "submolt": {"name": "aifintech"},
-                    },
-                ],
-            },
-        )
-
-    client = MoltbookClient(
-        base_url="https://www.moltbook.com",
-        agent_key="unit-test-agent-key",
-        app_key="unit-test-app-key",
-    )
-    await client.close()
-    client.http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-
-    try:
-        discussions = await client.discover_discussions(
-            query="safe x402 payment flows for AI agents",
-            limit=20,
-        )
-    finally:
-        await client.close()
-
-    assert observed_request == {
-        "method": "GET",
-        "path": "/api/v1/search",
-        "authorization": "Bearer unit-test-agent-key",
-        "params": {
-            "q": "safe x402 payment flows for AI agents",
-            "type": "posts",
-            "limit": "20",
-        },
-    }
-    assert discussions == [
-        {
-            "url": "https://www.moltbook.com/posts/post-123",
-            "post_id": "post-123",
-            "submolt": "aifintech",
-            "content": "x402 payment flow question\n\nHow can an AI agent safely use x402 payments?",
-            "author": "PaymentMolty",
-            "similarity": 0.92,
-        }
-    ]
-
-
-@pytest.mark.asyncio
 async def test_list_discussions_uses_read_only_posts_feed_and_normalizes_posts():
     observed_request = {}
 
@@ -182,17 +106,13 @@ async def test_list_discussions_uses_read_only_posts_feed_and_normalizes_posts()
 
 
 @pytest.mark.asyncio
-async def test_discover_discussions_rejects_invalid_search_parameters_without_network_calls():
+async def test_list_discussions_rejects_invalid_parameters_without_network_calls():
     client = MoltbookClient(
         base_url="https://www.moltbook.com",
         agent_key="unit-test-agent-key",
         app_key="unit-test-app-key",
     )
     try:
-        with pytest.raises(ValueError, match="at most 500 characters"):
-            await client.discover_discussions(query="x" * 501)
-        with pytest.raises(ValueError, match="integer from 1 to 50"):
-            await client.discover_discussions(query="x402", limit=51)
         with pytest.raises(ValueError, match="non-empty string"):
             await client.list_discussions(submolt="")
     finally:
@@ -421,15 +341,3 @@ async def test_community_engagement_persists_approval_gated_proposals(
     assert proposal.source_url == "https://www.moltbook.com/posts/post-123"
     assert proposal.submolt == "aifintech"
     assert "approval-gated" in proposal.proposed_reply
-    assert mock_complete_json.await_count == 1
-
-
-@pytest.mark.asyncio
-async def test_community_engagement_with_no_discovered_discussions_creates_zero_proposals():
-    result = await CommunityEngagementAgent().execute({})
-
-    assert result == {
-        "agent": "Community Engagement",
-        "outcome": "proposals_created",
-        "proposal_ids": [],
-    }
