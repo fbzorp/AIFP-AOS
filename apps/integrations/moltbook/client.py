@@ -2,10 +2,19 @@ import httpx
 import logging
 import asyncio
 from typing import Any, Dict, List, Optional
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 from apps.api.config import settings
 
 logger = logging.getLogger(__name__)
+
+def is_transient_error(exception: Exception) -> bool:
+    """Returns True for transient network/server errors that should be retried."""
+    if isinstance(exception, (httpx.TransportError, httpx.ConnectError, httpx.ReadTimeout, httpx.WriteTimeout, httpx.PoolTimeout)):
+        return True
+    if isinstance(exception, httpx.HTTPStatusError):
+        # Retry only on 5xx (Server Error) or 429 (Too Many Requests)
+        return exception.response.status_code >= 500 or exception.response.status_code == 429
+    return False
 
 class MoltbookClient:
     def __init__(
@@ -33,17 +42,21 @@ class MoltbookClient:
         return self._app_key or settings.MOLTBOOK_APP_KEY or ""
 
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8))
+    @retry(retry=retry_if_exception(is_transient_error), stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
     async def create_identity_token(self) -> Dict[str, Any]:
         """Confirmed in dev-guide."""
         r = await self.http.post(
             f"{self.base_url}/api/v1/agents/me/identity-token",
             headers={"Authorization": f"Bearer {self.agent_key}"},
         )
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Moltbook identity token creation failed: {e.response.status_code} - {e.response.text}")
+            raise
         return r.json()
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8))
+    @retry(retry=retry_if_exception(is_transient_error), stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
     async def verify_identity(self, token: str) -> Dict[str, Any]:
         """Confirmed in dev-guide."""
         r = await self.http.post(
@@ -51,17 +64,17 @@ class MoltbookClient:
             headers={"X-Moltbook-App-Key": self.app_key},
             json={"token": token},
         )
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Moltbook identity verification failed: {e.response.status_code} - {e.response.text}")
+            raise
         data = r.json()
         if not data.get("success") or not data.get("valid"):
             raise ValueError("Invalid Moltbook identity token")
         return data["agent"]
 
-    @retry(
-        retry=retry_if_exception_type(httpx.HTTPError),
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(min=1, max=8),
-    )
+    @retry(retry=retry_if_exception(is_transient_error), stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
     async def list_discussions(
         self,
         submolt: str,
@@ -140,7 +153,7 @@ class MoltbookClient:
 
         return discussions
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8))
+    @retry(retry=retry_if_exception(is_transient_error), stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
     async def verify_challenge(self, verification_code: str, answer: str) -> Dict[str, Any]:
         """Submit answer to a verification challenge."""
         r = await self.http.post(
@@ -148,10 +161,14 @@ class MoltbookClient:
             headers={"Authorization": f"Bearer {self.agent_key}"},
             json={"verification_code": verification_code, "answer": answer},
         )
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Moltbook verification challenge failed: {e.response.status_code} - {e.response.text}")
+            raise
         return r.json()
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8))
+    @retry(retry=retry_if_exception(is_transient_error), stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
     async def publish_post(self, submolt: str, title: str, body: str, identity_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Confirmed endpoint from live skill.md: POST /api/v1/posts
@@ -183,7 +200,13 @@ class MoltbookClient:
             headers=headers,
             json=payload
         )
-        r.raise_for_status()
+        
+        try:
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Moltbook publish_post failed: {e.response.status_code} - {e.response.text}")
+            raise
+
         data = r.json()
         
         # Handle verification if required
