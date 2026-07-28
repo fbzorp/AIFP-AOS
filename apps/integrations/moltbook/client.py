@@ -141,7 +141,18 @@ class MoltbookClient:
         return discussions
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8))
-    async def publish_post(self, submolt: str, title: str, body: str) -> Dict[str, Any]:
+    async def verify_challenge(self, verification_code: str, answer: str) -> Dict[str, Any]:
+        """Submit answer to a verification challenge."""
+        r = await self.http.post(
+            f"{self.base_url}/api/v1/verify",
+            headers={"Authorization": f"Bearer {self.agent_key}"},
+            json={"verification_code": verification_code, "answer": answer},
+        )
+        r.raise_for_status()
+        return r.json()
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8))
+    async def publish_post(self, submolt: str, title: str, body: str, identity_token: Optional[str] = None) -> Dict[str, Any]:
         """
         Confirmed endpoint from live skill.md: POST /api/v1/posts
         Fields: submolt_name (or submolt), title, content
@@ -162,13 +173,49 @@ class MoltbookClient:
             "content": body
         }
         
+        # Prefer identity token if provided, otherwise use raw agent key
+        headers = {"Authorization": f"Bearer {identity_token or self.agent_key}"}
+        
         r = await self.http.post(
             f"{self.base_url}/api/v1/posts",
-            headers={"Authorization": f"Bearer {self.agent_key}"},
+            headers=headers,
             json=payload
         )
         r.raise_for_status()
-        return r.json()
+        data = r.json()
+        
+        # Handle verification if required
+        if data.get("verification_required") or (isinstance(data.get("post"), dict) and data["post"].get("verification")):
+            post_data = data.get("post") or {}
+            verification = post_data.get("verification") or {}
+            code = verification.get("verification_code")
+            challenge = verification.get("challenge_text")
+            
+            if code and challenge:
+                logger.info(f"Verification required for post. Challenge: {challenge}")
+                # We need an LLM to solve the obfuscated math problem
+                from apps.core.models.factory import deepseek_fast
+                prompt = f"Solve this Moltbook AI verification challenge. It is an obfuscated math problem. Extract the two numbers and the operation, compute the result, and respond with ONLY the number (e.g., '15.00').\n\nChallenge: {challenge}"
+                answer = await deepseek_fast.complete(prompt)
+                answer = answer.strip()
+                
+                logger.info(f"Submitting verification answer: {answer}")
+                verify_result = await self.verify_challenge(code, answer)
+                if verify_result.get("success"):
+                    logger.info("Verification successful!")
+                    # Merge verification success into original response
+                    data["post_id"] = post_data.get("id")
+                    data["post_url"] = f"{self.base_url}/posts/{data['post_id']}"
+                    data["success"] = True
+                else:
+                    raise ValueError(f"Verification failed: {verify_result.get('error')}")
+        else:
+            # Normal success path
+            post_data = data.get("post") or data.get("agent") or {}
+            data["post_id"] = data.get("post_id") or post_data.get("id")
+            data["post_url"] = data.get("post_url") or f"{self.base_url}/posts/{data['post_id']}"
+            
+        return data
 
     async def close(self):
         await self.http.aclose()
