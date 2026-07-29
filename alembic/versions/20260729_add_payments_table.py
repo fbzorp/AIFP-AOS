@@ -19,6 +19,7 @@ def upgrade():
         'payments',
         sa.Column('id', sa.String(), primary_key=True),
         sa.Column('purpose', sa.String(), nullable=False),
+        sa.Column('recipient_address', sa.String(), nullable=False),
         sa.Column('amount', sa.Float(), nullable=False),
         sa.Column('currency', sa.String(), nullable=False, server_default='USDC'),
         sa.Column('network', sa.String(), nullable=False, server_default='solana'),

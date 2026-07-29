@@ -35,6 +35,7 @@ class PaymentModel(Base):
     
     id = Column(String, primary_key=True, default=lambda: "pay-" + str(uuid4()))
     purpose = Column(String, nullable=False)
+    recipient_address = Column(String, nullable=True) # Will be mandatory after migration
     amount = Column(Float, nullable=False)
     currency = Column(String, nullable=False, default="USDC")
     network = Column(String, nullable=False, default="solana")

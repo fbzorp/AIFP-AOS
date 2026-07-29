@@ -59,11 +59,10 @@ class Settings(BaseSettings):
     DAILY_SPENDING_LIMIT: float = 100.00
     PER_TRANSACTION_LIMIT: float = 50.00
     HUMAN_APPROVAL_THRESHOLD: float = 25.00
-
-    # X402 and Payments
-    X402_ENABLED: bool = False
-    X402_FACILITATOR_URL: Optional[str] = None
-    PAYMENTS_NETWORK: str = "devnet"
+    
+    # Payment Security
+    RECIPIENT_ALLOWLIST: str = "" # Comma-separated addresses
+    PAYMENTS_KILL_SWITCH: bool = False
     
     model_config = SettingsConfigDict(
         env_file=".env", 
