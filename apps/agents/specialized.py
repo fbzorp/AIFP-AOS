@@ -491,9 +491,11 @@ class AnalyticsAgent(BaseAgent):
         )
 
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        # Generate some real MCP calls for testing
+        # Generate real MCP calls when enabled
         if mcp_client.enabled:
             try:
+                logger.info("Making MCP calls against live @aifinpay/mcp sidecar")
+                
                 # Make multiple MCP calls to ensure we get >=10 events
                 await mcp_client.agent_address("AnalyticsAgent")
                 await mcp_client.agent_quote("AnalyticsAgent", 1.0, "USD")
@@ -527,8 +529,10 @@ class AnalyticsAgent(BaseAgent):
                     
                     await asyncio.to_thread(_record_mcp_event)
                     
+                logger.info(f"Successfully completed {len(mcp_client.get_successful_calls())} MCP calls")
+                    
             except Exception as e:
-                logger.warning(f"MCP calls failed: {e}")
+                logger.error(f"MCP calls failed: {e}")
         
         # Count persisted, verifiable publication and MCP audit records.
         def _get_published_count():

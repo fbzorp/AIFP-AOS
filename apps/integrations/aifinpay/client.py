@@ -33,22 +33,24 @@ class AiFinPayClient:
         return data["nonce"]
 
     def _sign_nonce(self, nonce: str) -> str:
-        """Sign nonce with Ed25519 key"""
+        """Sign nonce with Ed25519 key using aifinpay-agent SDK"""
         if self.dry_run or not self.agent_secret:
             return "dry_run_signature"
         
-        # In real implementation, use the aifinpay-agent SDK's signing
-        # For now, return a placeholder
-        # The signature should be: Ed25519(SHA256("AiFinPay-x402:{nonce}:{agent_pubkey}"), agent_keypair)
+        # Use the aifinpay-agent SDK for proper Ed25519 signing
         try:
             from aifinpay import Agent
             agent = Agent.from_secret(self.agent_secret)
             message = f"AiFinPay-x402:{nonce}:{self.agent_pubkey}"
             signature = agent.sign(message)
+            logger.info(f"Successfully signed nonce with aifinpay-agent SDK")
             return signature
         except ImportError:
-            logger.warning("aifinpay-agent not installed, using placeholder signature")
-            return f"placeholder_signature_{nonce}"
+            logger.error("aifinpay-agent not installed - cannot sign transactions")
+            raise ValueError("aifinpay-agent package is required for signing")
+        except Exception as e:
+            logger.error(f"Failed to sign nonce with aifinpay-agent: {e}")
+            raise
 
     async def _request(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
         if self.dry_run:
