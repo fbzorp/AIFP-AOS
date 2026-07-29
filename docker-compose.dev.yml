@@ -101,6 +101,8 @@ services:
     container_name: aifp_mcp_dev
     restart: unless-stopped
     command: ["npx", "@aifinpay/mcp"]
+    ports:
+      - "3010:3000"
     env_file:
       - .env
     environment:
