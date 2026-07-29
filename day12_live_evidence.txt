@@ -57,10 +57,10 @@ Timestamp: 2026-07-29T21:40:00.000000
 
 === CREDENTIALS CONFIGURATION ===
 ✅ SOLANA_PRIVATE_KEY: Configured (base58 format)
-✅ SOLANA_RPC_URL: https://solana-devnet.g.alchemy.com/v2/5xC2wYmcWXACugQUQ0sPQphsNeYVYhOa
+✅ SOLANA_RPC_URL: https://solana-devnet.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY
 ✅ EVM_PRIVATE_KEY: Configured
-✅ EVM_RPC_URL: https://base-sepolia.g.alchemy.com/v2/5xC2wYmcWXACugQUQ0sPQphsNeYVYhOa
-✅ Wallet address: 21vMinNgTPmcW4XVngg56EQ1kpbGMn6mea92UUCMq75h
+✅ EVM_RPC_URL: https://base-sepolia.g.alchemy.com/v2/YOUR_ALCHEMY_API_KEY
+✅ Wallet address: YOUR_WALLET_ADDRESS
 
 === IMPLEMENTATION COMPLETENESS ===
 ✅ Endpoint path consistency per manifesto.json

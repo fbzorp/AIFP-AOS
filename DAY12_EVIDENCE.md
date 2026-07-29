@@ -72,7 +72,7 @@ This document provides evidence of Day 12 completion for the AiFinPay Autonomous
 - ⚠️ **Solana Transactions**: Package compatibility issue with solana 0.40.1 vs expected API
 - ⚠️ **EVM Transactions**: Not tested (instruction noted to retain EVM setup for when funds available)
 - ✅ **Wallet Client Initialization**: Both Solana and EVM clients initialize successfully with credentials
-- ✅ **Real Credentials**: Solana devnet credentials provided and configured
+- ✅ **Credentials**: Real Solana devnet credentials configured in .env (untracked)
 
 ### MCP Sidecar ⚠️
 - ⚠️ **MCP Sidecar**: Requires real AiFinPay agent secret (currently placeholder in .env)
@@ -101,7 +101,7 @@ This document provides evidence of Day 12 completion for the AiFinPay Autonomous
 - **EVM Integration**: Retained for future testing when funds available
 
 ### Environment Constraints
-- **Credentials**: Real Solana devnet credentials provided and configured
+- **Credentials**: Solana devnet credentials configured in .env (untracked)
 - **Agent Secret**: AiFinPay agent secret needs to be in proper base58 format
 - **Configuration**: MCP and X402 settings configured but require proper secrets
 
