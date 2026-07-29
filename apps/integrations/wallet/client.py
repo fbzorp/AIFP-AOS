@@ -88,6 +88,7 @@ class WalletClient:
         if amount > self.per_transaction_limit:
             raise ValueError(f"Transaction amount {amount} exceeds per-transaction limit of {self.per_transaction_limit}")
 
+        # Skip dry-run check if force_real is True
         if not force_real and (self.dry_run or (network == "solana" and not self.solana_private_key) or (network == "evm" and not self.evm_private_key)):
             logger.info(f"[DRY RUN] Sending {amount} on {network} to {recipient_address}")
             return f"fake_tx_hash_dry_run_{network}_{amount}"
@@ -100,13 +101,14 @@ class WalletClient:
             raise ValueError(f"Unsupported network: {network}")
 
     async def _send_solana_transaction(self, amount: float, recipient_address: str) -> str:
-        """Send real Solana transaction"""
+        """Send real Solana transaction using solana 0.40.1 and solders 0.28.0 API"""
         if not self._solana_client:
             raise ValueError("Solana client not initialized")
         
         try:
             from solders.pubkey import Pubkey
             from solders.system_program import TransferParams, transfer
+            from solders.signature import Signature
             
             # Convert amount to lamports (1 SOL = 1,000,000,000 lamports)
             lamports = int(amount * 1_000_000_000)
@@ -122,19 +124,7 @@ class WalletClient:
                 )
             )
             
-            # Get recent blockhash
-            blockhash_response = await self._solana_client.get_latest_blockhash()
-            blockhash = blockhash_response.value.blockhash
-            
-            # Build the transaction using the newer API
-            from solana.rpc.async_api import AsyncClient
-            from solders.signature import Signature
-            
-            # The newer solana package has a different structure
-            # Let's use a simpler approach with the available API
-            # First, we need to create a transaction object that works with the newer version
-            
-            # Try using the send_transaction with just the instruction
+            # Use send_transaction method that auto-builds the transaction
             result = await self._solana_client.send_transaction(
                 transfer_instruction,
                 self._solana_keypair
@@ -147,9 +137,7 @@ class WalletClient:
             
         except Exception as e:
             logger.error(f"Failed to send Solana transaction: {e}")
-            # Fallback to dry run if real transaction fails
-            logger.warning("Falling back to dry run transaction")
-            return f"dry_run_tx_{int(time.time())}"
+            raise ValueError(f"Solana transaction failed: {e}")
 
     async def _send_evm_transaction(self, amount: float, recipient_address: str) -> str:
         """Send real EVM transaction"""
