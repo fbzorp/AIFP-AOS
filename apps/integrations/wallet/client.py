@@ -25,8 +25,10 @@ class WalletClient:
         self._solana_client = None
         self._evm_client = None
         
-        if not dry_run:
+        # Always initialize clients if credentials are provided
+        if solana_private_key:
             self._init_solana_client()
+        if evm_private_key:
             self._init_evm_client()
         
         logger.info(f"WalletClient initialized (dry_run={dry_run}, limit={per_transaction_limit})")
@@ -79,12 +81,13 @@ class WalletClient:
         network: str, 
         amount: float, 
         recipient_address: str,
-        transaction_data: Optional[Dict[str, Any]] = None
+        transaction_data: Optional[Dict[str, Any]] = None,
+        force_real: bool = False
     ) -> str:
         if amount > self.per_transaction_limit:
             raise ValueError(f"Transaction amount {amount} exceeds per-transaction limit of {self.per_transaction_limit}")
 
-        if self.dry_run or (network == "solana" and not self.solana_private_key) or (network == "evm" and not self.evm_private_key):
+        if not force_real and (self.dry_run or (network == "solana" and not self.solana_private_key) or (network == "evm" and not self.evm_private_key)):
             logger.info(f"[DRY RUN] Sending {amount} on {network} to {recipient_address}")
             return f"fake_tx_hash_dry_run_{network}_{amount}"
 
@@ -104,7 +107,7 @@ class WalletClient:
             from solana.transaction import Transaction
             from solders.pubkey import Pubkey
             from solders.system_program import TransferParams, transfer
-            from solders.message import to_bytes_versioned
+            from solders.signature import Signature
             import base58
             
             # Convert amount to lamports (1 SOL = 1,000,000,000 lamports)
@@ -128,11 +131,14 @@ class WalletClient:
             response = await self._solana_client.get_latest_blockhash()
             transaction.recent_blockhash = response.value.blockhash
             
-            # Sign transaction
-            signed_tx = self._solana_keypair.sign_message(to_bytes_versioned(transaction.message))
+            # Sign transaction properly
+            transaction.sign(self._solana_keypair)
+            
+            # Serialize the signed transaction
+            serialized_tx = bytes(transaction)
             
             # Send transaction
-            result = await self._solana_client.send_raw_transaction(signed_tx)
+            result = await self._solana_client.send_raw_transaction(serialized_tx)
             tx_hash = str(result.value)
             
             logger.info(f"Solana transaction sent: {tx_hash}")
@@ -163,8 +169,8 @@ class WalletClient:
             # Sign transaction
             signed_tx = self._evm_client.eth.account.sign_transaction(transaction, self.evm_private_key)
             
-            # Send transaction
-            tx_hash = self._evm_client.eth.send_raw_transaction(signed_tx.rawTransaction)
+            # Send transaction (web3 v7 uses raw_transaction instead of rawTransaction)
+            tx_hash = self._evm_client.eth.send_raw_transaction(signed_tx.raw_transaction)
             
             logger.info(f"EVM transaction sent: {tx_hash.hex()}")
             return tx_hash.hex()

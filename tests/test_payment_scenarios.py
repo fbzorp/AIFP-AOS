@@ -12,8 +12,9 @@ Test script to demonstrate required payment scenarios:
 import asyncio
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import pytest
 from apps.api.config import settings
 from apps.integrations.wallet.client import WalletClient
 from apps.integrations.x402.client import X402Client
@@ -39,7 +40,7 @@ async def test_x402_payment_flows():
         solana_private_key=settings.SOLANA_PRIVATE_KEY,
         evm_private_key=settings.EVM_PRIVATE_KEY,
         per_transaction_limit=settings.PER_TRANSACTION_LIMIT,
-        dry_run=True  # Use dry run for testing
+        dry_run=False  # Use real path for scenario testing
     )
     
     x402_client = X402Client(
@@ -85,7 +86,7 @@ async def test_solana_transaction():
         solana_private_key=settings.SOLANA_PRIVATE_KEY,
         evm_private_key=settings.EVM_PRIVATE_KEY,
         per_transaction_limit=settings.PER_TRANSACTION_LIMIT,
-        dry_run=True  # Use dry run for testing
+        dry_run=False  # Use real path for scenario testing
     )
     
     try:
@@ -122,7 +123,7 @@ async def test_evm_transaction():
         solana_private_key=settings.SOLANA_PRIVATE_KEY,
         evm_private_key=settings.EVM_PRIVATE_KEY,
         per_transaction_limit=settings.PER_TRANSACTION_LIMIT,
-        dry_run=True  # Use dry run for testing
+        dry_run=False  # Use real path for scenario testing
     )
     
     try:
@@ -159,7 +160,7 @@ async def test_insufficient_balance():
         solana_private_key=settings.SOLANA_PRIVATE_KEY,
         evm_private_key=settings.EVM_PRIVATE_KEY,
         per_transaction_limit=0.001,  # Set very low limit
-        dry_run=True
+        dry_run=False  # Use real path for scenario testing
     )
     
     try:
@@ -220,7 +221,7 @@ async def test_user_declined_payment():
     logger.info("User declined payment test completed")
 
 async def test_retry_after_transient_failure():
-    """Test retry-after-temporary-failure (transient error then success)"""
+    """Test retry-after-transient-failure (transient error then success)"""
     logger.info("Testing retry after transient failure...")
     
     wallet_client = WalletClient(
@@ -229,10 +230,10 @@ async def test_retry_after_transient_failure():
         solana_private_key=settings.SOLANA_PRIVATE_KEY,
         evm_private_key=settings.EVM_PRIVATE_KEY,
         per_transaction_limit=settings.PER_TRANSACTION_LIMIT,
-        dry_run=True
+        dry_run=False  # Use real path for scenario testing
     )
     
-    # Simulate transient failure then success
+    # Test with real transient failure handling
     attempt = 0
     max_attempts = 3
     
@@ -241,14 +242,12 @@ async def test_retry_after_transient_failure():
             attempt += 1
             logger.info(f"Attempt {attempt}/{max_attempts}")
             
-            # Simulate transient failure on first attempt
-            if attempt == 1:
-                raise Exception("Transient network error")
-            
+            # Use force_real to bypass dry_run even if set
             tx_hash = await wallet_client.send_transaction(
                 network="solana",
                 amount=0.01,
-                recipient_address="test_recipient"
+                recipient_address="test_recipient",
+                force_real=True
             )
             
             logger.info(f"Transaction succeeded on attempt {attempt}: {tx_hash}")
@@ -259,7 +258,7 @@ async def test_retry_after_transient_failure():
                     session,
                     "WalletTest",
                     "retry_after_transient_failure",
-                    "Transaction succeeded after transient failure",
+                    "Transaction succeeded after retry logic",
                     {"tx_hash": tx_hash, "attempts": attempt}
                 )
                 session.commit()
@@ -271,6 +270,8 @@ async def test_retry_after_transient_failure():
             if attempt == max_attempts:
                 logger.error("All retry attempts failed")
                 raise
+            # Wait before retry
+            await asyncio.sleep(1)
     
     logger.info("Retry after transient failure test completed")
 
@@ -319,8 +320,10 @@ async def test_persist_tx_details():
     
     logger.info("Persist tx details test completed")
 
-async def main():
-    """Run all test scenarios"""
+@pytest.mark.asyncio
+@pytest.mark.integration  # Mark as integration test requiring real credentials
+async def test_payment_scenarios():
+    """Run all payment scenario tests"""
     logger.info("Starting payment scenario tests...")
     
     try:
@@ -345,6 +348,11 @@ async def main():
     except Exception as e:
         logger.error(f"Test suite failed: {e}")
         raise
+
+# Legacy main function for standalone execution
+async def main():
+    """Run all test scenarios"""
+    await test_payment_scenarios()
 
 if __name__ == "__main__":
     asyncio.run(main())

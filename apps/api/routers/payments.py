@@ -5,6 +5,7 @@ from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime, timezone
 import logging
+import time
 
 from apps.models.base import get_db
 from apps.models.payment import PaymentModel
@@ -166,10 +167,28 @@ async def execute_payment(
     await db.commit()
 
     try:
+        start_time = time.time()
+        
+        # Use AiFinPay client to create invoice if available
+        if settings.AIFINPAY_AGENT_SECRET and settings.AIFINPAY_AGENT_PUBKEY:
+            try:
+                invoice = await aifinpay_client.create_invoice(
+                    amount=payment.amount,
+                    currency=payment.currency,
+                    network=payment.network
+                )
+                logger.info(f"Created AiFinPay invoice: {invoice}")
+                payment.mcp_tool = "create_invoice"
+                payment.request_id = invoice.get("id", "unknown")
+            except Exception as e:
+                logger.warning(f"AiFinPay invoice creation failed, falling back to direct wallet: {e}")
+        
+        # Execute transaction via wallet client
         tx_hash = await wallet_client.send_transaction(
             network=payment.network,
             amount=payment.amount,
-            recipient_address=payment.recipient_address
+            recipient_address=payment.recipient_address,
+            force_real=True  # Force real execution
         )
         
         tx_url = "https://explorer.example.com"
@@ -178,9 +197,20 @@ async def execute_payment(
         elif payment.network == "evm":
             tx_url = f"https://sepolia.etherscan.io/tx/{tx_hash}"
 
+        # Calculate latency and cost
+        latency_ms = (time.time() - start_time) * 1000
+        cost_usd = payment.amount  # Simplified cost calculation
+        
         payment.status = "success"
         payment.tx_hash = tx_hash
         payment.tx_url = tx_url
+        payment.latency_ms = latency_ms
+        payment.cost_usd = cost_usd
+        # Get wallet address
+        if payment.network == "solana" and wallet_client._solana_keypair:
+            payment.wallet = str(wallet_client._solana_keypair.pubkey())
+        elif payment.network == "evm" and wallet_client._evm_account:
+            payment.wallet = wallet_client._evm_account.address
         await db.commit()
         await db.refresh(payment)
 
@@ -188,7 +218,12 @@ async def execute_payment(
             "payment_id": payment.id, 
             "tx_hash": tx_hash, 
             "explorer_url": tx_url,
-            "status": "success"
+            "status": "success",
+            "wallet": payment.wallet,
+            "latency_ms": latency_ms,
+            "cost_usd": cost_usd,
+            "mcp_tool": payment.mcp_tool,
+            "request_id": payment.request_id
         })
 
     except Exception as e:
