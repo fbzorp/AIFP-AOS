@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     EVM_RPC_URL: Optional[str] = None
     EVM_PRIVATE_KEY: Optional[str] = None
     
+    # X402 Settings
+    X402_ENABLED: bool = True
+    X402_FACILITATOR_URL: str = "https://x402.aifinpay.com"
+    PAYMENTS_NETWORK: str = "devnet"
+
     # Security / Limits
     DAILY_SPENDING_LIMIT: float = 100.00
     PER_TRANSACTION_LIMIT: float = 50.00
