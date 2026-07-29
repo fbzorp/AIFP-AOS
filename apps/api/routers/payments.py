@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import func
 from typing import List, Optional
+from datetime import datetime, timezone
 import logging
 
 from apps.models.base import get_db
@@ -34,7 +36,6 @@ x402_client = X402Client(
 )
 
 async def create_audit_event(db: AsyncSession, event_type: str, details: dict):
-    # Use the existing AuditEventModel but handle metadata_json correctly
     audit_event = AuditEventModel(
         agent_name="System",
         event_type=event_type,
@@ -51,13 +52,24 @@ async def create_payment(
     payment_in: PaymentCreate,
     db: AsyncSession = Depends(get_db)
 ):
+    # Emergency Kill Switch check
+    if settings.PAYMENTS_KILL_SWITCH:
+        await create_audit_event(db, "payment_rejected_kill_switch", {"purpose": payment_in.purpose, "amount": payment_in.amount})
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Payments are currently disabled via emergency kill switch")
+
+    # Recipient Allowlist check
+    if settings.RECIPIENT_ALLOWLIST:
+        allowed_recipients = [r.strip() for r in settings.RECIPIENT_ALLOWLIST.split(",")]
+        if payment_in.recipient_address not in allowed_recipients:
+            await create_audit_event(db, "payment_rejected_not_allowlisted", {"recipient": payment_in.recipient_address, "amount": payment_in.amount})
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient address is not in the allowlist")
+
     status_to_set = "pending"
     if payment_in.amount <= settings.HUMAN_APPROVAL_THRESHOLD:
         status_to_set = "approved"
 
     payment = PaymentModel(**payment_in.model_dump(), status=status_to_set)
     
-    # Generate X402 request URL if enabled
     if settings.X402_ENABLED:
         try:
             payment.x402_request_url = await x402_client.create_payment_request(
@@ -96,6 +108,17 @@ async def approve_payment(
         await create_audit_event(db, "payment_approval_denied", {"payment_id": payment.id, "reason": "Exceeds per-transaction limit"})
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Payment exceeds per-transaction limit")
 
+    # Enforce daily spending limit
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    daily_spend_query = select(func.sum(PaymentModel.amount)).filter(
+        PaymentModel.created_at >= today_start,
+        PaymentModel.status.in_(["approved", "executing", "success"])
+    )
+    current_daily_spend = (await db.execute(daily_spend_query)).scalar() or 0
+    if current_daily_spend + payment.amount > settings.DAILY_SPENDING_LIMIT:
+        await create_audit_event(db, "payment_approval_denied", {"payment_id": payment.id, "reason": "Exceeds daily spending limit"})
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Payment exceeds daily spending limit")
+
     payment.status = "approved"
     payment.approved_by = payment_approve.approved_by
     await db.commit()
@@ -110,6 +133,11 @@ async def execute_payment(
     payment_id: str,
     db: AsyncSession = Depends(get_db)
 ):
+    # Emergency Kill Switch check
+    if settings.PAYMENTS_KILL_SWITCH:
+        await create_audit_event(db, "payment_execution_denied_kill_switch", {"payment_id": payment_id})
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Payments are currently disabled via emergency kill switch")
+
     result = await db.execute(select(PaymentModel).filter(PaymentModel.id == payment_id))
     payment = result.scalar_one_or_none()
 
@@ -123,14 +151,12 @@ async def execute_payment(
     await db.commit()
 
     try:
-        # Use real send_transaction and build explorer URL
         tx_hash = await wallet_client.send_transaction(
             network=payment.network,
             amount=payment.amount,
-            recipient_address="recipient_address_placeholder" # Real value would come from request
+            recipient_address=payment.recipient_address
         )
         
-        # Build the real explorer URL by network
         tx_url = "https://explorer.example.com"
         if payment.network == "solana":
             tx_url = f"https://explorer.solana.com/tx/{tx_hash}?cluster=devnet"
