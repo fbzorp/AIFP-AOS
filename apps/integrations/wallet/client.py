@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 import httpx
 from typing import Optional, Dict, Any
@@ -15,12 +16,26 @@ class MockEVMClient:
 class WalletClient:
     def __init__(
         self, 
+=======
+import logging
+from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+class WalletClient:
+    def __init__(
+        self,
+>>>>>>> 76e3403 (feat: implement Day 12 Part A - payments router, wallet & x402 integrations, and schemas)
         solana_rpc_url: str,
         evm_rpc_url: Optional[str],
         solana_private_key: Optional[str],
         evm_private_key: Optional[str],
         per_transaction_limit: float,
+<<<<<<< HEAD
         dry_run: bool = False
+=======
+        dry_run: bool = True
+>>>>>>> 76e3403 (feat: implement Day 12 Part A - payments router, wallet & x402 integrations, and schemas)
     ):
         self.solana_rpc_url = solana_rpc_url
         self.evm_rpc_url = evm_rpc_url
@@ -28,6 +43,7 @@ class WalletClient:
         self.evm_private_key = evm_private_key
         self.per_transaction_limit = per_transaction_limit
         self.dry_run = dry_run
+<<<<<<< HEAD
 
         # Initialize mock clients for now
         self.solana_client = MockSolanaClient()
@@ -70,3 +86,27 @@ class WalletClient:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
+=======
+        
+        logger.info(f"WalletClient initialized (dry_run={dry_run}, limit={per_transaction_limit})")
+
+    async def transfer(self, network: str, to_address: str, amount: float, currency: str) -> dict:
+        if amount > self.per_transaction_limit:
+            raise ValueError(f"Amount {amount} exceeds per-transaction limit of {self.per_transaction_limit}")
+            
+        if self.dry_run:
+            logger.info(f"[DRY RUN] Transferring {amount} {currency} to {to_address} on {network}")
+            return {
+                "status": "success",
+                "tx_hash": f"dry_run_hash_{network}_{amount}",
+                "tx_url": f"https://explorer.example.com/tx/dry_run_{network}"
+            }
+            
+        # Real implementation would go here
+        logger.info(f"Real transfer of {amount} {currency} to {to_address} on {network}")
+        return {
+            "status": "success",
+            "tx_hash": "real_tx_hash_placeholder",
+            "tx_url": "https://explorer.example.com/tx/real_placeholder"
+        }
+>>>>>>> 76e3403 (feat: implement Day 12 Part A - payments router, wallet & x402 integrations, and schemas)

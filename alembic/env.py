@@ -16,6 +16,7 @@ from apps.models.audit_event import AuditEventModel
 from apps.models.task import TaskModel
 from apps.models.approval import ApprovalModel
 from apps.models.source import SourceModel
+from apps.models.payment import PaymentModel
 
 config = context.config
 if config.config_file_name is not None:

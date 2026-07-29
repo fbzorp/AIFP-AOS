@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 import httpx
 from typing import Optional, Dict, Any
@@ -9,10 +10,25 @@ class X402Client:
         facilitator_url: Optional[str],
         wallet_client: WalletClient,
         x402_enabled: bool = False
+=======
+import logging
+from typing import Optional
+from apps.integrations.wallet.client import WalletClient
+
+logger = logging.getLogger(__name__)
+
+class X402Client:
+    def __init__(
+        self,
+        facilitator_url: str,
+        wallet_client: WalletClient,
+        x402_enabled: bool = True
+>>>>>>> 76e3403 (feat: implement Day 12 Part A - payments router, wallet & x402 integrations, and schemas)
     ):
         self.facilitator_url = facilitator_url
         self.wallet_client = wallet_client
         self.x402_enabled = x402_enabled
+<<<<<<< HEAD
         self.http = httpx.AsyncClient()
 
     async def _get_challenge(self, request_url: str) -> Dict[str, Any]:
@@ -80,3 +96,15 @@ class X402Client:
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
+=======
+        
+        logger.info(f"X402Client initialized (enabled={x402_enabled}, facilitator={facilitator_url})")
+
+    async def create_payment_request(self, amount: float, currency: str, purpose: str) -> str:
+        if not self.x402_enabled:
+            raise ValueError("X402 is not enabled")
+            
+        # Real implementation would call the facilitator API
+        logger.info(f"Creating X402 payment request for {amount} {currency} - {purpose}")
+        return f"{self.facilitator_url}/pay?amount={amount}&currency={currency}&purpose={purpose.replace(' ', '%20')}"
+>>>>>>> 76e3403 (feat: implement Day 12 Part A - payments router, wallet & x402 integrations, and schemas)
