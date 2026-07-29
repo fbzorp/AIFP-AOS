@@ -4,6 +4,7 @@ import asyncio
 from typing import Any, Dict, List, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 from apps.api.config import settings
+import litellm
 
 logger = logging.getLogger(__name__)
 
@@ -219,15 +220,28 @@ class MoltbookClient:
             if code and challenge:
                 logger.info(f"Verification required for post. Challenge: {challenge}")
                 # We need an LLM to solve the obfuscated math problem
-                from apps.core.models.factory import deepseek_fast
-                llm = deepseek_fast()
-                if not llm:
-                    logger.error("LLM factory returned None (missing API key?) - cannot solve challenge")
+
+                if not settings.DEEPSEEK_API_KEY:
+                    logger.error("DEEPSEEK_API_KEY not found - cannot solve challenge")
                     return data
 
                 prompt = f"Solve this Moltbook AI verification challenge. It is an obfuscated math problem. Extract the two numbers and the operation, compute the result, and respond with ONLY the number (e.g., '15.00').\n\nChallenge: {challenge}"
-                answer = await llm.complete(prompt)
-                answer = answer.strip()
+                
+                try:
+                    llm_response = await litellm.acompletion(
+                        model=settings.DEEPSEEK_PRIMARY_MODEL,
+                        api_key=settings.DEEPSEEK_API_KEY,
+                        api_base=settings.DEEPSEEK_API_BASE,
+                        messages=[
+                            {"role": "user", "content": prompt}
+                        ],
+                        timeout=30
+                    )
+                    answer = llm_response.choices[0].message.content.strip()
+                except Exception as e:
+                    logger.error(f"LiteLLM completion failed for verification challenge: {e}")
+                    return data
+
                 
                 logger.info(f"Submitting verification answer: {answer}")
                 verify_result = await self.verify_challenge(code, answer)
