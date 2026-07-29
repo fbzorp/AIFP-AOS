@@ -34,8 +34,11 @@ class AiFinPayClient:
 
     def _sign_nonce(self, nonce: str) -> str:
         """Sign nonce with Ed25519 key using aifinpay-agent SDK"""
-        if self.dry_run or not self.agent_secret:
+        if self.dry_run:
             return "dry_run_signature"
+        
+        if not self.agent_secret:
+            raise ValueError("Agent secret is required for signing in non-dry-run mode")
         
         # Use the aifinpay-agent SDK for proper Ed25519 signing
         try:
@@ -45,12 +48,12 @@ class AiFinPayClient:
             signature = agent.sign(message)
             logger.info(f"Successfully signed nonce with aifinpay-agent SDK")
             return signature
-        except ImportError:
+        except ImportError as e:
             logger.error("aifinpay-agent not installed - cannot sign transactions")
-            raise ValueError("aifinpay-agent package is required for signing")
+            raise ValueError("aifinpay-agent package is required for signing in non-dry-run mode") from e
         except Exception as e:
             logger.error(f"Failed to sign nonce with aifinpay-agent: {e}")
-            raise
+            raise ValueError(f"Failed to sign nonce: {e}") from e
 
     async def _request(self, method: str, path: str, **kwargs) -> Dict[str, Any]:
         if self.dry_run:

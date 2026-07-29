@@ -1,6 +1,7 @@
 import httpx
 import logging
 import time
+import asyncio
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 
@@ -90,7 +91,7 @@ class MCPClient:
                 logger.warning(f"Tool call cost {cost_usd} exceeds max_usd {self.max_usd}")
                 raise ValueError(f"Cost {cost_usd} exceeds maximum allowed {self.max_usd}")
             
-            # Record successful call
+            # Record successful call in memory
             call_record = MCPToolCall(
                 agent=agent,
                 tool_name=tool_name,
@@ -100,6 +101,9 @@ class MCPClient:
                 cost_usd=cost_usd
             )
             self._call_history.append(call_record)
+            
+            # Record as audit event in database
+            await self._record_audit_event(call_record)
             
             logger.info(f"MCP tool call succeeded: {tool_name} (latency: {latency_ms:.2f}ms)")
             return result
@@ -138,6 +142,35 @@ class MCPClient:
             
             logger.error(f"MCP tool call failed: {tool_name} - {error_msg}")
             raise
+    
+    async def _record_audit_event(self, call: MCPToolCall):
+        """Record MCP call as audit event in database"""
+        try:
+            from apps.models.base import get_sync_session
+            from apps.core.audit.service import record_event
+            
+            def _record():
+                with get_sync_session() as session:
+                    record_event(
+                        session,
+                        call.agent,
+                        "mcp_call_succeeded",
+                        f"MCP tool call succeeded: {call.tool_name}",
+                        {
+                            "tool_name": call.tool_name,
+                            "request_id": call.request_id,
+                            "latency_ms": call.latency_ms,
+                            "cost_usd": call.cost_usd,
+                            "status": call.status
+                        }
+                    )
+                    session.commit()
+            
+            await asyncio.to_thread(_record)
+            logger.info(f"Recorded audit event for MCP call: {call.tool_name}")
+            
+        except Exception as e:
+            logger.error(f"Failed to record audit event for MCP call: {e}")
     
     async def payable_fetch(self, agent: str, payable_id: str) -> Dict[str, Any]:
         """Fetch payable information"""
