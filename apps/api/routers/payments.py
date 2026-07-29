@@ -14,6 +14,8 @@ from apps.schemas.audit_event import AuditEventCreate
 from apps.api.config import settings
 from apps.integrations.wallet.client import WalletClient
 from apps.integrations.x402.client import X402Client
+from apps.integrations.aifinpay.client import AiFinPayClient
+from apps.integrations.mcp.client import MCPClient
 from apps.core.audit.service import record_event
 
 router = APIRouter()
@@ -33,6 +35,19 @@ x402_client = X402Client(
     facilitator_url=settings.X402_FACILITATOR_URL,
     wallet_client=wallet_client,
     x402_enabled=settings.X402_ENABLED
+)
+
+aifinpay_client = AiFinPayClient(
+    base_url=settings.AIFP_BASE_URL,
+    agent_secret=settings.AIFINPAY_AGENT_SECRET,
+    agent_pubkey=settings.AIFINPAY_AGENT_PUBKEY,
+    dry_run=(settings.PAYMENTS_NETWORK == "devnet")
+)
+
+mcp_client = MCPClient(
+    mcp_server_url="http://aifinpay-mcp:3000",
+    max_usd=settings.AIFINPAY_MAX_USD,
+    enabled=settings.AIFINPAY_MCP_ENABLED
 )
 
 async def create_audit_event(db: AsyncSession, event_type: str, details: dict):

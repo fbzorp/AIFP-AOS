@@ -33,6 +33,15 @@ python-jose[cryptography]>=3.3.0
 # Google ADK (Agent Development Kit)
 google-adk>=0.1.0
 
+# AiFinPay SDK
+aifinpay-agent>=0.1.0
+
+# Blockchain & Cryptography
+solana-py>=0.36.0
+solders>=0.20.0
+web3>=7.0.0
+eth-account>=0.13.0
+
 # Testing
 pytest>=8.2.2
 pytest-asyncio>=0.23.7

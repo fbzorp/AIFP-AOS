@@ -28,6 +28,12 @@ class PaymentResponse(PaymentBase):
     approved_by: Optional[str] = None
     error: Optional[str] = None
     created_at: datetime
+    # Additional fields for MCP integration
+    mcp_tool: Optional[str] = None
+    request_id: Optional[str] = None
+    latency_ms: Optional[float] = None
+    cost_usd: Optional[float] = None
+    wallet: Optional[str] = None
 
     class Config:
         from_attributes = True
