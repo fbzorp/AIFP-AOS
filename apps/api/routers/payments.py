@@ -123,19 +123,32 @@ async def execute_payment(
     await db.commit()
 
     try:
-        tx_result = await wallet_client.transfer(
+        # Use real send_transaction and build explorer URL
+        tx_hash = await wallet_client.send_transaction(
             network=payment.network,
-            to_address="recipient_address_placeholder", 
             amount=payment.amount,
-            currency=payment.currency
+            recipient_address="recipient_address_placeholder" # Real value would come from request
         )
+        
+        # Build the real explorer URL by network
+        tx_url = "https://explorer.example.com"
+        if payment.network == "solana":
+            tx_url = f"https://explorer.solana.com/tx/{tx_hash}?cluster=devnet"
+        elif payment.network == "evm":
+            tx_url = f"https://sepolia.etherscan.io/tx/{tx_hash}"
+
         payment.status = "success"
-        payment.tx_hash = tx_result.get("tx_hash")
-        payment.tx_url = tx_result.get("tx_url")
+        payment.tx_hash = tx_hash
+        payment.tx_url = tx_url
         await db.commit()
         await db.refresh(payment)
 
-        await create_audit_event(db, "payment_executed", {"payment_id": payment.id, "tx_hash": payment.tx_hash, "status": "success"})
+        await create_audit_event(db, "payment_executed", {
+            "payment_id": payment.id, 
+            "tx_hash": tx_hash, 
+            "explorer_url": tx_url,
+            "status": "success"
+        })
 
     except Exception as e:
         payment.status = "failed"
