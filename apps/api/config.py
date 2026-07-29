@@ -27,7 +27,11 @@ class Settings(BaseSettings):
     
     # AiFinPay SDK
     AIFP_API_KEY: Optional[str] = None
-    AIFP_BASE_URL: str = "https://api.aifinpay.com"
+    AIFP_BASE_URL: str = "https://api.aifinpay.io"
+    AIFINPAY_AGENT_SECRET: Optional[str] = None  # base58 Ed25519 secret key
+    AIFINPAY_AGENT_PUBKEY: Optional[str] = None  # Ed25519 public key
+    AIFINPAY_MAX_USD: float = 0.10  # per payable_fetch cap
+    AIFINPAY_MCP_ENABLED: bool = False
     
     # Moltbook / Social
     MOLTBOOK_BASE_URL: str = "https://www.moltbook.com"
@@ -52,7 +56,7 @@ class Settings(BaseSettings):
     
     # X402 Settings
     X402_ENABLED: bool = True
-    X402_FACILITATOR_URL: str = "https://x402.aifinpay.com"
+    X402_FACILITATOR_URL: str = "https://api.aifinpay.io"
     PAYMENTS_NETWORK: str = "devnet"
 
     # Security / Limits

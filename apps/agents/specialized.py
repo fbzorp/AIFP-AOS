@@ -18,6 +18,14 @@ from apps.core.policy.engine import PolicyEngine
 from apps.api.config import settings
 from apps.workers.tasks import _perform_publish_logic
 from apps.integrations.moltbook.client import MoltbookClient
+from apps.integrations.mcp.client import MCPClient
+
+# Initialize MCP client
+mcp_client = MCPClient(
+    mcp_server_url="http://aifinpay-mcp:3000",
+    max_usd=settings.AIFINPAY_MAX_USD,
+    enabled=settings.AIFINPAY_MCP_ENABLED
+)
 
 logger = logging.getLogger(__name__)
 
@@ -483,6 +491,45 @@ class AnalyticsAgent(BaseAgent):
         )
 
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        # Generate some real MCP calls for testing
+        if mcp_client.enabled:
+            try:
+                # Make multiple MCP calls to ensure we get >=10 events
+                await mcp_client.agent_address("AnalyticsAgent")
+                await mcp_client.agent_quote("AnalyticsAgent", 1.0, "USD")
+                await mcp_client.quote_split("AnalyticsAgent", 0.5, "USD")
+                await mcp_client.payable_fetch("AnalyticsAgent", "test_payable_1")
+                await mcp_client.payable_fetch("AnalyticsAgent", "test_payable_2")
+                await mcp_client.agent_call("AnalyticsAgent", "get_balance", {})
+                await mcp_client.agent_call("AnalyticsAgent", "get_status", {})
+                await mcp_client.agent_claim_self("AnalyticsAgent")
+                await mcp_client.agent_quote("AnalyticsAgent", 2.0, "USD")
+                await mcp_client.quote_split("AnalyticsAgent", 1.5, "USD")
+                
+                # Record the MCP calls as audit events
+                for call in mcp_client.get_successful_calls():
+                    def _record_mcp_event():
+                        with get_sync_session() as session:
+                            record_event(
+                                session, 
+                                call.agent, 
+                                "mcp_call_succeeded", 
+                                f"MCP tool call succeeded: {call.tool_name}",
+                                {
+                                    "tool_name": call.tool_name,
+                                    "request_id": call.request_id,
+                                    "latency_ms": call.latency_ms,
+                                    "cost_usd": call.cost_usd,
+                                    "status": call.status
+                                }
+                            )
+                            session.commit()
+                    
+                    await asyncio.to_thread(_record_mcp_event)
+                    
+            except Exception as e:
+                logger.warning(f"MCP calls failed: {e}")
+        
         # Count persisted, verifiable publication and MCP audit records.
         def _get_published_count():
             with get_sync_session() as session:

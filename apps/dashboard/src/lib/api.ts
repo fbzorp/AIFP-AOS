@@ -111,6 +111,28 @@ export interface Metrics {
   campaigns: number;
   sources: number;
   recent_activity: AuditEvent[];
+  mcp_calls?: number;
+}
+
+export interface Payment {
+  id: string;
+  purpose: string;
+  recipient_address: string;
+  amount: number;
+  currency: string;
+  network: string;
+  status: string;
+  tx_hash?: string;
+  tx_url?: string;
+  x402_request_url?: string;
+  approved_by?: string;
+  error?: string;
+  created_at: string;
+  mcp_tool?: string;
+  request_id?: string;
+  latency_ms?: number;
+  cost_usd?: number;
+  wallet?: string;
 }
 
 export interface Health {
@@ -189,5 +211,31 @@ export const rejectProposal = async (proposalId: string) => {
 
 export const publishContentItem = async (contentId: string) => {
   const { data } = await api.post(`/content/${contentId}/publish`);
+  return data;
+};
+
+export const fetchPayments = async (): Promise<Payment[]> => {
+  const { data } = await api.get('/payments');
+  return data;
+};
+
+export const createPayment = async (payment: {
+  purpose: string;
+  recipient_address: string;
+  amount: number;
+  currency: string;
+  network: string;
+}): Promise<Payment> => {
+  const { data } = await api.post('/payments', payment);
+  return data;
+};
+
+export const approvePayment = async (paymentId: string, approvedBy: string): Promise<Payment> => {
+  const { data } = await api.post(`/payments/${paymentId}/approve`, { approved_by: approvedBy });
+  return data;
+};
+
+export const executePayment = async (paymentId: string): Promise<Payment> => {
+  const { data } = await api.post(`/payments/${paymentId}/execute`);
   return data;
 };
