@@ -508,27 +508,6 @@ class AnalyticsAgent(BaseAgent):
                 await mcp_client.agent_quote("AnalyticsAgent", 2.0, "USD")
                 await mcp_client.quote_split("AnalyticsAgent", 1.5, "USD")
                 
-                # Record the MCP calls as audit events
-                for call in mcp_client.get_successful_calls():
-                    def _record_mcp_event():
-                        with get_sync_session() as session:
-                            record_event(
-                                session, 
-                                call.agent, 
-                                "mcp_call_succeeded", 
-                                f"MCP tool call succeeded: {call.tool_name}",
-                                {
-                                    "tool_name": call.tool_name,
-                                    "request_id": call.request_id,
-                                    "latency_ms": call.latency_ms,
-                                    "cost_usd": call.cost_usd,
-                                    "status": call.status
-                                }
-                            )
-                            session.commit()
-                    
-                    await asyncio.to_thread(_record_mcp_event)
-                    
                 logger.info(f"Successfully completed {len(mcp_client.get_successful_calls())} MCP calls")
                     
             except Exception as e:

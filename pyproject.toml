@@ -40,3 +40,6 @@ filterwarnings = [
     "ignore:.*Using .httpx. with .starlette.testclient. is deprecated.*",
     "ignore:.*BaseAgentConfig is deprecated.*:DeprecationWarning",
 ]
+markers = [
+    "integration: marks tests as integration tests requiring real credentials (deselect with '-m \"not integration\"')",
+]

@@ -31,6 +31,12 @@ def upgrade():
         sa.Column('error', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
+        # MCP integration fields
+        sa.Column('mcp_tool', sa.String(), nullable=True),
+        sa.Column('request_id', sa.String(), nullable=True),
+        sa.Column('latency_ms', sa.Float(), nullable=True),
+        sa.Column('cost_usd', sa.Float(), nullable=True),
+        sa.Column('wallet', sa.String(), nullable=True),
     )
 
 def downgrade():
