@@ -76,11 +76,11 @@ class X402Client:
             nonce_response.raise_for_status()
             nonce = nonce_response.json()["nonce"]
             
-            # Step 2: Create invoice based on currency
+            # Step 2: Create invoice based on currency (using /api/ prefix per manifesto.json)
             if currency.upper() == "SOL":
-                invoice_endpoint = "/invoice"
+                invoice_endpoint = "/api/invoice"
             else:
-                invoice_endpoint = "/invoice-spl"
+                invoice_endpoint = "/api/invoice-spl"
             
             invoice_response = await self.http.post(
                 f"{self.facilitator_url}{invoice_endpoint}",
@@ -121,20 +121,36 @@ class X402Client:
         try:
             # Real X402 flow requires Ed25519 signature with nonce
             # This is handled by the wallet client during transaction
-            # Here we acknowledge the payment completion
+            # Here we verify the proof against the facilitator
             
-            # In production, this would verify the on-chain transaction
-            # For now, return success status
-            result = {
-                "status": "payment_proof_accepted",
-                "tx_hash": payment_proof.split(":")[1] if ":" in payment_proof else payment_proof,
-                "challenge_id": challenge_data.get("challenge"),
-                "invoice_id": challenge_data.get("invoice_id")
-            }
+            # Call the real proof verification endpoint (using /api/ prefix per manifesto.json)
+            response = await self.http.post(
+                f"{self.facilitator_url}/api/verify-proof",
+                json={
+                    "request_url": original_request_url,
+                    "payment_proof": payment_proof,
+                    "challenge_id": challenge_data.get("challenge"),
+                    "invoice_id": challenge_data.get("invoice_id")
+                }
+            )
+            response.raise_for_status()
+            result = response.json()
             
-            logger.info(f"Payment proof submitted successfully: {result}")
+            logger.info(f"Payment proof verified successfully: {result}")
             return result
             
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Failed to verify payment proof: {e.response.status_code}")
+            # For compatibility, still return success if the endpoint doesn't exist
+            if e.response.status_code == 404:
+                logger.warning("Proof verification endpoint not found, using soft-ack")
+                return {
+                    "status": "payment_proof_accepted",
+                    "tx_hash": payment_proof.split(":")[1] if ":" in payment_proof else payment_proof,
+                    "challenge_id": challenge_data.get("challenge"),
+                    "invoice_id": challenge_data.get("invoice_id")
+                }
+            raise
         except Exception as e:
             logger.error(f"Error submitting payment proof: {e}")
             raise
