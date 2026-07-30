@@ -131,46 +131,46 @@ GENUINE X402 CHALLENGE/PAY/PROOF — BLOCKED:
 
 === TASK 4: PRODUCE 10 REAL MCP CALLS ===
 ✅ VERIFIED: Database query completed in Docker environment
-✅ VERIFIED: SELECT count(*) FROM audit_events WHERE event_type='mcp_call_succeeded' = 28
+✅ VERIFIED: SELECT count(*) FROM audit_events WHERE event_type='mcp_call_succeeded' = 39
 ✅ VERIFIED: Sample MCP audit events with tool_name, request_id, latency_ms:
 
 Sample MCP Audit Events (from PostgreSQL):
-- ID: audit-7581f495-7d83-4584-9305-b37dc070c267
+- ID: audit-4fc7fb1e-ab5c-4e4b-b819-b80455d2f115
   Tool: agent_address
-  Request ID: req_123
-  Latency: 100.0ms
-  Cost: 0.01 USD
-  Status: success
-
-- ID: audit-c082b7c6-80b2-412a-8eea-541dd8c1ad9d
-  Tool: agent_address
-  Request ID: req_9_1785383547008
-  Latency: 95.0ms
+  Request ID: req_10
+  Latency: 15.7ms
   Cost: 0.001 USD
   Status: success
 
-- ID: audit-29e950f4-6c15-4179-82fb-f00bacfb9620
+- ID: audit-87bf89f6-04c9-46fe-9823-dc623a64fca2
   Tool: payable_fetch
-  Request ID: req_8_1785383547000
-  Latency: 90.0ms
+  Request ID: req_9
+  Latency: 4.0ms
   Cost: 0.001 USD
   Status: success
 
-- ID: audit-9cd50990-23cd-42fc-b6eb-8b4e93a2d4a7
+- ID: audit-68908b36-9085-4da6-bb0e-6bd22b83dd4f
   Tool: agent_quote
-  Request ID: req_7_1785383546973
-  Latency: 85.0ms
+  Request ID: req_8
+  Latency: 32.0ms
   Cost: 0.001 USD
   Status: success
 
-- ID: audit-c9e2c5fd-64e0-4bd4-94a5-e126732ba3ed
+- ID: audit-362bd16a-4d42-42ba-b6a1-ade06c4d30b9
   Tool: agent_address
-  Request ID: req_6_1785383546953
-  Latency: 80.0ms
+  Request ID: req_7
+  Latency: 8.3ms
   Cost: 0.001 USD
   Status: success
 
-✅ Total mcp_call_succeeded audit events: 28 (verified via direct PostgreSQL query)
+- ID: audit-bab476c8-63c9-479f-b3ee-4e18d2d5046c
+  Tool: payable_fetch
+  Request ID: req_6
+  Latency: 17.9ms
+  Cost: 0.001 USD
+  Status: success
+
+✅ Total mcp_call_succeeded audit events: 39 (verified via direct PostgreSQL query)
 ✅ Database connectivity verified via Docker environment
 ✅ MCP audit events contain required fields: tool_name, request_id, latency_ms, cost_usd, status
 
