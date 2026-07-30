@@ -129,11 +129,22 @@ class X402Client:
                 tx_hash = await self.wallet_client.send_transaction(network, amount, recipient, force_real=True)
                 payment_proof = f"tx_hash:{tx_hash},challenge:{challenge_data['challenge']}"
 
-                # Retry original request with payment proof
+                # Prepare auth headers for retry
                 proof_result = await self._submit_payment_proof(url, payment_proof, challenge_data)
                 
-                # Second attempt after payment
-                r = await self.http.request(method, url, headers={"X-Payment-Proof": payment_proof}, **kwargs)
+                # Second attempt after payment with proper X402 auth headers
+                retry_headers = kwargs.get('headers', {}).copy()
+                
+                if proof_result.get("status") == "using_sdk_auth":
+                    # Use SDK auth headers for the retry
+                    retry_headers.update(proof_result["auth_headers"])
+                    logger.info(f"Retrying with SDK auth headers")
+                else:
+                    # Fallback to manual proof construction
+                    retry_headers["X-Payment-Proof"] = payment_proof
+                    logger.info(f"Retrying with manual payment proof header")
+                
+                r = await self.http.request(method, url, headers=retry_headers, **kwargs)
                 r.raise_for_status()
                 return r.json()
             else:
@@ -144,24 +155,36 @@ class X402Client:
         logger.info(f"Getting X402 challenge for {request_url} with currency {currency}")
         
         try:
-            # Step 1: Get nonce (60s TTL)
+            # Step 1: Get nonce (60s TTL) - working endpoint
             nonce_response = await self.http.get(f"{self.facilitator_url}/nonce")
             nonce_response.raise_for_status()
             nonce = nonce_response.json()["nonce"]
             
-            # Step 2: Create invoice based on currency (using /api/ prefix per manifesto.json)
+            # Step 2: Create invoice based on currency (using correct manifesto.json paths)
+            # manifesto.json actions: "reserve_seat_sol":"POST /api/invoice", "reserve_seat_spl":"POST /api/invoice-spl"
             if currency.upper() == "SOL":
-                invoice_endpoint = "/api/invoice"
+                invoice_endpoint = "/api/invoice"  # reserve_seat_sol
             else:
-                invoice_endpoint = "/api/invoice-spl"
+                invoice_endpoint = "/api/invoice-spl"  # reserve_seat_spl
+            
+            # Build proper invoice request per manifesto.json
+            invoice_payload = {
+                "amount": 0.01,  # Minimum amount from spec
+                "currency": currency,
+                "network": "solana"
+            }
+            
+            # Add auth headers if SDK agent is available
+            headers = {}
+            if self.agent:
+                auth_headers = self.agent.auth_headers()
+                headers.update(auth_headers)
+                logger.info(f"Using SDK auth headers for invoice request")
             
             invoice_response = await self.http.post(
                 f"{self.facilitator_url}{invoice_endpoint}",
-                json={
-                    "amount": 0.01,  # Minimum amount from spec
-                    "currency": currency,
-                    "network": "solana"
-                }
+                json=invoice_payload,
+                headers=headers
             )
             invoice_response.raise_for_status()
             invoice_data = invoice_response.json()
@@ -181,7 +204,7 @@ class X402Client:
             return challenge_data
             
         except httpx.HTTPStatusError as e:
-            logger.error(f"Failed to get X402 challenge: {e.response.status_code}")
+            logger.error(f"Failed to get X402 challenge: {e.response.status_code} - {e.response.text}")
             raise
         except Exception as e:
             logger.error(f"Error getting X402 challenge: {e}")
@@ -192,40 +215,34 @@ class X402Client:
         logger.info(f"Submitting payment proof for {original_request_url}")
         
         try:
-            # Real X402 flow requires Ed25519 signature with nonce
-            # This is handled by the wallet client during transaction
-            # Here we verify the proof against the facilitator
+            # Per manifesto.json, there is no separate verify-proof endpoint
+            # The proper X402 flow uses SDK auth headers (x-agent-pubkey, x-nonce, x-signature)
+            # directly in the original request retry after payment
             
-            # Call the real proof verification endpoint (using /api/ prefix per manifesto.json)
-            response = await self.http.post(
-                f"{self.facilitator_url}/api/verify-proof",
-                json={
-                    "request_url": original_request_url,
-                    "payment_proof": payment_proof,
-                    "challenge_id": challenge_data.get("challenge"),
-                    "invoice_id": challenge_data.get("invoice_id")
-                }
-            )
-            response.raise_for_status()
-            result = response.json()
-            
-            logger.info(f"Payment proof verified successfully: {result}")
-            return result
-            
-        except httpx.HTTPStatusError as e:
-            logger.error(f"Failed to verify payment proof: {e.response.status_code}")
-            # For compatibility, still return success if the endpoint doesn't exist
-            if e.response.status_code == 404:
-                logger.warning("Proof verification endpoint not found, using soft-ack")
+            # If SDK agent is available, use its auth headers for the retry
+            if self.agent:
+                auth_headers = self.agent.auth_headers()
+                logger.info(f"Using SDK auth headers for payment proof retry")
                 return {
-                    "status": "payment_proof_accepted",
+                    "status": "using_sdk_auth",
+                    "auth_headers": auth_headers,
                     "tx_hash": payment_proof.split(":")[1] if ":" in payment_proof else payment_proof,
                     "challenge_id": challenge_data.get("challenge"),
                     "invoice_id": challenge_data.get("invoice_id")
                 }
-            raise
+            else:
+                # Fallback: return the payment proof for manual header construction
+                logger.warning("No SDK agent available, returning payment proof for manual retry")
+                return {
+                    "status": "payment_proof_ready",
+                    "tx_hash": payment_proof.split(":")[1] if ":" in payment_proof else payment_proof,
+                    "challenge_id": challenge_data.get("challenge"),
+                    "invoice_id": challenge_data.get("invoice_id"),
+                    "nonce": challenge_data.get("nonce")
+                }
+            
         except Exception as e:
-            logger.error(f"Error submitting payment proof: {e}")
+            logger.error(f"Error preparing payment proof: {e}")
             raise
 
     async def close(self):
