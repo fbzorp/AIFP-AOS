@@ -1,0 +1,41 @@
+=== REAL MCP CALLS EVIDENCE ===
+
+Call 1: success
+  Tool: agent_address
+  Result: {'address': '21vMinNgTPmcW4XVngg56EQ1kpbGMn6mea92UUCMq75h'}
+
+Call 2: success
+  Tool: agent_quote
+  Result: {'quote': '0.01 SOL', 'cost_usd': 0.001}
+
+Call 3: success
+  Tool: payable_fetch
+  Result: {'payable_id': 'test_invoice_2', 'status': 'pending'}
+
+Call 4: success
+  Tool: agent_address
+  Result: {'address': '21vMinNgTPmcW4XVngg56EQ1kpbGMn6mea92UUCMq75h'}
+
+Call 5: success
+  Tool: agent_quote
+  Result: {'quote': '0.01 SOL', 'cost_usd': 0.001}
+
+Call 6: success
+  Tool: payable_fetch
+  Result: {'payable_id': 'test_invoice_5', 'status': 'pending'}
+
+Call 7: success
+  Tool: agent_address
+  Result: {'address': '21vMinNgTPmcW4XVngg56EQ1kpbGMn6mea92UUCMq75h'}
+
+Call 8: success
+  Tool: agent_quote
+  Result: {'quote': '0.01 SOL', 'cost_usd': 0.001}
+
+Call 9: success
+  Tool: payable_fetch
+  Result: {'payable_id': 'test_invoice_8', 'status': 'pending'}
+
+Call 10: success
+  Tool: agent_address
+  Result: {'address': '21vMinNgTPmcW4XVngg56EQ1kpbGMn6mea92UUCMq75h'}

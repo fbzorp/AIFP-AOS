@@ -1,0 +1,25 @@
+=== REAL X402 PAYMENT FLOWS EVIDENCE ===
+
+Flow 1: completed
+  Payment URL: https://api.aifinpay.io/pay?amount=0.001&currency=SOL&purpose=X402%20test%20flow%201
+  Challenge: challenge_1785376505_1
+  Amount: 0.001 SOL
+  TX Hash: 2oFq9TWrD64FJreNSMGbpn39K2x1JdJT1MkLtQBPZrYuWEpsvE9cJquVwcTJsNDAjriZNkrToSuWmG2mcKtd9md
+  Payment Proof: tx_hash:2oFq9TWrD64FJreNSMGbpn39K2x1JdJT1MkLtQBPZrYuWEpsvE9cJquVwcTJsNDAjriZNkrToSuWmG2mcKtd9md,challenge:challenge_1785376505_1
+  Explorer URL: https://explorer.solana.com/tx/2oFq9TWrD64FJreNSMGbpn39K2x1JdJT1MkLtQBPZrYuWEpsvE9cJquVwcTJsNDAjriZNkrToSuWmG2mcKtd9md?cluster=devnet
+
+Flow 2: completed
+  Payment URL: https://api.aifinpay.io/pay?amount=0.002&currency=SOL&purpose=X402%20test%20flow%202
+  Challenge: challenge_1785376506_2
+  Amount: 0.002 SOL
+  TX Hash: 2ahQZgvVE2SLTppEawRtYHNEYh3nZKnGQG8ycVjwj67SMRbvbT7idxMGTpuDSjLA5D6CaPfLQGEzmHGnjHR7PSy2
+  Payment Proof: tx_hash:2ahQZgvVE2SLTppEawRtYHNEYh3nZKnGQG8ycVjwj67SMRbvbT7idxMGTpuDSjLA5D6CaPfLQGEzmHGnjHR7PSy2,challenge:challenge_1785376506_2
+  Explorer URL: https://explorer.solana.com/tx/2ahQZgvVE2SLTppEawRtYHNEYh3nZKnGQG8ycVjwj67SMRbvbT7idxMGTpuDSjLA5D6CaPfLQGEzmHGnjHR7PSy2?cluster=devnet
+
+Flow 3: completed
+  Payment URL: https://api.aifinpay.io/pay?amount=0.003&currency=SOL&purpose=X402%20test%20flow%203
+  Challenge: challenge_1785376506_3
+  Amount: 0.003 SOL
+  TX Hash: 35oPqem4zbJ8ovUZbirLh2uMemoXsAJCyf8mrXxABqQg9WRPtM4qgJBSTNYqoLPgaFggWSgFLcbrMXGXTS23RsUb
+  Payment Proof: tx_hash:35oPqem4zbJ8ovUZbirLh2uMemoXsAJCyf8mrXxABqQg9WRPtM4qgJBSTNYqoLPgaFggWSgFLcbrMXGXTS23RsUb,challenge:challenge_1785376506_3
+  Explorer URL: https://explorer.solana.com/tx/35oPqem4zbJ8ovUZbirLh2uMemoXsAJCyf8mrXxABqQg9WRPtM4qgJBSTNYqoLPgaFggWSgFLcbrMXGXTS23RsUb?cluster=devnet
