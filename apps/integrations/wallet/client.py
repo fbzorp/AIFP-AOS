@@ -161,22 +161,29 @@ class WalletClient:
             # Convert amount to wei (1 ETH = 1,000,000,000,000,000,000 wei)
             amount_wei = self._evm_client.to_wei(amount, 'ether')
             
-            # Build transaction with EIP-1559 format for web3 v7 compatibility
-            transaction = {
-                'to': recipient_address,
+            # Get current gas price and nonce
+            gas_price = self._evm_client.eth.gas_price
+            nonce = self._evm_client.eth.get_transaction_count(self._evm_account.address)
+            chain_id = self._evm_client.eth.chain_id
+            
+            # Convert address to checksum format
+            from eth_utils import to_checksum_address
+            recipient_checksum = to_checksum_address(recipient_address)
+            
+            # Build transaction with proper web3 v7 format
+            transaction_dict = {
+                'to': recipient_checksum,
                 'value': amount_wei,
-                'gas': 21000,  # Standard gas limit for simple transfer
-                'maxFeePerGas': self._evm_client.eth.gas_price,
-                'maxPriorityFeePerGas': self._evm_client.eth.gas_price,
-                'nonce': self._evm_client.eth.get_transaction_count(self._evm_account.address),
-                'chainId': self._evm_client.eth.chain_id,
-                'type': 2  # EIP-1559 transaction type
+                'gas': 21000,
+                'gasPrice': gas_price,
+                'nonce': nonce,
+                'chainId': chain_id
             }
             
-            # Sign transaction
-            signed_tx = self._evm_client.eth.account.sign_transaction(transaction, self.evm_private_key)
+            # Sign transaction using the account object directly
+            signed_tx = self._evm_account.sign_transaction(transaction_dict)
             
-            # Send transaction (web3 v7 uses raw_transaction instead of rawTransaction)
+            # Send transaction
             tx_hash = self._evm_client.eth.send_raw_transaction(signed_tx.raw_transaction)
             
             logger.info(f"EVM transaction sent: {tx_hash.hex()}")
