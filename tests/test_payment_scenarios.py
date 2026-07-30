@@ -177,7 +177,7 @@ async def test_evm_transaction():
     logger.info("EVM transaction test completed")
 
 @pytest.mark.integration
-@pytest.mark.skip(reason="Requires live Solana devnet key and RPC connectivity for on-chain balance check")
+@pytest.mark.skipif(not settings.SOLANA_PRIVATE_KEY, reason="SOLANA_PRIVATE_KEY is unset")
 @pytest.mark.asyncio
 async def test_insufficient_balance():
     """Test insufficient-balance scenario with real on-chain balance failure"""
