@@ -1,3 +1,12 @@
 === REAL EVM BASE SEPOLIA TRANSACTION EVIDENCE ===
-Status: failed
-Error: EVM transaction failed: {'code': -32003, 'message': 'insufficient funds for gas * price + value: have 0 want 100126000000000'} (EVM requires funded wallet and network connectivity)
+Status: failed - INSUFFICIENT FUNDS
+Error: {'code': -32003, 'message': 'insufficient funds for gas * price + value: have 0 want 100126000000000'}
+Wallet Address: 0x994B897f486CC5EDd72C04BBF64d3dC9b60Ea309
+Required: 0.000126 ETH (gas * price + value)
+Available: 0 ETH
+RPC URL: https://base-sepolia.g.alchemy.com/v2/alch_PUQSi1lxHFMvwG3hjCthm
+Chain ID: 84532 (Base Sepolia)
+Explorer: https://sepolia.basescan.org
+
+BLOCKER: Base Sepolia wallet (0x994B897f486CC5EDd72C04BBF64d3dC9b60Ea309) has insufficient funds for gas.
+ACTION REQUIRED: Fund wallet on Base Sepolia to execute real EVM transaction.

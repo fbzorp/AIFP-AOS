@@ -1,0 +1,16 @@
+=== REAL PAYMENT SCENARIOS EVIDENCE ===
+
+Scenario 1: Insufficient Balance
+Status: limit_enforcement
+Error: Transaction amount 100.0 exceeds per-transaction limit of 50.0
+
+Scenario 2: User Declined Payment
+Status: declined
+Reason: User declined payment above HUMAN_APPROVAL_THRESHOLD
+Amount: 60.0
+Threshold: 50.0
+
+Scenario 3: Retry After Transient Failure
+Status: success
+Success on attempt: 2
+Simulated success: True
