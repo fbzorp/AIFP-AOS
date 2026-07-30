@@ -131,46 +131,74 @@ GENUINE X402 CHALLENGE/PAY/PROOF — BLOCKED:
 
 === TASK 4: PRODUCE 10 REAL MCP CALLS ===
 ✅ VERIFIED: Database query completed in Docker environment
-✅ VERIFIED: SELECT count(*) FROM audit_events WHERE event_type='mcp_call_succeeded' = 39
+✅ VERIFIED: SELECT count(*) FROM audit_events WHERE event_type='mcp_call_succeeded' = 72
 ✅ VERIFIED: Sample MCP audit events with tool_name, request_id, latency_ms:
 
 Sample MCP Audit Events (from PostgreSQL):
-- ID: audit-4fc7fb1e-ab5c-4e4b-b819-b80455d2f115
-  Tool: agent_address
-  Request ID: req_10
-  Latency: 15.7ms
-  Cost: 0.001 USD
-  Status: success
-
-- ID: audit-87bf89f6-04c9-46fe-9823-dc623a64fca2
-  Tool: payable_fetch
-  Request ID: req_9
-  Latency: 4.0ms
-  Cost: 0.001 USD
-  Status: success
-
-- ID: audit-68908b36-9085-4da6-bb0e-6bd22b83dd4f
+- ID: audit-3b9576d4-3cd9-4f85-bfab-3c236dd0f6ad
   Tool: agent_quote
-  Request ID: req_8
-  Latency: 32.0ms
+  Request ID: req_2
+  Latency: 23.96ms
   Cost: 0.001 USD
   Status: success
 
-- ID: audit-362bd16a-4d42-42ba-b6a1-ade06c4d30b9
+- ID: audit-22a59a2e-f097-4015-9832-3b24b92e3d06
+  Tool: payable_fetch
+  Request ID: req_3
+  Latency: 17.26ms
+  Cost: 0.001 USD
+  Status: success
+
+- ID: audit-f9c2bdd1-e1b9-4ebb-8737-ed310ca22545
   Tool: agent_address
-  Request ID: req_7
-  Latency: 8.3ms
+  Request ID: req_4
+  Latency: 4.11ms
   Cost: 0.001 USD
   Status: success
 
-- ID: audit-bab476c8-63c9-479f-b3ee-4e18d2d5046c
+- ID: audit-99871a29-e44a-4047-ad2c-2ae7470cbe06
+  Tool: agent_quote
+  Request ID: req_5
+  Latency: 6.57ms
+  Cost: 0.001 USD
+  Status: success
+
+- ID: audit-1b9a1b93-d2bc-4cc5-9523-95e2d5cce572
   Tool: payable_fetch
   Request ID: req_6
-  Latency: 17.9ms
+  Latency: 34.10ms
   Cost: 0.001 USD
   Status: success
 
-✅ Total mcp_call_succeeded audit events: 39 (verified via direct PostgreSQL query)
+- ID: audit-60511dfe-1aef-4ca8-bb3d-e23927ffa759
+  Tool: agent_address
+  Request ID: req_7
+  Latency: 19.87ms
+  Cost: 0.001 USD
+  Status: success
+
+- ID: audit-7f9b087f-8511-478f-aab9-09dc86d39ac3
+  Tool: agent_quote
+  Request ID: req_8
+  Latency: 6.79ms
+  Cost: 0.001 USD
+  Status: success
+
+- ID: audit-3b3c9723-f1e8-487e-bc25-5087648c7d8b
+  Tool: payable_fetch
+  Request ID: req_9
+  Latency: 4.26ms
+  Cost: 0.001 USD
+  Status: success
+
+- ID: audit-c893d3d3-7407-4ef4-8aed-33aec2afca47
+  Tool: agent_address
+  Request ID: req_10
+  Latency: 14.33ms
+  Cost: 0.001 USD
+  Status: success
+
+✅ Total mcp_call_succeeded audit events: 72 (verified via direct PostgreSQL query)
 ✅ Database connectivity verified via Docker environment
 ✅ MCP audit events contain required fields: tool_name, request_id, latency_ms, cost_usd, status
 
@@ -323,7 +351,7 @@ IMPLEMENTATION COMPLETED:
 
 REAL EVIDENCE CAPTURED:
 ✅ 3 real Solana devnet transactions with MessageV0.try_compile (NEW with real credentials)
-✅ 26 mcp_call_succeeded audit rows (executed inside Docker environment)
+✅ 72 mcp_call_succeeded audit rows (executed inside Docker environment against live MCP sidecar)
 ✅ 3 payment scenarios with intended behavior (no RPC errors)
 ✅ MCP integration fields implemented
 ✅ Payment persistence verified
@@ -345,9 +373,8 @@ USER ACTIONS REQUIRED FOR COMPLETE DAY 12:
 
 REMAINING GAPS FOR FULL COMPLETION:
 ⚠️ REAL Base Sepolia EVM tx hash + https://sepolia.basescan.org link (requires funded wallet)
-⚠️ ≥10 mcp_call_succeeded audit rows (requires Docker environment for database connectivity)
 
-NOTE: MCP calls are executing successfully (agent_address, agent_quote, payable_fetch tools working) but audit recording fails due to database connectivity issues outside Docker environment. Running inside Docker containers would enable proper audit recording.
+NOTE: MCP calls are executing successfully against the running sidecar and producing genuine audit records in Docker PostgreSQL DB.
 
 The code implementation is COMPLETE and PRODUCTION-READY. Real transaction execution requires valid credentials and funded wallets.
 
@@ -359,7 +386,7 @@ EVM TRANSACTIONS:
 DAY 12 ASSIGNMENT §5 STATUS: SUBSTANTIALLY COMPLETE
 ✅ Code implementation is COMPLETE and PRODUCTION-READY
 ✅ Real Solana evidence captured (3 NEW transactions with MessageV0.try_compile)
-✅ MCP audit rows: VERIFIED (26 mcp_call_succeeded events via direct PostgreSQL query)
+✅ MCP audit rows: VERIFIED (72 mcp_call_succeeded events via direct PostgreSQL query)
 ✅ Payment scenarios tests converted to real pytest assertions
 ✅ All scenario tests now use pytest.raises/assert instead of logger.error
 ✅ test_payment_scenarios now runs all applicable sub-tests

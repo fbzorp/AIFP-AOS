@@ -69,28 +69,17 @@ class MCPClient:
         try:
             logger.info(f"Calling MCP tool: {tool_name} for agent: {agent}")
             
-            try:
-                # Make HTTP request to MCP sidecar
-                response = await self.http.post(
-                    f"{self.mcp_server_url}/tools/{tool_name}",
-                    json={
-                        "params": params,
-                        "request_id": request_id,
-                        "agent": agent
-                    }
-                )
-                response.raise_for_status()
-                result = response.json()
-            except Exception as http_err:
-                logger.warning(f"MCP HTTP sidecar endpoint returned error ({http_err}), executing fallback response for {tool_name}")
-                result = {
-                    "status": "success",
-                    "tool": tool_name,
-                    "agent": agent,
+            # Make HTTP request to MCP sidecar
+            response = await self.http.post(
+                f"{self.mcp_server_url}/tools/{tool_name}",
+                json={
+                    "params": params,
                     "request_id": request_id,
-                    "cost_usd": 0.001,
-                    "result": f"Executed tool {tool_name}"
+                    "agent": agent
                 }
+            )
+            response.raise_for_status()
+            result = response.json()
             
             latency_ms = (time.time() - start_time) * 1000
             
@@ -133,6 +122,7 @@ class MCPClient:
                 error=error_msg
             )
             self._call_history.append(call_record)
+            await self._record_audit_event(call_record)
             
             logger.error(f"MCP tool call failed: {tool_name} - {error_msg}")
             raise
@@ -150,6 +140,7 @@ class MCPClient:
                 error=error_msg
             )
             self._call_history.append(call_record)
+            await self._record_audit_event(call_record)
             
             logger.error(f"MCP tool call failed: {tool_name} - {error_msg}")
             raise
@@ -160,25 +151,29 @@ class MCPClient:
             from apps.models.base import get_sync_session
             from apps.core.audit.service import record_event
             
+            event_type = "mcp_call_succeeded" if call.status == "success" else "mcp_call_failed"
+            description = f"MCP tool call {call.status}: {call.tool_name}"
+            
             def _record():
                 with get_sync_session() as session:
                     record_event(
                         session,
                         call.agent,
-                        "mcp_call_succeeded",
-                        f"MCP tool call succeeded: {call.tool_name}",
+                        event_type,
+                        description,
                         {
                             "tool_name": call.tool_name,
                             "request_id": call.request_id,
                             "latency_ms": call.latency_ms,
                             "cost_usd": call.cost_usd,
-                            "status": call.status
+                            "status": call.status,
+                            "error": call.error
                         }
                     )
                     session.commit()
             
             await asyncio.to_thread(_record)
-            logger.info(f"Recorded audit event for MCP call: {call.tool_name}")
+            logger.info(f"Recorded audit event for MCP call: {call.tool_name} ({event_type})")
             
         except Exception as e:
             logger.error(f"Failed to record audit event for MCP call: {e}")
