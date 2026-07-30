@@ -96,20 +96,5 @@ services:
     depends_on:
       - api
 
-  aifinpay-mcp:
-    image: node:20-alpine
-    container_name: aifp_mcp_dev
-    restart: unless-stopped
-    command: ["npx", "@aifinpay/mcp", "--host", "0.0.0.0"]
-    ports:
-      - "3010:3000"
-    env_file:
-      - .env
-    environment:
-      - AIFINPAY_AGENT_SECRET=${AIFINPAY_AGENT_SECRET}
-      - AIFINPAY_MAX_USD=${AIFINPAY_MAX_USD:-0.10}
-    depends_on:
-      - api
-
 volumes:
   postgres_data:

@@ -158,29 +158,30 @@ class TestMCPClient:
     async def test_mcp_max_usd_cap(self):
         """Test MCP max USD cap enforcement"""
         client = MCPClient(
-            mcp_server_url="http://localhost:3000",
             max_usd=0.01,
             enabled=True
         )
         
-        with patch.object(client, 'http') as mock_http:
-            mock_http.post = AsyncMock(return_value=Mock(
-                json=Mock(return_value={"cost_usd": 1.0, "status": "success"}),
-                raise_for_status=Mock()
-            ))
+        with patch.object(client, '_ensure_session') as mock_init:
+            mock_init.return_value = None
             
-            with pytest.raises(ValueError, match="exceeds maximum allowed"):
-                await client.call_tool(
-                    tool_name="agent_quote",
-                    agent="TestAgent",
-                    params={"amount": 1.0}
-                )
+            with patch.object(client, '_session') as mock_session:
+                mock_session.call_tool = AsyncMock(return_value=Mock(
+                    content=[{"type": "text", "text": '{"cost_usd": 1.0}'}],
+                    isError=False
+                ))
+                
+                with pytest.raises(ValueError, match="exceeds maximum allowed"):
+                    await client.call_tool(
+                        tool_name="agent_quote",
+                        agent="TestAgent",
+                        params={"amount": 1.0}
+                    )
     
     @pytest.mark.asyncio
     async def test_mcp_available_tools(self):
         """Test MCP available tools list"""
         client = MCPClient(
-            mcp_server_url="http://localhost:3000",
             max_usd=0.10,
             enabled=True
         )

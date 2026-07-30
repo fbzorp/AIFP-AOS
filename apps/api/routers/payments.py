@@ -47,7 +47,6 @@ aifinpay_client = AiFinPayClient(
 )
 
 mcp_client = MCPClient(
-    mcp_server_url="http://aifinpay-mcp:3000",
     max_usd=settings.AIFINPAY_MAX_USD,
     enabled=settings.AIFINPAY_MCP_ENABLED
 )
