@@ -1,0 +1,13 @@
+=== PAYMENT SCENARIOS EVIDENCE ===
+
+Scenario 1: Insufficient Balance
+Status: expected_failure
+Error: Transaction amount 100.0 exceeds per-transaction limit of 50.0
+
+Scenario 2: User Declined Payment
+Status: declined
+Error: Solana transaction failed: <class 'httpx2.HTTPStatusError'> raised in "GetLatestBlockhash" endpoint request
+
+Scenario 3: Retry After Temporary Failure
+Status: failed_after_retries
+Error: Solana transaction failed: <class 'httpx2.HTTPStatusError'> raised in "GetLatestBlockhash" endpoint request

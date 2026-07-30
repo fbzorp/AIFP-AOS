@@ -195,7 +195,7 @@ async def execute_payment(
         if payment.network == "solana":
             tx_url = f"https://explorer.solana.com/tx/{tx_hash}?cluster=devnet"
         elif payment.network == "evm":
-            tx_url = f"https://sepolia.etherscan.io/tx/{tx_hash}"
+            tx_url = f"https://sepolia.basescan.org/tx/{tx_hash}"
 
         # Calculate latency and cost
         latency_ms = (time.time() - start_time) * 1000

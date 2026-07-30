@@ -161,14 +161,16 @@ class WalletClient:
             # Convert amount to wei (1 ETH = 1,000,000,000,000,000,000 wei)
             amount_wei = self._evm_client.to_wei(amount, 'ether')
             
-            # Build transaction with legacy format for web3 v7 compatibility
+            # Build transaction with EIP-1559 format for web3 v7 compatibility
             transaction = {
                 'to': recipient_address,
                 'value': amount_wei,
                 'gas': 21000,  # Standard gas limit for simple transfer
-                'gasPrice': self._evm_client.eth.gas_price,
+                'maxFeePerGas': self._evm_client.eth.gas_price,
+                'maxPriorityFeePerGas': self._evm_client.eth.gas_price,
                 'nonce': self._evm_client.eth.get_transaction_count(self._evm_account.address),
-                'chainId': self._evm_client.eth.chain_id
+                'chainId': self._evm_client.eth.chain_id,
+                'type': 2  # EIP-1559 transaction type
             }
             
             # Sign transaction
@@ -195,7 +197,7 @@ class WalletClient:
         if network == "solana":
             tx_url = f"https://explorer.solana.com/tx/{tx_hash}?cluster=devnet"
         elif network == "evm":
-            tx_url = f"https://sepolia.etherscan.io/tx/{tx_hash}"
+            tx_url = f"https://sepolia.basescan.org/tx/{tx_hash}"
             
         return {
             "status": "success",

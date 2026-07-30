@@ -128,17 +128,20 @@ const Payments: React.FC = () => {
                 <th className="pb-3 pr-4">Amount</th>
                 <th className="pb-3 pr-4">Network</th>
                 <th className="pb-3 pr-4">Status</th>
+                <th className="pb-3 pr-4">Agent</th>
                 <th className="pb-3 pr-4">MCP Tool</th>
+                <th className="pb-3 pr-4">Request ID</th>
                 <th className="pb-3 pr-4">Latency</th>
                 <th className="pb-3 pr-4">Cost</th>
                 <th className="pb-3 pr-4">Wallet</th>
                 <th className="pb-3 pr-4">Transaction</th>
+                <th className="pb-3 pr-4">Error</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={10} className="py-8 text-center text-surface-500">
+                  <td colSpan={13} className="py-8 text-center text-surface-500">
                     Loading payments...
                   </td>
                 </tr>
@@ -172,7 +175,13 @@ const Payments: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3 pr-4 text-surface-300">
+                      {payment.approved_by || '-'}
+                    </td>
+                    <td className="py-3 pr-4 text-surface-300">
                       {payment.mcp_tool || '-'}
+                    </td>
+                    <td className="py-3 pr-4 font-mono text-xs text-surface-400">
+                      {payment.request_id ? `${payment.request_id.slice(0, 8)}...` : '-'}
                     </td>
                     <td className="py-3 pr-4">
                       {payment.latency_ms ? (
@@ -214,11 +223,14 @@ const Payments: React.FC = () => {
                         <span className="text-surface-500">-</span>
                       )}
                     </td>
+                    <td className="py-3 pr-4 text-red-400 text-xs max-w-xs truncate">
+                      {payment.error || '-'}
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={10} className="py-8 text-center text-surface-500">
+                  <td colSpan={13} className="py-8 text-center text-surface-500">
                     No payment transactions found
                   </td>
                 </tr>
