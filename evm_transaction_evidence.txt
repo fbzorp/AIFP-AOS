@@ -1,0 +1,3 @@
+=== REAL EVM BASE SEPOLIA TRANSACTION EVIDENCE ===
+Status: failed
+Error: EVM transaction failed: {'code': -32003, 'message': 'insufficient funds for gas * price + value: have 0 want 100126000000000'} (EVM requires funded wallet and network connectivity)
