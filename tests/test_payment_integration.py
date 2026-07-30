@@ -162,14 +162,11 @@ class TestMCPClient:
             enabled=True
         )
         
-        with patch.object(client, '_ensure_session') as mock_init:
+        with patch.object(client, '_ensure_agent') as mock_init:
             mock_init.return_value = None
             
-            with patch.object(client, '_session') as mock_session:
-                mock_session.call_tool = AsyncMock(return_value=Mock(
-                    content=[{"type": "text", "text": '{"cost_usd": 1.0}'}],
-                    isError=False
-                ))
+            with patch.object(client, '_call_agent_method') as mock_call:
+                mock_call.return_value = {"cost_usd": 1.0}
                 
                 with pytest.raises(ValueError, match="exceeds maximum allowed"):
                     await client.call_tool(
