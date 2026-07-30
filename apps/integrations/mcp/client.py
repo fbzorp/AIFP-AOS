@@ -160,137 +160,83 @@ class MCPClient:
                 "evm_address": str(self._agent.address)
             }
         elif tool_name == "agent_quote":
-            # Try SDK method, fall back to mock if it fails
-            try:
-                amount = params.get("amount", 0.01)
-                chain = params.get("chain", "solana")
-                result = await self._agent.quote_split(amount, chain)
-                return {
-                    "quote_id": f"q_{int(time.time() * 1000)}",
-                    "amount": amount,
-                    "currency": "USD",
-                    "cost_usd": 0.001,
-                    "sdk_result": str(result)
-                }
-            except Exception as e:
-                logger.warning(f"SDK quote_split failed, using mock: {e}")
-                return {
-                    "quote_id": f"q_{int(time.time() * 1000)}",
-                    "amount": params.get("amount", 0.01),
-                    "currency": "USD",
-                    "cost_usd": 0.001,
-                    "error": str(e)
-                }
+            # Direct SDK call - will raise on failure
+            amount = params.get("amount", 0.01)
+            chain = params.get("chain", "solana")
+            # quote_split is a property that returns a method - call it with keyword args
+            result = self._agent.quote_split(amount=amount, chain=chain)
+            return {
+                "quote_id": f"q_{int(time.time() * 1000)}",
+                "amount": amount,
+                "currency": "USD",
+                "cost_usd": 0.001,
+                "sdk_result": str(result)
+            }
         elif tool_name == "payable_fetch":
-            # Try SDK method, fall back to mock if it fails
-            try:
-                url = params.get("url", "")
-                if not url:
-                    raise ValueError("url parameter is required for payable_fetch")
-                result = await self._agent.get(url)
-                return {
-                    "url": url,
-                    "status": "success",
-                    "cost_usd": 0.001,
-                    "sdk_result": str(result)
-                }
-            except Exception as e:
-                logger.warning(f"SDK get failed, using mock: {e}")
-                return {
-                    "url": params.get("url", ""),
-                    "status": "mock_success",
-                    "cost_usd": 0.001,
-                    "error": str(e)
-                }
+            # Direct SDK call - will raise on failure
+            url = params.get("url", "")
+            if not url:
+                raise ValueError("url parameter is required for payable_fetch")
+            # Agent.get() is synchronous, not async
+            result = self._agent.get(url)
+            return {
+                "url": url,
+                "status": "success",
+                "cost_usd": 0.001,
+                "sdk_result": str(result)
+            }
         elif tool_name == "agent_call":
-            # Try SDK method, fall back to mock if it fails
-            try:
-                url = params.get("url", "")
-                body = params.get("body", {})
-                if not url:
-                    raise ValueError("url parameter is required for agent_call")
-                result = await self._agent.post(url, body)
-                return {
-                    "url": url,
-                    "method": "POST",
-                    "status": "success",
-                    "cost_usd": 0.001,
-                    "sdk_result": str(result)
-                }
-            except Exception as e:
-                logger.warning(f"SDK post failed, using mock: {e}")
-                return {
-                    "url": params.get("url", ""),
-                    "method": "POST",
-                    "status": "mock_success",
-                    "cost_usd": 0.001,
-                    "error": str(e)
-                }
+            # Direct SDK call - will raise on failure
+            url = params.get("url", "")
+            body = params.get("body", {})
+            if not url:
+                raise ValueError("url parameter is required for agent_call")
+            # Agent.post() is synchronous, not async
+            result = self._agent.post(url, body)
+            return {
+                "url": url,
+                "method": "POST",
+                "status": "success",
+                "cost_usd": 0.001,
+                "sdk_result": str(result)
+            }
         elif tool_name == "pay_with_split":
-            # Try SDK method, fall back to mock if it fails
-            try:
-                merchant = params.get("merchant", "")
-                amount = params.get("amount", 0.01)
-                order_id = params.get("order_id", "")
-                chain = params.get("chain", "solana")
-                result = await self._agent.pay_with_split_invoice(merchant, amount, order_id, chain)
-                return {
-                    "order_id": order_id,
-                    "merchant": merchant,
-                    "amount": amount,
-                    "chain": chain,
-                    "cost_usd": 0.001,
-                    "sdk_result": str(result)
-                }
-            except Exception as e:
-                logger.warning(f"SDK pay_with_split_invoice failed, using mock: {e}")
-                return {
-                    "order_id": params.get("order_id", f"ord_{int(time.time() * 1000)}"),
-                    "merchant": params.get("merchant", ""),
-                    "amount": params.get("amount", 0.01),
-                    "chain": params.get("chain", "solana"),
-                    "cost_usd": 0.001,
-                    "error": str(e)
-                }
+            # Direct SDK call - will raise on failure
+            merchant = params.get("merchant", "")
+            amount = params.get("amount", 0.01)
+            order_id = params.get("order_id", "")
+            chain = params.get("chain", "solana")
+            # pay_with_split_invoice takes keyword arguments
+            result = self._agent.pay_with_split_invoice(merchant=merchant, amount=amount, order_id=order_id, chain=chain)
+            return {
+                "order_id": order_id,
+                "merchant": merchant,
+                "amount": amount,
+                "chain": chain,
+                "cost_usd": 0.001,
+                "sdk_result": str(result)
+            }
         elif tool_name == "quote_split":
-            # Try SDK method, fall back to mock if it fails
-            try:
-                amount = params.get("amount", 0.01)
-                chain = params.get("chain", "solana")
-                result = await self._agent.quote_split(amount, chain)
-                return {
-                    "quote_id": f"qs_{int(time.time() * 1000)}",
-                    "amount": amount,
-                    "chain": chain,
-                    "cost_usd": 0.001,
-                    "sdk_result": str(result)
-                }
-            except Exception as e:
-                logger.warning(f"SDK quote_split failed, using mock: {e}")
-                return {
-                    "quote_id": f"qs_{int(time.time() * 1000)}",
-                    "amount": params.get("amount", 0.01),
-                    "chain": params.get("chain", "solana"),
-                    "cost_usd": 0.001,
-                    "error": str(e)
-                }
+            # Direct SDK call - will raise on failure
+            amount = params.get("amount", 0.01)
+            chain = params.get("chain", "solana")
+            # quote_split is a property that returns a method - call it with keyword args
+            result = self._agent.quote_split(amount=amount, chain=chain)
+            return {
+                "quote_id": f"qs_{int(time.time() * 1000)}",
+                "amount": amount,
+                "chain": chain,
+                "cost_usd": 0.001,
+                "sdk_result": str(result)
+            }
         elif tool_name == "agent_claim_self":
-            # Try SDK method, fall back to mock if it fails
-            try:
-                has_seat = await self._agent.has_seat()
-                return {
-                    "claimed": has_seat,
-                    "has_seat": has_seat,
-                    "cost_usd": 0.0
-                }
-            except Exception as e:
-                logger.warning(f"SDK has_seat failed, using mock: {e}")
-                return {
-                    "claimed": False,
-                    "has_seat": False,
-                    "cost_usd": 0.0,
-                    "error": str(e)
-                }
+            # Direct SDK call - has_seat() returns boolean, not awaitable
+            has_seat = self._agent.has_seat()
+            return {
+                "claimed": has_seat,
+                "has_seat": has_seat,
+                "cost_usd": 0.0
+            }
         else:
             raise ValueError(f"Unknown tool: {tool_name}")
     
