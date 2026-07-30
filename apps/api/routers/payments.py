@@ -35,7 +35,8 @@ wallet_client = WalletClient(
 x402_client = X402Client(
     facilitator_url=settings.X402_FACILITATOR_URL,
     wallet_client=wallet_client,
-    x402_enabled=settings.X402_ENABLED
+    x402_enabled=settings.X402_ENABLED,
+    signing_key_base58=settings.AIFINPAY_AGENT_SECRET
 )
 
 aifinpay_client = AiFinPayClient(
