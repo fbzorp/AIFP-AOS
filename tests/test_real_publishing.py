@@ -16,8 +16,10 @@ async def test_real_publish_flow_non_dry_run():
     # 2. Patch settings to enable autopublish
     original_autopublish = settings.MOLTBOOK_AUTOPUBLISH
     original_base_url = settings.MOLTBOOK_BASE_URL
+    original_allowed_submolts = settings.MOLTBOOK_ALLOWED_SUBMOLTS
     settings.MOLTBOOK_AUTOPUBLISH = True
     settings.MOLTBOOK_BASE_URL = "https://www.moltbook.com"
+    settings.MOLTBOOK_ALLOWED_SUBMOLTS = "general,agents,introductions,aifintech"
 
     # 1. Setup respx mock for Moltbook API
     with respx.mock(base_url="https://www.moltbook.com") as respx_mock:
@@ -90,3 +92,4 @@ async def test_real_publish_flow_non_dry_run():
         finally:
             settings.MOLTBOOK_AUTOPUBLISH = original_autopublish
             settings.MOLTBOOK_BASE_URL = original_base_url
+            settings.MOLTBOOK_ALLOWED_SUBMOLTS = original_allowed_submolts

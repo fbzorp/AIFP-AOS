@@ -101,14 +101,15 @@ class WalletClient:
             raise ValueError(f"Unsupported network: {network}")
 
     async def _send_solana_transaction(self, amount: float, recipient_address: str) -> str:
-        """Send real Solana transaction using solana 0.40.1 and solders 0.28.0 API"""
+        """Send real Solana transaction by building and signing a VersionedTransaction"""
         if not self._solana_client:
             raise ValueError("Solana client not initialized")
         
         try:
             from solders.pubkey import Pubkey
             from solders.system_program import TransferParams, transfer
-            from solders.signature import Signature
+            from solders.message import Message
+            from solders.transaction import VersionedTransaction
             
             # Convert amount to lamports (1 SOL = 1,000,000,000 lamports)
             lamports = int(amount * 1_000_000_000)
@@ -124,11 +125,22 @@ class WalletClient:
                 )
             )
             
-            # Use send_transaction method that auto-builds the transaction
-            result = await self._solana_client.send_transaction(
-                transfer_instruction,
-                self._solana_keypair
+            # Get recent blockhash
+            blockhash_response = await self._solana_client.get_latest_blockhash()
+            blockhash = blockhash_response.value.blockhash
+            
+            # Build message from instruction with blockhash and payer pubkey
+            message = Message.new_with_blockhash(
+                [transfer_instruction],
+                self._solana_keypair.pubkey(),
+                blockhash
             )
+            
+            # Create and sign versioned transaction
+            versioned_txn = VersionedTransaction(message, [self._solana_keypair])
+            
+            # Send the built and signed transaction
+            result = await self._solana_client.send_transaction(versioned_txn)
             
             tx_hash = str(result.value)
             
@@ -148,13 +160,14 @@ class WalletClient:
             # Convert amount to wei (1 ETH = 1,000,000,000,000,000,000 wei)
             amount_wei = self._evm_client.to_wei(amount, 'ether')
             
-            # Build transaction
+            # Build transaction with legacy format for web3 v7 compatibility
             transaction = {
                 'to': recipient_address,
                 'value': amount_wei,
                 'gas': 21000,  # Standard gas limit for simple transfer
                 'gasPrice': self._evm_client.eth.gas_price,
                 'nonce': self._evm_client.eth.get_transaction_count(self._evm_account.address),
+                'chainId': self._evm_client.eth.chain_id
             }
             
             # Sign transaction
@@ -168,7 +181,9 @@ class WalletClient:
             
         except Exception as e:
             logger.error(f"Failed to send EVM transaction: {e}")
-            raise
+            # EVM transactions require funded wallet and proper network connectivity
+            # For Day 12 evidence, we'll note this as a limitation
+            raise ValueError(f"EVM transaction failed: {e} (EVM requires funded wallet and network connectivity)")
 
     async def transfer(self, network: str, to_address: str, amount: float, currency: str) -> dict:
         # For backward compatibility or simpler usage
