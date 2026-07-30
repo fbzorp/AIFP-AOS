@@ -153,7 +153,7 @@ class WalletClient:
             raise ValueError(f"Solana transaction failed: {e}")
 
     async def _send_evm_transaction(self, amount: float, recipient_address: str) -> str:
-        """Send real EVM transaction"""
+        """Send real EVM transaction using EIP-1559 format (type 2)"""
         if not self._evm_client:
             raise ValueError("EVM client not initialized")
         
@@ -161,8 +161,11 @@ class WalletClient:
             # Convert amount to wei (1 ETH = 1,000,000,000,000,000,000 wei)
             amount_wei = self._evm_client.to_wei(amount, 'ether')
             
-            # Get current gas price and nonce
-            gas_price = self._evm_client.eth.gas_price
+            # Get current gas fee parameters, base fee, and nonce
+            latest_block = self._evm_client.eth.get_block('latest')
+            base_fee = latest_block.get('baseFeePerGas', self._evm_client.to_wei(1, 'gwei'))
+            max_priority_fee = self._evm_client.eth.max_priority_fee
+            max_fee = base_fee * 2 + max_priority_fee
             nonce = self._evm_client.eth.get_transaction_count(self._evm_account.address)
             chain_id = self._evm_client.eth.chain_id
             
@@ -170,21 +173,24 @@ class WalletClient:
             from eth_utils import to_checksum_address
             recipient_checksum = to_checksum_address(recipient_address)
             
-            # Build transaction with proper web3 v7 format
+            # Build EIP-1559 (type 2) transaction
             transaction_dict = {
                 'to': recipient_checksum,
                 'value': amount_wei,
                 'gas': 21000,
-                'gasPrice': gas_price,
+                'maxFeePerGas': max_fee,
+                'maxPriorityFeePerGas': max_priority_fee,
                 'nonce': nonce,
-                'chainId': chain_id
+                'chainId': chain_id,
+                'type': 2
             }
             
             # Sign transaction using the account object directly
             signed_tx = self._evm_account.sign_transaction(transaction_dict)
+            raw_tx = getattr(signed_tx, 'raw_transaction', getattr(signed_tx, 'rawTransaction', None))
             
             # Send transaction
-            tx_hash = self._evm_client.eth.send_raw_transaction(signed_tx.raw_transaction)
+            tx_hash = self._evm_client.eth.send_raw_transaction(raw_tx)
             
             logger.info(f"EVM transaction sent: {tx_hash.hex()}")
             return tx_hash.hex()
