@@ -1,102 +1,59 @@
-"""
-Execute 10 real MCP tool calls inside Docker environment
-"""
 import asyncio
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import logging
 
 from apps.integrations.mcp.client import MCPClient
-from apps.api.config import settings
 from apps.models.base import get_sync_session
 from apps.models.audit_event import AuditEventModel
-from sqlalchemy import select
-import logging
+from apps.core.audit.service import record_event
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def execute_mcp_calls():
-    """Execute 10 real MCP tool calls"""
-    logger.info("Starting 10 real MCP tool calls...")
-    
-    mcp_client = MCPClient(
-        mcp_server_url="http://aifinpay-mcp:3000",
-        enabled=True  # Enable MCP for testing
-    )
-    
-    tools_to_call = [
-        "agent_address",
-        "agent_quote", 
-        "payable_fetch",
-        "agent_address",
-        "agent_quote",
-        "payable_fetch",
-        "agent_address",
-        "agent_quote",
-        "payable_fetch",
-        "agent_address"
-    ]
-    
+async def execute_mcp_calls_docker():
+    """Execute 10 real MCP tool calls against the sidecar.
+
+    The :class:`MCPClient` records audit events (``mcp_call_succeeded``
+    or ``mcp_call_failed``) automatically. After the calls we query the
+    database for the total number of successful events and print a summary.
+    """
+    logger.info("=== EXECUTING 10 REAL MCP CALLS ===")
+    client = MCPClient(enabled=True)
+    # Wait for MCP sidecar to be ready (up to 5 attempts)
+    async def _wait_for_mcp():
+        for attempt in range(5):
+            try:
+                # simple health check: call a lightweight tool with empty params
+                await client.call_tool("agent_address", agent="test_agent", params={})
+                logger.info("MCP sidecar is reachable.")
+                break
+            except Exception as e:
+                logger.warning(f"MCP not ready (attempt {attempt+1}/5): {e}")
+                await asyncio.sleep(2 * (attempt + 1))
+        else:
+            logger.error("MCP sidecar did not become reachable after retries.")
+    await _wait_for_mcp()
     results = []
-    for i, tool_name in enumerate(tools_to_call, 1):
+    tools = ["agent_address", "agent_quote", "payable_fetch"]
+    for i in range(10):
+        tool = tools[i % len(tools)]
+        logger.info(f"\n--- MCP Call {i+1} ---")
+        logger.info(f"Tool: {tool}")
         try:
-            logger.info(f"MCP Call {i}: {tool_name}")
-            
-            params = {}
-            if tool_name == "agent_address":
-                params = {}
-            elif tool_name == "agent_quote":
-                params = {"amount": 0.01, "currency": "SOL"}
-            elif tool_name == "payable_fetch":
-                params = {"payable_id": f"test_invoice_{i}"}
-            
-            result = await mcp_client.call_tool(
-                tool_name=tool_name,
-                agent="test_agent",
-                params=params,
-                request_id=f"req_{i}"
-            )
-            
-            logger.info(f"MCP Call {i} SUCCESS: {result}")
-            results.append({"call": i, "tool": tool_name, "status": "success", "result": result})
-            
+            result = await client.call_tool(tool, agent="test_agent", params={})
+            logger.info(f"Result: {result}")
+            results.append({"call_number": i+1, "tool": tool, "status": "success", "result": result})
         except Exception as e:
-            logger.error(f"MCP Call {i} FAILED: {e}")
-            results.append({"call": i, "tool": tool_name, "status": "failed", "error": str(e)})
-    
-    await mcp_client.close()
-    
-    # Query database for audit events
-    logger.info("\nQuerying database for MCP audit events...")
+            logger.error(f"MCP Call {i+1} failed: {e}")
+            results.append({"call_number": i+1, "tool": tool, "status": "failed", "error": str(e)})
+
+    # Summarize audit events
+    logger.info("\n=== CHECKING AUDIT EVENTS ===")
     with get_sync_session() as session:
-        mcp_audit_events = session.execute(
-            select(AuditEventModel).filter(
-                AuditEventModel.event_type == "mcp_call_succeeded"
-            )
-        ).scalars().all()
-        
-        total_count = len(mcp_audit_events)
-        logger.info(f"Total mcp_call_succeeded audit events: {total_count}")
-        
-        if mcp_audit_events:
-            logger.info("\nSample MCP audit events:")
-            for event in mcp_audit_events[-5:]:  # Show last 5
-                metadata = event.metadata_json if isinstance(event.metadata_json, dict) else {}
-                
-                tool_name = metadata.get('tool_name', 'N/A')
-                request_id = metadata.get('request_id', 'N/A')
-                latency_ms = metadata.get('latency_ms', 'N/A')
-                
-                logger.info(f"  - ID: {event.id}, Tool: {tool_name}, Request ID: {request_id}, Latency: {latency_ms}ms")
-    
-    logger.info(f"\nMCP Call Summary:")
-    success_count = sum(1 for r in results if r["status"] == "success")
-    logger.info(f"Successful calls: {success_count}/10")
-    logger.info(f"Failed calls: {10 - success_count}/10")
-    
-    return results, total_count
+        succeeded = session.query(AuditEventModel).filter(AuditEventModel.event_type == "mcp_call_succeeded").count()
+        failed = session.query(AuditEventModel).filter(AuditEventModel.event_type == "mcp_call_failed").count()
+        logger.info(f"Total mcp_call_succeeded events: {succeeded}")
+        logger.info(f"Total mcp_call_failed events: {failed}")
+    return results
 
 if __name__ == "__main__":
-    results, total_count = asyncio.run(execute_mcp_calls())
-    print(f"\nMCP calls completed. Total audit events: {total_count}")
+    asyncio.run(execute_mcp_calls_docker())
