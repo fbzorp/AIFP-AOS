@@ -51,6 +51,7 @@ async def test_x402_payment_flows():
     )
     
     # Test 3 X402 payment flows
+    successful_flows = 0
     for i in range(3):
         try:
             payment_url = await x402_client.create_payment_request(
@@ -58,7 +59,13 @@ async def test_x402_payment_flows():
                 currency="SOL",
                 purpose=f"Test payment {i+1}"
             )
+            
+            # Assert payment URL is returned
+            assert payment_url is not None, f"Payment URL should not be None for flow {i+1}"
+            assert len(payment_url) > 0, f"Payment URL should not be empty for flow {i+1}"
+            
             logger.info(f"X402 payment flow {i+1} successful: {payment_url}")
+            successful_flows += 1
             
             # Record audit event
             with get_sync_session() as session:
@@ -72,10 +79,13 @@ async def test_x402_payment_flows():
                 session.commit()
                 
         except Exception as e:
-            logger.error(f"X402 payment flow {i+1} failed: {e}")
+            logger.warning(f"X402 payment flow {i+1} failed: {e}")
     
     await x402_client.close()
-    logger.info("X402 payment flows test completed")
+    
+    # Assert at least some flows succeeded (since this is dry run)
+    assert successful_flows >= 1, f"At least 1 X402 flow should succeed, got {successful_flows}"
+    logger.info(f"X402 payment flows test completed: {successful_flows}/3 successful")
 
 @pytest.mark.asyncio
 async def test_solana_transaction():
@@ -91,27 +101,40 @@ async def test_solana_transaction():
         dry_run=True  # Use dry run for unit tests
     )
     
-    try:
-        tx_hash = await wallet_client.send_transaction(
-            network="solana",
-            amount=0.01,
-            recipient_address="test_recipient_solana_address"
+    tx_hash = await wallet_client.send_transaction(
+        network="solana",
+        amount=0.01,
+        recipient_address="test_recipient_solana_address"
+    )
+    
+    # Assert transaction hash is returned
+    assert tx_hash is not None, "Transaction hash should not be None"
+    assert len(tx_hash) > 0, "Transaction hash should not be empty"
+    logger.info(f"Solana transaction successful: {tx_hash}")
+    
+    # Record audit event
+    with get_sync_session() as session:
+        record_event(
+            session,
+            "WalletTest",
+            "solana_transaction_completed",
+            "Solana devnet transaction completed",
+            {"tx_hash": tx_hash, "network": "solana"}
         )
-        logger.info(f"Solana transaction successful: {tx_hash}")
+        session.commit()
         
-        # Record audit event
-        with get_sync_session() as session:
-            record_event(
-                session,
-                "WalletTest",
-                "solana_transaction_completed",
-                "Solana devnet transaction completed",
-                {"tx_hash": tx_hash, "network": "solana"}
+        # Verify audit event was created
+        audit_events = session.execute(
+            select(AuditEventModel).filter(
+                AuditEventModel.event_type == "solana_transaction_completed"
             )
-            session.commit()
-            
-    except Exception as e:
-        logger.error(f"Solana transaction failed: {e}")
+        ).scalars().all()
+        
+        assert len(audit_events) > 0, "Solana transaction audit event not created"
+        latest_event = audit_events[-1]
+        assert latest_event.metadata.get("tx_hash") == tx_hash, \
+            f"Transaction hash not recorded correctly: {latest_event.metadata}"
+        logger.info(f"Verified Solana transaction audit event: {latest_event.id}")
     
     logger.info("Solana transaction test completed")
 
@@ -155,39 +178,58 @@ async def test_evm_transaction():
 
 @pytest.mark.asyncio
 async def test_insufficient_balance():
-    """Test insufficient-balance scenario (catch and record)"""
-    logger.info("Testing insufficient balance scenario...")
+    """Test insufficient-balance scenario with real on-chain balance failure"""
+    logger.info("Testing insufficient balance scenario (real on-chain)...")
     
     wallet_client = WalletClient(
         solana_rpc_url=settings.SOLANA_RPC_URL,
         evm_rpc_url=settings.EVM_RPC_URL,
         solana_private_key=settings.SOLANA_PRIVATE_KEY,
         evm_private_key=settings.EVM_PRIVATE_KEY,
-        per_transaction_limit=0.001,  # Set very low limit
-        dry_run=True  # Use dry run for unit tests
+        per_transaction_limit=10000.0,  # Set very high limit to test on-chain balance
+        dry_run=False  # Use real transaction to test on-chain balance
     )
     
+    # Attempt a transfer larger than the wallet's actual balance
+    # Assuming devnet wallet has limited funds, try to transfer 1000 SOL
     try:
-        # Try to send amount that exceeds limit
         tx_hash = await wallet_client.send_transaction(
             network="solana",
-            amount=1.0,  # This should exceed the limit
-            recipient_address="test_recipient"
+            amount=1000.0,  # Amount that should exceed actual wallet balance
+            recipient_address="test_recipient",
+            force_real=True  # Force real transaction
         )
-        logger.error("Insufficient balance test failed - transaction should have been rejected")
-    except ValueError as e:
-        logger.info(f"Insufficient balance correctly caught: {e}")
+        pytest.fail("Insufficient balance test failed - transaction should have been rejected by on-chain balance check")
+    except Exception as e:
+        # Should fail with on-chain insufficient balance error
+        error_msg = str(e).lower()
+        assert any(keyword in error_msg for keyword in ["insufficient", "balance", "funds"]), \
+            f"Expected insufficient balance error, got: {e}"
         
-        # Record audit event
+        logger.info(f"Real on-chain insufficient balance correctly caught: {e}")
+        
+        # Record audit event with distinct type for genuine balance failure
         with get_sync_session() as session:
             record_event(
                 session,
                 "WalletTest",
-                "insufficient_balance_caught",
-                "Insufficient balance scenario correctly caught",
-                {"error": str(e), "amount": 1.0, "limit": 0.001}
+                "on_chain_insufficient_balance",
+                "Genuine on-chain insufficient balance failure",
+                {"error": str(e), "amount": 1000.0, "network": "solana", "verified": True}
             )
             session.commit()
+            
+            # Verify audit event was created
+            audit_events = session.execute(
+                select(AuditEventModel).filter(
+                    AuditEventModel.event_type == "on_chain_insufficient_balance"
+                )
+            ).scalars().all()
+            
+            assert len(audit_events) > 0, "Insufficient balance audit event not created"
+            latest_event = audit_events[-1]
+            assert latest_event.metadata.get("verified") == True, "Audit event not marked as verified"
+            logger.info(f"Verified on-chain insufficient balance audit event: {latest_event.id}")
     
     logger.info("Insufficient balance test completed")
 
@@ -210,8 +252,16 @@ async def test_user_declined_payment():
         session.commit()
         session.refresh(payment)
         
+        # Assert payment is above threshold
+        assert payment.amount > settings.HUMAN_APPROVAL_THRESHOLD, \
+            f"Payment amount {payment.amount} should be above threshold {settings.HUMAN_APPROVAL_THRESHOLD}"
+        
+        # Assert payment remains pending (waiting for user approval)
+        assert payment.status == "pending", \
+            f"Payment status should be 'pending', got '{payment.status}'"
+        
         logger.info(f"Created payment with amount {payment.amount} (threshold: {settings.HUMAN_APPROVAL_THRESHOLD})")
-        logger.info(f"Payment status: {payment.status} (should remain 'pending' for user approval)")
+        logger.info(f"Payment status: {payment.status} (correctly pending for user approval)")
         
         # Record audit event
         record_event(
@@ -222,6 +272,16 @@ async def test_user_declined_payment():
             {"payment_id": payment.id, "amount": payment.amount, "threshold": settings.HUMAN_APPROVAL_THRESHOLD}
         )
         session.commit()
+        
+        # Verify audit event was created
+        audit_events = session.execute(
+            select(AuditEventModel).filter(
+                AuditEventModel.event_type == "user_declined_payment_scenario"
+            )
+        ).scalars().all()
+        
+        assert len(audit_events) > 0, "User declined payment audit event not created"
+        logger.info(f"Verified user declined payment audit event: {audit_events[-1].id}")
     
     logger.info("User declined payment test completed")
 
@@ -242,6 +302,7 @@ async def test_retry_after_transient_failure():
     # Test with retry logic using dry run
     attempt = 0
     max_attempts = 3
+    success_attempt = None
     
     while attempt < max_attempts:
         try:
@@ -258,6 +319,7 @@ async def test_retry_after_transient_failure():
                 recipient_address="test_recipient"
             )
             
+            success_attempt = attempt
             logger.info(f"Transaction succeeded on attempt {attempt}: {tx_hash}")
             
             # Record audit event
@@ -270,16 +332,33 @@ async def test_retry_after_transient_failure():
                     {"tx_hash": tx_hash, "attempts": attempt}
                 )
                 session.commit()
+                
+                # Verify audit event was created
+                audit_events = session.execute(
+                    select(AuditEventModel).filter(
+                        AuditEventModel.event_type == "retry_after_transient_failure"
+                    )
+                ).scalars().all()
+                
+                assert len(audit_events) > 0, "Retry audit event not created"
+                latest_event = audit_events[-1]
+                assert latest_event.metadata.get("attempts") == attempt, \
+                    f"Retry attempts not recorded correctly: {latest_event.metadata}"
+                logger.info(f"Verified retry audit event: {latest_event.id}")
             
             break
             
         except Exception as e:
             logger.warning(f"Attempt {attempt} failed: {e}")
             if attempt == max_attempts:
-                logger.error("All retry attempts failed")
-                raise
+                pytest.fail(f"All retry attempts failed: {e}")
             # Wait before retry
             await asyncio.sleep(1)
+    
+    # Assert that retry succeeded
+    assert success_attempt is not None, "Transaction should have succeeded after retry"
+    assert success_attempt > 1, f"Should have succeeded on retry (attempt {success_attempt})"
+    logger.info(f"Transaction succeeded on attempt {success_attempt} (after transient failure)")
     
     logger.info("Retry after transient failure test completed")
 
@@ -304,6 +383,12 @@ async def test_persist_tx_details():
         session.commit()
         session.refresh(payment)
         
+        # Assert payment was created with tx details
+        assert payment.tx_hash == "test_tx_hash_12345", \
+            f"tx_hash should be 'test_tx_hash_12345', got '{payment.tx_hash}'"
+        assert payment.tx_url == "https://explorer.solana.com/tx/test_tx_hash_12345?cluster=devnet", \
+            f"tx_url should match, got '{payment.tx_url}'"
+        
         logger.info(f"Created payment with tx_hash: {payment.tx_hash}")
         logger.info(f"Payment tx_url: {payment.tx_url}")
         
@@ -312,20 +397,33 @@ async def test_persist_tx_details():
             select(PaymentModel).filter(PaymentModel.id == payment.id)
         ).scalar_one_or_none()
         
-        if retrieved and retrieved.tx_hash == payment.tx_hash and retrieved.tx_url == payment.tx_url:
-            logger.info("Tx hash and explorer URL successfully persisted")
-            
-            # Record audit event
-            record_event(
-                session,
-                "PaymentTest",
-                "tx_details_persisted",
-                "Transaction details successfully persisted",
-                {"payment_id": payment.id, "tx_hash": payment.tx_hash, "tx_url": payment.tx_url}
+        assert retrieved is not None, "Payment should be retrievable from database"
+        assert retrieved.tx_hash == payment.tx_hash, \
+            f"Retrieved tx_hash should match: {retrieved.tx_hash} vs {payment.tx_hash}"
+        assert retrieved.tx_url == payment.tx_url, \
+            f"Retrieved tx_url should match: {retrieved.tx_url} vs {payment.tx_url}"
+        
+        logger.info("Tx hash and explorer URL successfully persisted")
+        
+        # Record audit event
+        record_event(
+            session,
+            "PaymentTest",
+            "tx_details_persisted",
+            "Transaction details successfully persisted",
+            {"payment_id": payment.id, "tx_hash": payment.tx_hash, "tx_url": payment.tx_url}
+        )
+        session.commit()
+        
+        # Verify audit event was created
+        audit_events = session.execute(
+            select(AuditEventModel).filter(
+                AuditEventModel.event_type == "tx_details_persisted"
             )
-            session.commit()
-        else:
-            logger.error("Failed to persist tx details")
+        ).scalars().all()
+        
+        assert len(audit_events) > 0, "Tx details persistence audit event not created"
+        logger.info(f"Verified tx details persistence audit event: {audit_events[-1].id}")
     
     logger.info("Persist tx details test completed")
 
@@ -335,9 +433,15 @@ async def test_payment_scenarios():
     logger.info("Starting payment scenario tests...")
     
     try:
-        # Only run tests that don't require real credentials for unit tests
-        await test_user_declined_payment()
+        # Run all applicable scenario tests
         await test_persist_tx_details()
+        await test_user_declined_payment()
+        await test_retry_after_transient_failure()
+        await test_solana_transaction()
+        
+        # Note: test_insufficient_balance requires real on-chain execution
+        # Note: test_x402_payment_flows is tested separately
+        # Note: test_evm_transaction requires funded EVM wallet
         
         logger.info("Payment scenario tests completed successfully")
         

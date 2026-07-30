@@ -132,17 +132,22 @@ class X402Client:
                 # Prepare auth headers for retry
                 proof_result = await self._submit_payment_proof(url, payment_proof, challenge_data)
                 
+                # Check if this is a verified or soft-ack fallback
+                if not proof_result.get("verified", False):
+                    logger.warning(f"SOFT-ACK RETRY: Using unverified fallback (not a genuine 402 cycle)")
+                    logger.warning(f"Soft-ack warning: {proof_result.get('warning', 'unverified fallback')}")
+                
                 # Second attempt after payment with proper X402 auth headers
                 retry_headers = kwargs.get('headers', {}).copy()
                 
                 if proof_result.get("status") == "using_sdk_auth":
                     # Use SDK auth headers for the retry
                     retry_headers.update(proof_result["auth_headers"])
-                    logger.info(f"Retrying with SDK auth headers")
+                    logger.info(f"Retrying with SDK auth headers (verified)")
                 else:
-                    # Fallback to manual proof construction
+                    # Fallback to manual proof construction (unverified)
                     retry_headers["X-Payment-Proof"] = payment_proof
-                    logger.info(f"Retrying with manual payment proof header")
+                    logger.warning(f"Retrying with manual payment proof header (unverified soft-ack)")
                 
                 r = await self.http.request(method, url, headers=retry_headers, **kwargs)
                 r.raise_for_status()
@@ -198,7 +203,8 @@ class X402Client:
                 "recipient": invoice_data.get("recipient", "AiFinPay Treasury"),
                 "network": "solana",
                 "nonce": nonce,
-                "invoice_id": invoice_data.get("id")
+                "invoice_id": invoice_data.get("id"),
+                "verified": bool(self.agent)  # Mark as verified if SDK agent is available
             }
             
             logger.info(f"Received X402 challenge: {challenge_data}")
@@ -226,20 +232,26 @@ class X402Client:
                 logger.info(f"Using SDK auth headers for payment proof retry")
                 return {
                     "status": "using_sdk_auth",
+                    "verified": True,  # SDK provides verified auth headers
                     "auth_headers": auth_headers,
                     "tx_hash": payment_proof.split(":")[1] if ":" in payment_proof else payment_proof,
                     "challenge_id": challenge_data.get("challenge"),
                     "invoice_id": challenge_data.get("invoice_id")
                 }
             else:
-                # Fallback: return the payment proof for manual header construction
-                logger.warning("No SDK agent available, returning payment proof for manual retry")
+                # FALLBACK: Manual proof construction without SDK verification
+                # This is a non-verifying fallback used only when the live facilitator is unreachable
+                # WARNING: This soft-ack is NOT a confirmed 402 cycle - it's a best-effort fallback
+                logger.warning("SOFT-ACK FALLBACK: No SDK agent available, using unverified manual proof")
+                logger.warning("This is NOT a genuine verified 402 cycle - requires live facilitator for verification")
                 return {
                     "status": "payment_proof_ready",
+                    "verified": False,  # NOT verified by live facilitator
                     "tx_hash": payment_proof.split(":")[1] if ":" in payment_proof else payment_proof,
                     "challenge_id": challenge_data.get("challenge"),
                     "invoice_id": challenge_data.get("invoice_id"),
-                    "nonce": challenge_data.get("nonce")
+                    "nonce": challenge_data.get("nonce"),
+                    "warning": "soft-ack fallback - not verified by live facilitator"
                 }
             
         except Exception as e:
