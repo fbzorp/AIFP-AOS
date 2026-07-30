@@ -34,7 +34,7 @@ python-jose[cryptography]>=3.3.0
 google-adk>=0.1.0
 
 # AiFinPay SDK
-aifinpay-agent>=0.1.0
+aifinpay-agent>=1.0.0
 
 # Blockchain & Cryptography
 solana==0.40.1

@@ -2,6 +2,9 @@ import httpx
 import logging
 from typing import Optional, Dict, Any
 from apps.integrations.wallet.client import WalletClient
+from aifinpay import Agent
+from nacl.signing import SigningKey
+import base58
 
 logger = logging.getLogger(__name__)
 
@@ -10,13 +13,41 @@ class X402Client:
         self, 
         facilitator_url: Optional[str],
         wallet_client: WalletClient,
-        x402_enabled: bool = False
+        x402_enabled: bool = False,
+        signing_key: Optional[SigningKey] = None,
+        signing_key_base58: Optional[str] = None
     ):
         self.facilitator_url = facilitator_url
         self.wallet_client = wallet_client
         self.x402_enabled = x402_enabled
         self.http = httpx.AsyncClient()
-        logger.info(f"X402Client initialized (enabled={x402_enabled}, facilitator={facilitator_url})")
+        
+        # Initialize official AiFinPay SDK agent if signing key is provided
+        self.agent = None
+        if x402_enabled:
+            # Convert base58 secret key to SigningKey if provided
+            if signing_key_base58 and not signing_key:
+                try:
+                    # Base58 decode to get raw bytes, then create SigningKey
+                    key_bytes = base58.b58decode(signing_key_base58)
+                    # Ed25519 keys are 64 bytes (32 bytes seed + 32 bytes public)
+                    if len(key_bytes) >= 32:
+                        signing_key = SigningKey(key_bytes[:32])
+                        logger.info("Successfully converted base58 secret key to SigningKey")
+                except Exception as e:
+                    logger.warning(f"Failed to convert base58 secret key: {e}")
+            
+            if signing_key:
+                self.agent = Agent(
+                    signing_key=signing_key,
+                    base_url=facilitator_url or "https://api.aifinpay.io",
+                    timeout=30
+                )
+                logger.info(f"X402Client initialized with official SDK agent (enabled={x402_enabled}, facilitator={facilitator_url})")
+            else:
+                logger.info(f"X402Client initialized without SDK agent (no signing key provided) (enabled={x402_enabled}, facilitator={facilitator_url})")
+        else:
+            logger.info(f"X402Client initialized (enabled={x402_enabled}, facilitator={facilitator_url})")
 
     async def create_payment_request(self, amount: float, currency: str, purpose: str) -> str:
         if not self.x402_enabled:
@@ -33,6 +64,48 @@ class X402Client:
             r.raise_for_status()
             return r.json()
 
+        # Use official SDK agent if available
+        if self.agent:
+            return await self._make_sdk_request(method, url, **kwargs)
+        
+        # Fallback to manual implementation
+        return await self._make_manual_request(method, url, **kwargs)
+
+    async def _make_sdk_request(self, method: str, url: str, **kwargs) -> Dict[str, Any]:
+        """Use official AiFinPay SDK for x402 request handling"""
+        try:
+            logger.info(f"Using official SDK for x402 request to {url}")
+            
+            # Convert async httpx kwargs to synchronous requests kwargs
+            sync_kwargs = {}
+            if 'headers' in kwargs:
+                sync_kwargs['headers'] = kwargs['headers']
+            if 'json' in kwargs:
+                sync_kwargs['json'] = kwargs['json']
+            if 'params' in kwargs:
+                sync_kwargs['params'] = kwargs['params']
+            if 'timeout' in kwargs:
+                sync_kwargs['timeout'] = kwargs['timeout']
+            
+            # Use SDK's pay method which handles 402 automatically
+            response = self.agent.pay(
+                url=url,
+                method=method,
+                max_retries=1,
+                **sync_kwargs
+            )
+            
+            response.raise_for_status()
+            return response.json()
+            
+        except Exception as e:
+            logger.error(f"SDK request failed: {e}")
+            # Fallback to manual implementation on SDK failure
+            logger.info("Falling back to manual x402 implementation")
+            return await self._make_manual_request(method, url, **kwargs)
+
+    async def _make_manual_request(self, method: str, url: str, **kwargs) -> Dict[str, Any]:
+        """Manual x402 implementation using httpx"""
         # First attempt: make the original request, expecting a 402 challenge
         try:
             r = await self.http.request(method, url, **kwargs)
