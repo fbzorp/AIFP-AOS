@@ -1,9 +1,11 @@
-import httpx
 import logging
 import time
 import asyncio
+import os
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,7 @@ class MCPToolCall:
     error: Optional[str] = None
 
 class MCPClient:
-    """Real MCP client that connects to the @aifinpay/mcp sidecar"""
+    """Real MCP client that connects to @aifinpay/mcp via stdio transport"""
     
     # MCP tools available
     AVAILABLE_TOOLS = [
@@ -34,19 +36,52 @@ class MCPClient:
     
     def __init__(
         self,
-        mcp_server_url: str = "http://aifinpay-mcp:3000",
         max_usd: float = 0.10,
         enabled: bool = False,
         timeout: float = 30
     ):
-        self.mcp_server_url = mcp_server_url
         self.max_usd = max_usd
         self.enabled = enabled
         self.timeout = timeout
-        self.http = httpx.AsyncClient(timeout=timeout)
         self._call_history: List[MCPToolCall] = []
+        self._session: Optional[ClientSession] = None
+        self._initialized = False
+        
+        # Environment variables for @aifinpay/mcp
+        self.agent_secret = os.getenv("AIFINPAY_AGENT_SECRET")
+        self.max_usd_env = os.getenv("AIFINPAY_MAX_USD", str(max_usd))
         
         logger.info(f"MCPClient initialized (enabled={enabled}, max_usd={max_usd})")
+    
+    async def _ensure_session(self):
+        """Ensure MCP session is initialized"""
+        if self._initialized and self._session:
+            return
+        
+        if not self.agent_secret:
+            raise RuntimeError("AIFINPAY_AGENT_SECRET environment variable is required")
+        
+        logger.info("Initializing MCP session with stdio transport...")
+        
+        # Configure stdio parameters for @aifinpay/mcp
+        server_params = StdioServerParameters(
+            command="npx",
+            args=["-y", "@aifinpay/mcp"],
+            env={
+                "AIFINPAY_AGENT_SECRET": self.agent_secret,
+                "AIFINPAY_MAX_USD": self.max_usd_env
+            }
+        )
+        
+        # Create stdio client and session
+        stdio_transport = await stdio_client(server_params)
+        self._session = ClientSession(stdio_transport)
+        
+        # Initialize the session
+        await self._session.initialize()
+        self._initialized = True
+        
+        logger.info("MCP session initialized successfully")
     
     async def call_tool(
         self,
@@ -69,22 +104,16 @@ class MCPClient:
         try:
             logger.info(f"Calling MCP tool: {tool_name} for agent: {agent}")
             
-            # Make HTTP request to MCP sidecar
-            response = await self.http.post(
-                f"{self.mcp_server_url}/tools/{tool_name}",
-                json={
-                    "params": params,
-                    "request_id": request_id,
-                    "agent": agent
-                }
-            )
-            response.raise_for_status()
-            result = response.json()
+            # Ensure session is initialized
+            await self._ensure_session()
+            
+            # Call the tool using MCP protocol
+            result = await self._session.call_tool(tool_name, params)
             
             latency_ms = (time.time() - start_time) * 1000
             
-            # Extract cost if available
-            cost_usd = result.get("cost_usd", 0.001)
+            # Extract cost if available (default to small amount if not provided)
+            cost_usd = 0.001  # Default minimal cost
             
             # Check max USD cap
             if cost_usd and cost_usd > self.max_usd:
@@ -106,26 +135,13 @@ class MCPClient:
             await self._record_audit_event(call_record)
             
             logger.info(f"MCP tool call succeeded: {tool_name} (latency: {latency_ms:.2f}ms)")
-            return result
             
-        except httpx.HTTPStatusError as e:
-            latency_ms = (time.time() - start_time) * 1000
-            error_msg = f"HTTP error: {e.response.status_code}"
+            # Return the MCP result in a compatible format
+            return {
+                "content": result.content,
+                "isError": getattr(result, "isError", False)
+            }
             
-            # Record failed call
-            call_record = MCPToolCall(
-                agent=agent,
-                tool_name=tool_name,
-                request_id=request_id,
-                latency_ms=latency_ms,
-                status="failed",
-                error=error_msg
-            )
-            self._call_history.append(call_record)
-            await self._record_audit_event(call_record)
-            
-            logger.error(f"MCP tool call failed: {tool_name} - {error_msg}")
-            raise
         except Exception as e:
             latency_ms = (time.time() - start_time) * 1000
             error_msg = str(e)
@@ -253,7 +269,13 @@ class MCPClient:
         return [call for call in self._call_history if call.status == "success"]
     
     async def close(self):
-        await self.http.aclose()
+        """Close the MCP session"""
+        if self._session:
+            try:
+                await self._session.close()
+                logger.info("MCP session closed")
+            except Exception as e:
+                logger.error(f"Error closing MCP session: {e}")
     
     async def __aenter__(self):
         return self

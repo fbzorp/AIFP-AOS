@@ -35,6 +35,7 @@ google-adk>=0.1.0
 
 # AiFinPay SDK
 aifinpay-agent>=1.0.0
+mcp>=1.0.0
 
 # Blockchain & Cryptography
 solana==0.40.1

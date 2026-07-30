@@ -21,6 +21,7 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "python-jose[cryptography]>=3.3.0",
     "aifinpay-agent>=1.0.0",
+    "mcp>=1.0.0",
     "solana==0.40.1",
     "solders==0.28.0",
     "web3>=6.0.0",
