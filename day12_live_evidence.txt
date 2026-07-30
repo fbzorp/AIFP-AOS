@@ -337,9 +337,18 @@ DAY 12 ASSIGNMENT §5 STATUS: SUBSTANTIALLY COMPLETE
 
 REQUIREMENTS NOT MET (Assignment §5):
 ⚠️ REAL Base Sepolia EVM tx hash + resolving basescan link (requires funded wallet)
-⚠️ ≥3 genuine x402 challenge/pay/proof cycles (cannot complete without live AiFinPay API endpoints)
+⚠️ ≥3 genuine x402 challenge/pay/proof cycles (requires funded Solana mainnet wallet for Seat PDA)
 
 ⚠️ HONEST STATUS: The 3 Solana transactions previously labeled as "x402 flows" are NOT genuine 402 challenge/pay/proof cycles. They are real Solana transfers but do not include the complete 402 negotiation flow (challenge detection, invoice creation, payment proof submission, authenticated retry).
+
+✅ LIVE API ANALYSIS COMPLETED:
+- Live AiFinPay API is ACCESSIBLE and WORKING
+- Correct endpoints identified: /invoice (not /api/invoice)
+- Auth headers working: x-agent-pubkey, x-nonce, x-signature
+- Invoice creation working on live API
+- BLOCKER: Live API requires Seat PDA on Solana mainnet
+- BLOCKER: Current wallet is on devnet, not mainnet
+- BLOCKER: Requires funded Solana mainnet wallet for reserve_seat_sol transaction
 
 ✅ OFFICIAL SDK INTEGRATION COMPLETED:
 - Updated requirements.txt with aifinpay-agent>=1.0.0

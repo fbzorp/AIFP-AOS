@@ -160,12 +160,13 @@ class X402Client:
             nonce_response.raise_for_status()
             nonce = nonce_response.json()["nonce"]
             
-            # Step 2: Create invoice based on currency (using correct manifesto.json paths)
-            # manifesto.json actions: "reserve_seat_sol":"POST /api/invoice", "reserve_seat_spl":"POST /api/invoice-spl"
+            # Step 2: Create invoice based on currency (using correct x402.json discovery paths)
+            # x402.json discovery: "invoice_sol":"https://api.aifinpay.io/invoice", "invoice_spl":"https://api.aifinpay.io/invoice-spl"
+            # llms.txt confirms: POST https://api.aifinpay.io/invoice (SOL), POST https://api.aifinpay.io/invoice-spl (USDC/USDT)
             if currency.upper() == "SOL":
-                invoice_endpoint = "/api/invoice"  # reserve_seat_sol
+                invoice_endpoint = "/invoice"  # Correct endpoint per x402.json discovery and llms.txt
             else:
-                invoice_endpoint = "/api/invoice-spl"  # reserve_seat_spl
+                invoice_endpoint = "/invoice-spl"  # Correct endpoint per x402.json discovery and llms.txt
             
             # Build proper invoice request per manifesto.json
             invoice_payload = {
