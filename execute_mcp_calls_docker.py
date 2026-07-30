@@ -82,15 +82,11 @@ async def execute_mcp_calls():
         if mcp_audit_events:
             logger.info("\nSample MCP audit events:")
             for event in mcp_audit_events[-5:]:  # Show last 5
-                # Handle metadata as SQLAlchemy MetaData object
-                try:
-                    metadata = dict(event.metadata) if hasattr(event.metadata, '__iter__') else {}
-                except:
-                    metadata = {}
+                metadata = event.metadata_json if isinstance(event.metadata_json, dict) else {}
                 
-                tool_name = metadata.get('tool_name') if isinstance(metadata, dict) else 'N/A'
-                request_id = metadata.get('request_id') if isinstance(metadata, dict) else 'N/A'
-                latency_ms = metadata.get('latency_ms') if isinstance(metadata, dict) else 'N/A'
+                tool_name = metadata.get('tool_name', 'N/A')
+                request_id = metadata.get('request_id', 'N/A')
+                latency_ms = metadata.get('latency_ms', 'N/A')
                 
                 logger.info(f"  - ID: {event.id}, Tool: {tool_name}, Request ID: {request_id}, Latency: {latency_ms}ms")
     

@@ -132,8 +132,8 @@ async def test_solana_transaction():
         
         assert len(audit_events) > 0, "Solana transaction audit event not created"
         latest_event = audit_events[-1]
-        assert latest_event.metadata.get("tx_hash") == tx_hash, \
-            f"Transaction hash not recorded correctly: {latest_event.metadata}"
+        assert latest_event.metadata_json.get("tx_hash") == tx_hash, \
+            f"Transaction hash not recorded correctly: {latest_event.metadata_json}"
         logger.info(f"Verified Solana transaction audit event: {latest_event.id}")
     
     logger.info("Solana transaction test completed")
@@ -176,6 +176,8 @@ async def test_evm_transaction():
     
     logger.info("EVM transaction test completed")
 
+@pytest.mark.integration
+@pytest.mark.skip(reason="Requires live Solana devnet key and RPC connectivity for on-chain balance check")
 @pytest.mark.asyncio
 async def test_insufficient_balance():
     """Test insufficient-balance scenario with real on-chain balance failure"""
@@ -228,7 +230,7 @@ async def test_insufficient_balance():
             
             assert len(audit_events) > 0, "Insufficient balance audit event not created"
             latest_event = audit_events[-1]
-            assert latest_event.metadata.get("verified") == True, "Audit event not marked as verified"
+            assert latest_event.metadata_json.get("verified") == True, "Audit event not marked as verified"
             logger.info(f"Verified on-chain insufficient balance audit event: {latest_event.id}")
     
     logger.info("Insufficient balance test completed")
@@ -342,8 +344,8 @@ async def test_retry_after_transient_failure():
                 
                 assert len(audit_events) > 0, "Retry audit event not created"
                 latest_event = audit_events[-1]
-                assert latest_event.metadata.get("attempts") == attempt, \
-                    f"Retry attempts not recorded correctly: {latest_event.metadata}"
+                assert latest_event.metadata_json.get("attempts") == attempt, \
+                    f"Retry attempts not recorded correctly: {latest_event.metadata_json}"
                 logger.info(f"Verified retry audit event: {latest_event.id}")
             
             break
