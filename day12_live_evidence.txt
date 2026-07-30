@@ -132,6 +132,7 @@ CRITICAL: User must rotate the leaked Alchemy API key (5xC2wYmcWXACugQUQ0sPQphsN
 ⚠️ Error: Transaction had invalid fields (requires funded wallet and network connectivity)
 ⚠️ EVM transaction requires funded Sepolia wallet and proper network connectivity
 ⚠️ EVM implementation retained for future testing when funds available
+⚠️ EVM evidence not included due to execution failure
 
 === MIGRATION STATUS ===
 ✅ Single Head: 20260729_add_payments (head)
@@ -195,4 +196,9 @@ REAL EVIDENCE CAPTURED:
 ✅ 10 REAL MCP calls with audit event recording
 ✅ All evidence contains real transaction hashes, no fake/dry-run strings
 
-DAY 12 IS COMPLETE with real evidence.
+EVM TRANSACTIONS:
+⚠️ EVM transaction not executed due to web3 v7 compatibility issue
+⚠️ EVM transaction requires funded Sepolia wallet and proper network connectivity
+⚠️ EVM implementation retained for future testing when funds available
+
+DAY 12 IS COMPLETE with real evidence for Solana, X402, and MCP requirements.
