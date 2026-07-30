@@ -1,6 +1,7 @@
 import asyncio
 import sys
-sys.path.insert(0, '/app')
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from apps.integrations.x402.client import X402Client
 from apps.integrations.wallet.client import WalletClient
@@ -71,11 +72,11 @@ async def execute_real_x402_flows():
                 "status": "completed"
             }
             results.append(result)
-            print(f"✅ X402 Flow {i+1} completed successfully")
+            print(f"[SUCCESS] X402 Flow {i+1} completed successfully")
             print(f"Explorer URL: {result['explorer_url']}")
             
         except Exception as e:
-            print(f"❌ X402 Flow {i+1} failed: {e}")
+            print(f"[FAILED] X402 Flow {i+1} failed: {e}")
             result = {
                 "flow_number": i + 1,
                 "status": "failed",
@@ -88,10 +89,10 @@ async def execute_real_x402_flows():
     print("\n=== X402 FLOWS SUMMARY ===")
     for result in results:
         if result.get("status") == "completed":
-            print(f"✅ Flow {result['flow_number']}: TX Hash {result['tx_hash']}")
+            print(f"[SUCCESS] Flow {result['flow_number']}: TX Hash {result['tx_hash']}")
             print(f"   Explorer: {result['explorer_url']}")
         else:
-            print(f"❌ Flow {result['flow_number']}: {result.get('error', 'Unknown error')}")
+            print(f"[FAILED] Flow {result['flow_number']}: {result.get('error', 'Unknown error')}")
     
     return results
 
@@ -99,7 +100,7 @@ if __name__ == "__main__":
     results = asyncio.run(execute_real_x402_flows())
     
     # Write results to file for evidence
-    with open("/app/x402_flows_evidence.txt", "w") as f:
+    with open("x402_flows_evidence.txt", "w") as f:
         f.write("=== REAL X402 PAYMENT FLOWS EVIDENCE ===\n")
         for result in results:
             f.write(f"\nFlow {result['flow_number']}: {result['status']}\n")

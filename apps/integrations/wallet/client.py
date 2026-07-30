@@ -108,7 +108,7 @@ class WalletClient:
         try:
             from solders.pubkey import Pubkey
             from solders.system_program import TransferParams, transfer
-            from solders.message import Message
+            from solders.message import MessageV0
             from solders.transaction import VersionedTransaction
             
             # Convert amount to lamports (1 SOL = 1,000,000,000 lamports)
@@ -129,11 +129,12 @@ class WalletClient:
             blockhash_response = await self._solana_client.get_latest_blockhash()
             blockhash = blockhash_response.value.blockhash
             
-            # Build message from instruction with blockhash and payer pubkey
-            message = Message.new_with_blockhash(
-                [transfer_instruction],
-                self._solana_keypair.pubkey(),
-                blockhash
+            # Build message using MessageV0.try_compile
+            message = MessageV0.try_compile(
+                payer=self._solana_keypair.pubkey(),
+                instructions=[transfer_instruction],
+                address_lookup_table_accounts=[],
+                recent_blockhash=blockhash
             )
             
             # Create and sign versioned transaction
