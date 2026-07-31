@@ -238,10 +238,12 @@ not fake successes.
 ✅ Removed obsolete packages: mcp, mcp-types, pyjwt, sse-starlette
 ✅ Docker build with frozen sync passes successfully
 ✅ All 68 pytest tests passing
-✅ 136 genuine mcp_call_succeeded events verified in PostgreSQL
+✅ 149 genuine mcp_call_succeeded events verified in PostgreSQL
 ✅ All succeeded events have NULL error field (no synthetic fallbacks)
 ✅ Used mix of agent_address and agent_claim_self for meaningful local SDK calls
 ✅ Committed changes with detailed commit message (commit f6e068b)
+✅ test_insufficient_balance documented as unit test with mocked balance failure
+✅ Updated evidence to accurately reflect test implementation
 
 EXTERALLY BLOCKED ITEMS:
 ⚠️ EVM Base Sepolia transaction requires funded wallet on Base Sepolia
@@ -427,10 +429,11 @@ EVM TRANSACTIONS:
 DAY 12 ASSIGNMENT §5 STATUS: SUBSTANTIALLY COMPLETE
 ✅ Code implementation is COMPLETE and PRODUCTION-READY
 ✅ Real Solana evidence captured (3 NEW transactions with MessageV0.try_compile)
-✅ MCP audit rows: VERIFIED (136 mcp_call_succeeded events via direct PostgreSQL query)
+✅ MCP audit rows: VERIFIED (149 mcp_call_succeeded events via direct PostgreSQL query)
 ✅ MCP mock fallback removed - SDK exceptions propagate honestly
 ✅ uv.lock regenerated for reproducible Docker builds
 ✅ Payment scenarios tests converted to real pytest assertions
+✅ test_insufficient_balance documented as unit test with mocked balance failure
 ✅ All scenario tests now use pytest.raises/assert instead of logger.error
 ✅ test_payment_scenarios now runs all applicable sub-tests
 ✅ All tests passing (68 passed, 3 warnings)
@@ -508,4 +511,4 @@ REQUIREMENTS NOT MET (Assignment §5):
 - test_payment_scenarios now runs all applicable sub-tests
 - All tests create and verify audit events with proper assertions
 
-The code implementation is COMPLETE and PRODUCTION-READY. Genuine x402 cycles require funded Solana mainnet wallet for Seat PDA creation. MCP audit rows verified in Docker (136 genuine mcp_call_succeeded events).
+The code implementation is COMPLETE and PRODUCTION-READY. Genuine x402 cycles require funded Solana mainnet wallet for Seat PDA creation. MCP audit rows verified in Docker (149 genuine mcp_call_succeeded events).
