@@ -1,4 +1,4 @@
-.PHONY: up down logs test migrate verify
+.PHONY: up down logs test migrate verify load-test backup restore
 
 DOCKER_COMPOSE = docker compose -f docker-compose.dev.yml
 
@@ -19,3 +19,12 @@ migrate:
 
 verify:
 	./scripts/verify_day7.sh
+
+load-test:
+	locust -f load/locustfile.py --host=http://localhost:8000
+
+backup:
+	./scripts/backup_db.sh
+
+restore:
+	./scripts/restore_db.sh

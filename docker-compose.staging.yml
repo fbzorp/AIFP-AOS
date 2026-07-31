@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aifp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-staging_password}
+      POSTGRES_DB: ${POSTGRES_DB:-aifp_staging}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - aifp-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aifp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - aifp-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: aifp-aos-api:latest
+    environment:
+      APP_ENV: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/${POSTGRES_DB:-aifp_staging}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: INFO
+      PAYMENTS_KILL_SWITCH: false
+      PAYMENTS_NETWORK: devnet
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-https://api.devnet.solana.com}
+      EVM_RPC_URL: ${EVM_RPC_URL}
+      AIFINPAY_AGENT_SECRET: ${AIFINPAY_AGENT_SECRET}
+      AIFINPAY_AGENT_PUBKEY: ${AIFINPAY_AGENT_PUBKEY}
+      AIFINPAY_MAX_USD: 0.10
+      AIFINPAY_MCP_ENABLED: ${AIFINPAY_MCP_ENABLED:-false}
+      DAILY_SPENDING_LIMIT: ${DAILY_SPENDING_LIMIT:-100.00}
+      PER_TRANSACTION_LIMIT: ${PER_TRANSACTION_LIMIT:-50.00}
+      HUMAN_APPROVAL_THRESHOLD: ${HUMAN_APPROVAL_THRESHOLD:-25.00}
+      RECIPIENT_ALLOWLIST: ${RECIPIENT_ALLOWLIST:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  worker:
+    image: aifp-aos-worker:latest
+    environment:
+      APP_ENV: staging
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/${POSTGRES_DB:-aifp_staging}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: INFO
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-https://api.devnet.solana.com}
+      EVM_RPC_URL: ${EVM_RPC_URL}
+      AIFINPAY_AGENT_SECRET: ${AIFINPAY_AGENT_SECRET}
+      AIFINPAY_AGENT_PUBKEY: ${AIFINPAY_AGENT_PUBKEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  dashboard:
+    image: aifp-aos-dashboard:latest
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://nginx/api/v1}
+    depends_on:
+      - nginx
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.staging.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+      - dashboard
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  aifinpay-mcp:
+    image: node:20-alpine
+    working_dir: /app
+    command: npm start
+    environment:
+      PORT: 3000
+      MCP_AGENT_SECRET: ${AIFINPAY_AGENT_SECRET}
+      MCP_AGENT_PUBKEY: ${AIFINPAY_AGENT_PUBKEY}
+    volumes:
+      - ./apps/integrations/mcp/mcp-server:/app
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+networks:
+  aifp-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
