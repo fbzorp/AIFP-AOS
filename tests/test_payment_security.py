@@ -1,61 +1,37 @@
 """
-Payment security tests for critical workflow protection.
-Tests kill switch, allowlist, spending limits, and human approval threshold.
+Payment security integration tests for critical workflow protection.
+Tests verify security settings are accessible (full RBAC deferred to Day 14).
 """
 
 import pytest
 from apps.api.config import settings
 
 
-@pytest.mark.asyncio
-async def test_payment_kill_switch_rejection():
-    """Test that payments are rejected when kill switch is enabled."""
-    # Enable kill switch for this test
-    original_kill_switch = settings.PAYMENTS_KILL_SWITCH
-    settings.PAYMENTS_KILL_SWITCH = True
-    
-    try:
-        payment_data = {
-            "recipient_address": "test_recipient_address",
-            "amount": 10.0,
-            "currency": "SOL",
-            "network": "solana",
-            "purpose": "Test payment"
-        }
-        
-        # This test would need the full async client setup
-        # For now, we'll just verify the setting is accessible
-        assert settings.PAYMENTS_KILL_SWITCH == True
-        
-    finally:
-        settings.PAYMENTS_KILL_SWITCH = original_kill_switch
+def test_payment_kill_switch_setting():
+    """Test that kill switch setting is accessible."""
+    assert hasattr(settings, 'PAYMENTS_KILL_SWITCH')
+    assert isinstance(settings.PAYMENTS_KILL_SWITCH, bool)
 
 
-@pytest.mark.asyncio
-async def test_recipient_allowlist_rejection():
-    """Test that payments to non-allowlisted recipients are rejected."""
-    # Set allowlist for this test
-    original_allowlist = settings.RECIPIENT_ALLOWLIST
-    settings.RECIPIENT_ALLOWLIST = "allowed_address_1,allowed_address_2"
-    
-    try:
-        # Verify the setting is accessible
-        assert settings.RECIPIENT_ALLOWLIST == "allowed_address_1,allowed_address_2"
-        
-    finally:
-        settings.RECIPIENT_ALLOWLIST = original_allowlist
+def test_human_approval_threshold_setting():
+    """Test that human approval threshold setting is accessible."""
+    assert hasattr(settings, 'HUMAN_APPROVAL_THRESHOLD')
+    assert isinstance(settings.HUMAN_APPROVAL_THRESHOLD, (int, float))
 
 
-@pytest.mark.asyncio
-async def test_human_approval_threshold():
-    """Test that payments below human approval threshold are auto-approved."""
-    # Set threshold for this test
-    original_threshold = settings.HUMAN_APPROVAL_THRESHOLD
-    settings.HUMAN_APPROVAL_THRESHOLD = 25.0
-    
-    try:
-        # Verify the setting is accessible
-        assert settings.HUMAN_APPROVAL_THRESHOLD == 25.0
-        
-    finally:
-        settings.HUMAN_APPROVAL_THRESHOLD = original_threshold
+def test_per_transaction_limit_setting():
+    """Test that per-transaction limit setting is accessible."""
+    assert hasattr(settings, 'PER_TRANSACTION_LIMIT')
+    assert isinstance(settings.PER_TRANSACTION_LIMIT, (int, float))
+
+
+def test_daily_spending_limit_setting():
+    """Test that daily spending limit setting is accessible."""
+    assert hasattr(settings, 'DAILY_SPENDING_LIMIT')
+    assert isinstance(settings.DAILY_SPENDING_LIMIT, (int, float))
+
+
+def test_recipient_allowlist_setting():
+    """Test that recipient allowlist setting is accessible."""
+    assert hasattr(settings, 'RECIPIENT_ALLOWLIST')
+    assert isinstance(settings.RECIPIENT_ALLOWLIST, str)

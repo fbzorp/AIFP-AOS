@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:17-alpine
@@ -31,6 +29,9 @@ services:
       retries: 5
 
   api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     image: aifp-aos-api:latest
     environment:
       APP_ENV: staging
@@ -59,6 +60,9 @@ services:
     restart: unless-stopped
 
   worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     image: aifp-aos-worker:latest
     environment:
       APP_ENV: staging
@@ -79,11 +83,12 @@ services:
     restart: unless-stopped
 
   dashboard:
+    build:
+      context: apps/dashboard
+      dockerfile: Dockerfile.dev
     image: aifp-aos-dashboard:latest
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://nginx/api/v1}
-    depends_on:
-      - nginx
     networks:
       - aifp-network
     restart: unless-stopped
@@ -98,21 +103,6 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - api
-      - dashboard
-    networks:
-      - aifp-network
-    restart: unless-stopped
-
-  aifinpay-mcp:
-    image: node:20-alpine
-    working_dir: /app
-    command: npm start
-    environment:
-      PORT: 3000
-      MCP_AGENT_SECRET: ${AIFINPAY_AGENT_SECRET}
-      MCP_AGENT_PUBKEY: ${AIFINPAY_AGENT_PUBKEY}
-    volumes:
-      - ./apps/integrations/mcp/mcp-server:/app
     networks:
       - aifp-network
     restart: unless-stopped
