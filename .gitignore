@@ -63,6 +63,11 @@ htmlcov/
 .tox/
 bandit-report.json
 
+# Backups
+backups/
+*.sql
+*.sql.gz
+
 # Docker
 
 # OS

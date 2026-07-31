@@ -1,0 +1,4 @@
+# SSL certificate placeholder
+# Place your SSL certificates here when ready for HTTPS:
+# - cert.pem
+# - key.pem
