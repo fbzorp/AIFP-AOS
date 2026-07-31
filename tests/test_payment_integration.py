@@ -221,7 +221,8 @@ class TestAuditEventRecording:
             # Verify the event was recorded
             events = session.execute(
                 select(AuditEventModel).where(
-                    AuditEventModel.event_type == "mcp_call_succeeded"
+                    AuditEventModel.event_type == "mcp_call_succeeded",
+                    AuditEventModel.agent_name == "TestAgent"
                 )
             ).scalars().all()
             

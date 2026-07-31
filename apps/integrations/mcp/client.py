@@ -96,11 +96,11 @@ class MCPClient:
             
             latency_ms = (time.time() - start_time) * 1000
             
-            # Extract cost if available (default to small amount if not provided)
-            cost_usd = result.get("cost_usd", 0.001)
+            # Extract cost if available (default to None for "cost unknown")
+            cost_usd = result.get("cost_usd")
             
-            # Check max USD cap
-            if cost_usd and cost_usd > self.max_usd:
+            # Check max USD cap (only if cost is known and not None)
+            if cost_usd is not None and cost_usd > self.max_usd:
                 logger.warning(f"Tool call cost {cost_usd} exceeds max_usd {self.max_usd}")
                 raise ValueError(f"Cost {cost_usd} exceeds maximum allowed {self.max_usd}")
             
@@ -157,19 +157,24 @@ class MCPClient:
             return {
                 "address": str(self._agent.address),
                 "solana_address": str(self._agent.address),
-                "evm_address": str(self._agent.address)
+                "evm_address": str(self._agent.address),
+                "cost_usd": None  # Local SDK call has no cost
             }
         elif tool_name == "agent_quote":
             # Direct SDK call - will raise on failure
             amount = params.get("amount", 0.01)
             chain = params.get("chain", "solana")
-            # quote_split is a property that returns a method - call it with keyword args
-            result = self._agent.quote_split(amount=amount, chain=chain)
+            # quote_split takes positional arguments, not keyword arguments
+            result = self._agent.quote_split(amount, chain)
+            # Extract real quote_id from SDK response if available
+            quote_id = getattr(result, 'id', None) or getattr(result, 'quote_id', None) or f"q_{int(time.time() * 1000)}"
+            # Extract real cost from SDK response if available
+            cost_usd = getattr(result, 'cost_usd', None) or getattr(result, 'cost', None)
             return {
-                "quote_id": f"q_{int(time.time() * 1000)}",
+                "quote_id": quote_id,
                 "amount": amount,
                 "currency": "USD",
-                "cost_usd": 0.001,
+                "cost_usd": cost_usd,
                 "sdk_result": str(result)
             }
         elif tool_name == "payable_fetch":
@@ -179,10 +184,12 @@ class MCPClient:
                 raise ValueError("url parameter is required for payable_fetch")
             # Agent.get() is synchronous, not async
             result = self._agent.get(url)
+            # Extract real cost from SDK response if available
+            cost_usd = getattr(result, 'cost_usd', None) or getattr(result, 'cost', None)
             return {
                 "url": url,
                 "status": "success",
-                "cost_usd": 0.001,
+                "cost_usd": cost_usd,
                 "sdk_result": str(result)
             }
         elif tool_name == "agent_call":
@@ -191,13 +198,15 @@ class MCPClient:
             body = params.get("body", {})
             if not url:
                 raise ValueError("url parameter is required for agent_call")
-            # Agent.post() is synchronous, not async
+            # Agent.post() is synchronous, not async - takes 2 positional args (url, body)
             result = self._agent.post(url, body)
+            # Extract real cost from SDK response if available
+            cost_usd = getattr(result, 'cost_usd', None) or getattr(result, 'cost', None)
             return {
                 "url": url,
                 "method": "POST",
                 "status": "success",
-                "cost_usd": 0.001,
+                "cost_usd": cost_usd,
                 "sdk_result": str(result)
             }
         elif tool_name == "pay_with_split":
@@ -208,25 +217,33 @@ class MCPClient:
             chain = params.get("chain", "solana")
             # pay_with_split_invoice takes keyword arguments
             result = self._agent.pay_with_split_invoice(merchant=merchant, amount=amount, order_id=order_id, chain=chain)
+            # Extract real order_id from SDK response if available
+            real_order_id = getattr(result, 'id', None) or getattr(result, 'order_id', None) or order_id
+            # Extract real cost from SDK response if available
+            cost_usd = getattr(result, 'cost_usd', None) or getattr(result, 'cost', None)
             return {
-                "order_id": order_id,
+                "order_id": real_order_id,
                 "merchant": merchant,
                 "amount": amount,
                 "chain": chain,
-                "cost_usd": 0.001,
+                "cost_usd": cost_usd,
                 "sdk_result": str(result)
             }
         elif tool_name == "quote_split":
             # Direct SDK call - will raise on failure
             amount = params.get("amount", 0.01)
             chain = params.get("chain", "solana")
-            # quote_split is a property that returns a method - call it with keyword args
-            result = self._agent.quote_split(amount=amount, chain=chain)
+            # quote_split takes positional arguments, not keyword arguments
+            result = self._agent.quote_split(amount, chain)
+            # Extract real quote_id from SDK response if available
+            quote_id = getattr(result, 'id', None) or getattr(result, 'quote_id', None) or f"qs_{int(time.time() * 1000)}"
+            # Extract real cost from SDK response if available
+            cost_usd = getattr(result, 'cost_usd', None) or getattr(result, 'cost', None)
             return {
-                "quote_id": f"qs_{int(time.time() * 1000)}",
+                "quote_id": quote_id,
                 "amount": amount,
                 "chain": chain,
-                "cost_usd": 0.001,
+                "cost_usd": cost_usd,
                 "sdk_result": str(result)
             }
         elif tool_name == "agent_claim_self":
@@ -235,7 +252,7 @@ class MCPClient:
             return {
                 "claimed": has_seat,
                 "has_seat": has_seat,
-                "cost_usd": 0.0
+                "cost_usd": None  # Local SDK call has no cost
             }
         else:
             raise ValueError(f"Unknown tool: {tool_name}")
