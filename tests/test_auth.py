@@ -1,8 +1,13 @@
 """
 Authentication and authorization tests.
-Tests are placeholders until full RBAC implementation is completed in Day 14.
+RBAC implementation deferred to Day 14 - tests skipped until then.
 """
 
-def test_placeholder_for_rbac_implementation():
-    """Placeholder test for future RBAC implementation in Day 14."""
-    assert True  # This test will be replaced with actual RBAC tests
+import pytest
+
+
+@pytest.mark.skip(reason="RBAC implementation deferred to Day 14")
+def test_unauthenticated_access_protection():
+    """Test that protected endpoints require authentication.
+    This test will be implemented in Day 14 when JWT authentication is added."""
+    pass
