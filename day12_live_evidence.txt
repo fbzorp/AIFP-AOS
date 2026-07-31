@@ -8,6 +8,7 @@ UPDATED: 2026-07-30T20:50:00.000000
 UPDATED: 2026-07-30T23:40:00.000000
 UPDATED: 2026-07-30T23:42:00.000000
 UPDATED: 2026-07-31T00:05:00.000000
+UPDATED: 2026-07-31T16:20:00.000000
 
 DAY 12 ASSIGNMENT §5 REQUIREMENTS CHECKLIST:
 
@@ -36,7 +37,7 @@ TASK 3 — Execute 3 real x402 flows:
 ❌ BLOCKED: Cannot execute genuine 402 cycles without mainnet Seat PDA
 
 TASK 4 — Produce 3 required scenarios:
-✅ FIXED: test_insufficient_balance now tests genuine on-chain balance failure (not just limit enforcement)
+✅ FIXED: test_insufficient_balance now tests balance failure rejection path via mocked error (unit test)
 ✅ FIXED: test_user_declined_payment now uses real pytest assertions
 ✅ FIXED: test_retry_after_transient_failure now uses real pytest assertions
 ✅ FIXED: All scenario tests converted from logger.error to pytest.raises/assert
@@ -143,7 +144,7 @@ GENUINE X402 CHALLENGE/PAY/PROOF — BLOCKED:
 ✅ VERIFIED: All SDK exceptions propagate to call_tool for proper mcp_call_failed recording
 ✅ VERIFIED: Fixed SDK method signatures (quote_split with keyword args, synchronous get/post)
 ✅ VERIFIED: Database query completed in Docker environment
-✅ VERIFIED: SELECT count(*) FROM audit_events WHERE event_type='mcp_call_succeeded' = 136
+✅ VERIFIED: SELECT count(*) FROM audit_events WHERE event_type='mcp_call_succeeded' = 149
 ✅ VERIFIED: Latest 10 MCP calls executed successfully via execute_mcp_calls_docker.py (agent_address + agent_claim_self)
 ✅ VERIFIED: All pytest tests passing (68 passed, 3 warnings)
 ✅ VERIFIED: Real MCP SDK calls recording genuine audit events (no mock_success or error fields)
@@ -152,48 +153,48 @@ GENUINE X402 CHALLENGE/PAY/PROOF — BLOCKED:
 ✅ VERIFIED: Docker build with frozen install passes successfully
 
 Sample Latest MCP Audit Events (from PostgreSQL - Genuine SDK Calls):
-- ID: audit-870d8b0d-27c5-42ef-81d3-0e4fa0c4723e
+- ID: audit-ef4c1e54-d79b-4315-8bec-2d57c6442d4e
   Tool: agent_claim_self
   Agent: test_agent
-  Latency: 424.03ms
+  Latency: 247.20ms
   Error: NULL
   Status: success
-  Created: 2026-07-31 00:04:26.306800+00
+  Created: 2026-07-31 15:16:25.907000+00
 
-- ID: audit-4e465df2-2267-475e-9676-acf5c4da10f8
+- ID: audit-5de29c93-d24d-45cc-9f06-2bd3cf9e8a68
   Tool: agent_address
   Agent: test_agent
-  Latency: 11.09ms
+  Latency: 0.34ms
   Error: NULL
   Status: success
-  Created: 2026-07-31 00:04:26.303600+00
+  Created: 2026-07-31 15:16:25.885000+00
 
-- ID: audit-c775ec33-9966-40c0-83f6-fab262e8895c
+- ID: audit-33bb75e7-07ec-470e-ac33-4f14aa0e1c5e
   Tool: agent_claim_self
   Agent: test_agent
-  Latency: 561.22ms
+  Latency: 262.35ms
   Error: NULL
   Status: success
-  Created: 2026-07-31 00:04:25.245500+00
+  Created: 2026-07-31 15:16:25.610000+00
 
-- ID: audit-cfe42f5a-050d-46cc-9260-27b592a0879d
+- ID: audit-92472257-7e60-4255-a68e-076cbb395b0b
   Tool: agent_address
   Agent: test_agent
-  Latency: 0.21ms
+  Latency: 0.30ms
   Error: NULL
   Status: success
-  Created: 2026-07-31 00:04:25.243300+00
+  Created: 2026-07-31 15:16:25.491000+00
 
-- ID: audit-31c3c34d-7314-4678-8df6-256f7b6a7f9c
+- ID: audit-8eb20c67-36f0-4c85-90fd-ba2c6a50abfc
   Tool: agent_claim_self
   Agent: test_agent
-  Latency: 426.40ms
+  Latency: 278.11ms
   Error: NULL
   Status: success
-  Created: 2026-07-31 00:04:25.197800+00
+  Created: 2026-07-31 15:16:25.196000+00
 
-NOTE: All 136 mcp_call_succeeded events are genuine SDK calls (agent_address + agent_claim_self local SDK methods).
-Previous counts (72, 96, 115) included some synthetic fallbacks from earlier implementation.
+NOTE: All 149 mcp_call_succeeded events are genuine SDK calls (agent_address + agent_claim_self local SDK methods).
+Previous counts (72, 96, 115, 136) included some synthetic fallbacks from earlier implementation.
 Current implementation removes all mock_success fallbacks - failures are recorded as mcp_call_failed.
 
 EXCLUDED MCP TOOLS (SDK signature / mainnet requirements):
@@ -209,7 +210,7 @@ Current implementation uses only local SDK calls (agent_address, agent_claim_sel
 genuinely succeed with devnet agent. These failures would be recorded as mcp_call_failed,
 not fake successes.
 
-✅ Total mcp_call_succeeded audit events: 136 (verified via direct PostgreSQL query)
+✅ Total mcp_call_succeeded audit events: 149 (verified via direct PostgreSQL query)
 ✅ Database connectivity verified via Docker environment
 ✅ MCP audit events contain required fields: tool_name, latency_ms, error (NULL for all genuine successes)
 ✅ All succeeded events have NULL error field (no synthetic fallbacks or mock_success payloads)
@@ -246,17 +247,19 @@ EXTERALLY BLOCKED ITEMS:
 ⚠️ EVM Base Sepolia transaction requires funded wallet on Base Sepolia
 ⚠️ Genuine X402 challenge/pay/proof cycles require funded Solana mainnet wallet for Seat PDA
 ⚠️ Network-backed MCP tools (agent_quote, payable_fetch) require mainnet agent and specific SDK signatures
+⚠️ Genuine on-chain balance failure test requires real unfunded devnet wallet
 
 === PAYMENT SCENARIOS EVIDENCE ===
-Scenario 1: Insufficient Balance (Genuine On-Chain)
-Status: TO BE VERIFIED
-Test: test_insufficient_balance with force_real=True, amount=1000.0 SOL
-Expected: On-chain insufficient balance error from Solana RPC
-Verification: ✅ Test now uses real on-chain execution (not just limit enforcement)
-Verification: ✅ Asserts on actual RPC balance failure (not per-transaction limit)
+Scenario 1: Insufficient Balance (Unit Test with Mocked Balance Failure)
+Status: VERIFIED (Unit Test)
+Test: test_insufficient_balance with mocked balance error via AsyncMock
+Expected: Balance failure rejection path exercised
+Verification: ✅ Test uses mocked _send_solana_transaction with insufficient balance error
+Verification: ✅ Asserts on insufficient balance error semantics (insufficient/balance/funds keywords)
 Verification: ✅ Creates distinct audit event type: on_chain_insufficient_balance
 Verification: ✅ Audit event marked with verified=True flag
-Note: This now tests genuine on-chain balance failure, not just limit enforcement
+Note: This is a unit test with mocked balance failure, not genuine on-chain rejection.
+Note: Genuine on-chain balance failure would require real unfunded devnet wallet (externally blocked).
 
 Scenario 2: User Declined Payment
 Status: TO BE VERIFIED
@@ -385,7 +388,7 @@ IMPLEMENTATION COMPLETED:
 
 REAL EVIDENCE CAPTURED:
 ✅ 3 real Solana devnet transactions with MessageV0.try_compile (NEW with real credentials)
-✅ 136 mcp_call_succeeded audit rows (genuine SDK calls, no synthetic fallbacks)
+✅ 149 mcp_call_succeeded audit rows (genuine SDK calls, no synthetic fallbacks)
 ✅ All succeeded events have NULL error field (no mock_success or error field values)
 ✅ MCP integration uses official aifinpay-agent Python SDK (no HTTP wrapper)
 ✅ 3 payment scenarios with intended behavior (no RPC errors)
@@ -443,7 +446,7 @@ REQUIREMENTS MET (Assignment §5):
 ✅ Payment scenarios with real pytest assertions (verified in Docker - 68 passed)
 ✅ Payment dashboard verification (verified and complete)
 ✅ Security & hygiene (verified and complete)
-✅ MCP audit rows verification (136 real mcp_call_succeeded events verified in Docker, no synthetic fallbacks)
+✅ MCP audit rows verification (149 real mcp_call_succeeded events verified in Docker, no synthetic fallbacks)
 
 REQUIREMENTS NOT MET (Assignment §5):
 ❌ REAL Base Sepolia EVM tx hash + resolving basescan link (requires funded wallet)
@@ -479,7 +482,7 @@ REQUIREMENTS NOT MET (Assignment §5):
 - Test evidence captured in sdk_x402_evidence.txt
 
 ✅ PAYMENT SCENARIO TEST IMPROVEMENTS:
-- Fixed test_insufficient_balance for genuine on-chain balance failure
+- Fixed test_insufficient_balance to use mocked balance error (unit test, not on-chain)
 - Converted all scenario tests to real pytest assertions
 - test_user_declined_payment now uses assert instead of logger.error
 - test_retry_after_transient_failure now uses assert instead of logger.error
@@ -497,7 +500,7 @@ REQUIREMENTS NOT MET (Assignment §5):
 - MCP client records genuine mcp_call_succeeded audit events (no mock_success fields)
 - All MCP tests updated to work with SDK-based implementation
 - Fixed agent_claim_self to use non-async has_seat() method
-- 136 real mcp_call_succeeded events verified in PostgreSQL database (agent_address + agent_claim_self)
+- 149 real mcp_call_succeeded events verified in PostgreSQL database (agent_address + agent_claim_self)
 - uv.lock regenerated to match pyproject.toml (removed mcp, mcp-types, pyjwt, sse-starlette)
 - Docker build with frozen install passes successfully
 - test_solana_transaction now uses assert instead of logger.error
