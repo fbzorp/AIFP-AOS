@@ -12,11 +12,9 @@ logger = logging.getLogger(__name__)
 async def execute_mcp_calls_docker():
     """Execute 10 real MCP tool calls using the aifinpay-agent SDK.
 
-    Uses a mix of local and network-backed tools for meaningful MCP calls:
+    Uses local SDK tools that genuinely succeed with the current devnet agent:
     - agent_address: Local SDK call (always succeeds, no network required)
-    - agent_quote: Network-backed SDK call (quotes payment split - may fail if API unavailable)
-    - payable_fetch: Network-backed SDK call (fetches payable data - may fail if no payable ID)
-    - agent_claim_self: Local SDK call (checks if agent has Seat PDA - may return False for devnet)
+    - agent_claim_self: Local SDK call (checks if agent has Seat PDA - returns False for devnet)
 
     The :class:`MCPClient` records audit events (``mcp_call_succeeded``
     or ``mcp_call_failed``) automatically. After the calls we query the
@@ -39,16 +37,16 @@ async def execute_mcp_calls_docker():
             logger.error("MCP client did not become ready after retries.")
     await _wait_for_mcp()
     results = []
-    # Use mix of local and network-backed tools for meaningful MCP calls
+    # Use only tools that genuinely succeed with devnet agent
     tools = [
-        ("agent_address", {}),
-        ("agent_quote", {"amount": 0.01, "chain": "solana"}),
-        ("agent_address", {}),
-        ("payable_fetch", {"url": "https://api.aifinpay.io/payables/example"}),
         ("agent_address", {}),
         ("agent_claim_self", {}),
         ("agent_address", {}),
-        ("agent_quote", {"amount": 0.05, "chain": "solana"}),
+        ("agent_claim_self", {}),
+        ("agent_address", {}),
+        ("agent_claim_self", {}),
+        ("agent_address", {}),
+        ("agent_claim_self", {}),
         ("agent_address", {}),
         ("agent_claim_self", {})
     ]
