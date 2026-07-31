@@ -15,6 +15,10 @@ async def execute_mcp_calls_docker():
     Uses local SDK tools that genuinely succeed with the current devnet agent:
     - agent_address: Local SDK call (always succeeds, no network required)
     - agent_claim_self: Local SDK call (checks if agent has Seat PDA - returns False for devnet)
+    - payable_fetch: Network-backed (works but SDK returns 404 for non-existent URLs)
+
+    Network-backed tools (agent_quote, agent_call, quote_split) require different SDK signatures
+    not yet supported by current implementation. These failures are recorded as mcp_call_failed.
 
     The :class:`MCPClient` records audit events (``mcp_call_succeeded``
     or ``mcp_call_failed``) automatically. After the calls we query the
@@ -37,14 +41,14 @@ async def execute_mcp_calls_docker():
             logger.error("MCP client did not become ready after retries.")
     await _wait_for_mcp()
     results = []
-    # Use only tools that genuinely succeed with devnet agent
+    # Use tools that genuinely succeed + one network tool to test connectivity
     tools = [
         ("agent_address", {}),
         ("agent_claim_self", {}),
+        ("payable_fetch", {"url": "https://api.aifinpay.io/payables/example"}),
         ("agent_address", {}),
         ("agent_claim_self", {}),
-        ("agent_address", {}),
-        ("agent_claim_self", {}),
+        ("payable_fetch", {"url": "https://api.aifinpay.io/payables/test"}),
         ("agent_address", {}),
         ("agent_claim_self", {}),
         ("agent_address", {}),
@@ -70,17 +74,26 @@ async def execute_mcp_calls_docker():
         logger.info(f"Total mcp_call_succeeded events: {succeeded}")
         logger.info(f"Total mcp_call_failed events: {failed}")
         
-        # Verify no succeeded events have error or mock_success fields
+        # Verify no succeeded events have error or mock_success fields, and check cost_usd values
         succeeded_events = session.query(AuditEventModel).filter(AuditEventModel.event_type == "mcp_call_succeeded").all()
+        cost_usd_values = []
         for event in succeeded_events:
             metadata = event.metadata_json or {}
             if metadata.get("error"):
                 logger.warning(f"⚠️ Succeeded event {event.id} has error field: {metadata.get('error')}")
             if metadata.get("status") == "mock_success":
                 logger.warning(f"⚠️ Succeeded event {event.id} has mock_success status")
+            cost_usd = metadata.get("cost_usd")
+            cost_usd_values.append(cost_usd)
         
         if succeeded and not any((e.metadata_json or {}).get("error") for e in succeeded_events):
             logger.info("✅ All succeeded events have no error field (genuine SDK successes)")
+            # Check if any cost_usd values are None (unknown) vs 0.001 (fabricated)
+            if any(cost is None for cost in cost_usd_values):
+                logger.info(f"✅ Some events have cost_usd=None (unknown cost from SDK)")
+            if any(cost == 0.001 for cost in cost_usd_values):
+                logger.warning(f"⚠️ Some events still have cost_usd=0.001 (may be fabricated)")
+            logger.info(f"Cost USD values sample: {cost_usd_values[:5]}")
     return results
 
 if __name__ == "__main__":
