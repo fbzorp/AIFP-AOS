@@ -1,0 +1,3 @@
+# SSL certificates should be placed here for HTTPS
+# This directory is intentionally empty for development
+# For production, add cert.pem and key.pem files
