@@ -1,10 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  FileText, 
-  ThumbsUp, 
-  ThumbsDown, 
-  Edit2, 
-  X,
+import {
+  FileText,
+  ThumbsUp,
+  ThumbsDown,
+  Edit2,
   AlertCircle,
   CheckCircle,
   Clock

@@ -222,4 +222,4 @@ See `docs/KNOWN_LIMITATIONS.md` for current technical debt and limitations.
 
 For deployment issues, see `docs/DEPLOYMENT.md`.
 For API documentation, see `docs/API.md`.
-For security review, see `docs/DAY13_SECURITY_REVIEW.md`.
+For known limitations, see `docs/KNOWN_LIMITATIONS.md`.
