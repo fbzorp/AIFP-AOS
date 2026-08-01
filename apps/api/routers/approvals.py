@@ -27,12 +27,12 @@ class ContentEditRequest(BaseModel):
     body: Optional[str] = None
     variants: Optional[List[Dict[str, Any]]] = None
 
-@router.get("/approvals")
+@router.get("/approvals", summary="List all approvals", description="Retrieve a list of all approval records with their current status. Requires viewer role.")
 async def list_approvals(db: AsyncSession = Depends(get_db), user: dict = Depends(require_viewer)):
     result = await db.execute(select(ApprovalModel).order_by(ApprovalModel.created_at.desc()).limit(50))
     return result.scalars().all()
 
-@router.get("/content")
+@router.get("/content", summary="List content queue", description="Returns content items ordered by status and creation date for the approval queue. Requires viewer role.")
 async def list_content_queue(db: AsyncSession = Depends(get_db), user: dict = Depends(require_viewer)):
     """Returns content items ordered by status and creation date for the queue."""
     # Prioritize pending_review and draft statuses
@@ -47,7 +47,7 @@ async def list_content_queue(db: AsyncSession = Depends(get_db), user: dict = De
     )
     return result.scalars().all()
 
-@router.patch("/content/{content_id}")
+@router.patch("/content/{content_id}", summary="Edit content item", description="Edit an existing content item (title, body, variants). Resets status to draft. Requires operator role.")
 async def edit_content(content_id: str, request: ContentEditRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
@@ -85,7 +85,7 @@ async def submit_content(content_id: str, db: AsyncSession = Depends(get_db), us
     await db.commit()
     return {"status": "pending_review", "content_id": content_id}
 
-@router.post("/content/{content_id}/approve")
+@router.post("/content/{content_id}/approve", summary="Approve content for publishing", description="Approve content item and set scheduled date. Requires operator role.")
 async def approve_content(content_id: str, request: ApprovalDecisionRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
@@ -158,7 +158,7 @@ async def reject_content(content_id: str, request: ApprovalDecisionRequest, db: 
     await db.commit()
     return {"status": "rejected", "content_id": content_id}
 
-@router.post("/content/{content_id}/publish")
+@router.post("/content/{content_id}/publish", summary="Publish approved content", description="Enqueue approved content for publishing to external platforms. Requires admin role.")
 async def trigger_publish(content_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_admin)):
     # 1. Load content item
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))

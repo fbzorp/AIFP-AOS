@@ -17,7 +17,7 @@ router = APIRouter()
 class CampaignCreateRequest(BaseModel):
     objective: str
 
-@router.get("/agents")
+@router.get("/agents", summary="List all available agents", description="Retrieve information about all registered agents including their roles, descriptions, and capabilities.")
 async def get_agents():
     agents = list_agents()
     return [
@@ -29,7 +29,7 @@ async def get_agents():
         } for a in agents
     ]
 
-@router.get("/tasks")
+@router.get("/tasks", summary="List recent tasks", description="Retrieve a list of recent task execution records with their current status.")
 async def get_tasks(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(TaskModel).order_by(TaskModel.created_at.desc()).limit(50))
     return result.scalars().all()
@@ -63,7 +63,7 @@ async def get_sources(db: AsyncSession = Depends(get_db)):
 
 # Note: GET /content moved to approvals.py for better queue management
 
-@router.get("/metrics")
+@router.get("/metrics", summary="Get system metrics", description="Retrieve system-wide metrics including agent counts, task statistics, campaign counts, source counts, and recent audit activity.")
 async def get_metrics(db: AsyncSession = Depends(get_db)):
     # Counts
     agent_count = len(list_agents())

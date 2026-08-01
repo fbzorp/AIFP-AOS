@@ -21,9 +21,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AiFinPay Autonomous Growth OS",
-    description="Days 3-4: Growth Orchestrator & Task Engine",
-    version="0.1.0",
-    lifespan=lifespan
+    description="AiFinPay Autonomous OS API - Payment processing, content approvals, MCP/x402 integration, and system health monitoring with JWT-based authentication and role-based access control",
+    version="1.0.0",
+    lifespan=lifespan,
+    openapi_tags=[
+        {
+            "name": "System",
+            "description": "System health checks and API information"
+        },
+        {
+            "name": "Approvals",
+            "description": "Content approval workflow, engagement proposals, and calendar management"
+        },
+        {
+            "name": "Payments",
+            "description": "Payment processing, approval workflows, and transaction execution"
+        }
+    ]
 )
 
 app.add_middleware(
@@ -34,15 +48,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(system.router, prefix="/api/v1")
-app.include_router(approvals.router, prefix="/api/v1")
+app.include_router(system.router, prefix="/api/v1", tags=["System"])
+app.include_router(approvals.router, prefix="/api/v1", tags=["Approvals"])
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["Payments"])
 
 @app.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)):
     health = {
         "status": "ok",
-        "version": "0.1.0",
+        "version": "1.0.0",
         "dependencies": {
             "postgres": "unknown",
             "redis": "unknown"
