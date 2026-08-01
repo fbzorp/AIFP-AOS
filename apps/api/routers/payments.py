@@ -64,7 +64,7 @@ async def create_audit_event(db: AsyncSession, event_type: str, details: dict):
     await db.refresh(audit_event)
     return audit_event
 
-@router.post("/", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED, summary="Create a new payment request", description="Create a new payment request with automatic approval for small amounts. Requires operator role.")
 async def create_payment(
     payment_in: PaymentCreate,
     db: AsyncSession = Depends(get_db),
@@ -106,7 +106,7 @@ async def create_payment(
 
     return payment
 
-@router.post("/{payment_id}/approve", response_model=PaymentResponse)
+@router.post("/{payment_id}/approve", response_model=PaymentResponse, summary="Approve a pending payment", description="Approve a pending payment request for execution. Enforces spending limits and daily caps. Requires operator role.")
 async def approve_payment(
     payment_id: str,
     payment_approve: PaymentApprove,
@@ -147,7 +147,7 @@ async def approve_payment(
 
     return payment
 
-@router.post("/{payment_id}/execute", response_model=PaymentResponse)
+@router.post("/{payment_id}/execute", response_model=PaymentResponse, summary="Execute an approved payment", description="Execute an approved payment transaction. Requires admin role. Enforces kill switch and allowlist checks.")
 async def execute_payment(
     payment_id: str,
     db: AsyncSession = Depends(get_db),
@@ -240,7 +240,7 @@ async def execute_payment(
 
     return payment
 
-@router.get("/", response_model=List[PaymentResponse])
+@router.get("/", response_model=List[PaymentResponse], summary="List all payments", description="Retrieve a paginated list of all payment records with their current status. Requires viewer role.")
 async def list_payments(
     skip: int = 0,
     limit: int = 100,
