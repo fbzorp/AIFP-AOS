@@ -97,11 +97,13 @@
   - Removed obsolete `aifinpay-mcp` service (now uses Python SDK)
   - Fixed circular dashboard/nginx dependencies
   - Removed obsolete `version:` key
-- **Nginx Configuration**: `nginx/nginx.staging.conf`
+- **Nginx Configuration**: `nginx/nginx.conf` + `nginx/templates/default.conf.template`
+  - Base configuration with upstreams, rate limiting, and resolver
+  - Templated server blocks with `${DOMAIN}` environment variable
   - Reverse proxy for API and dashboard
   - Rate limiting (10r/s for API, 20r/s for dashboard)
   - Security headers (X-Frame-Options, X-Content-Type-Options, etc.)
-  - SSL/HTTPS configuration (commented, ready for certificates)
+  - SSL/HTTPS configuration (ready for certificates)
   - Deny access to sensitive files (.env, etc.)
 - **Status**: ✅ Staging environment configured and validated
 
@@ -296,14 +298,19 @@ docker compose -f docker-compose.staging.yml up -d
 - **Documentation**: See `docs/DEPLOYMENT.md` for deployment instructions
 
 ### 2. SSL Certificate Security
-- **Problem**: Risk of committing real SSL certificates
+- **Problem**: Risk of committing real SSL certificates and need for automated generation
 - **Solution**:
   - Updated `.gitignore` to prevent committing `nginx/ssl/*.pem`, `*.key`, `*.crt`
   - Added `nginx/ssl/.gitkeep` to preserve directory structure
-  - Created `scripts/generate_ssl_cert.sh` (Linux/Mac) and `scripts/generate_ssl_cert.bat` (Windows)
-  - Scripts generate self-signed certificates for development only
+  - Created `scripts/generate_ssl_cert.py` - Python-based SSL certificate generator using cryptography library
+  - Added `cert-init` one-shot service to `docker-compose.staging.yml` that automatically generates self-signed certificates on `docker compose up`
+  - cert-init service reuses `aifp-aos-api:latest` image (cryptography library already available)
+  - `generate_ssl_cert.py` includes idempotency guard - skips regeneration if certificates already exist
+  - Certificate generation triggered automatically before nginx starts via `depends_on: cert-init: condition: service_completed_successfully`
+  - `generate_ssl_cert.bat` and `generate_ssl_cert.sh` remain as convenience scripts for manual invocation
   - Documentation covers Let's Encrypt for production
-- **Status**: ✅ SSL certificates properly gitignored with generation scripts
+- **Status**: ✅ SSL certificates properly gitignored with automated generation via cert-init service
+- **Verification**: Idempotency confirmed locally - second `docker compose up` skips regeneration
 - **Documentation**: See `docs/DEPLOYMENT.md` for SSL setup instructions
 
 ### 3. OpenAPI Spec Freshness Enforcement
@@ -362,16 +369,19 @@ docker compose -f docker-compose.staging.yml up -d
 - `load/README.md` - Load testing documentation
 - `scripts/backup_database.sh` - Linux automated backup script
 - `scripts/backup_database.bat` - Windows automated backup script
+- `scripts/backup_db.sh` - PostgreSQL backup with pg_dump
 - `scripts/restore_database.sh` - Database restoration script
+- `scripts/restore_db.sh` - PostgreSQL restore with pg_restore
 - `scripts/monitor_backups.sh` - Backup health monitoring script
 - `scripts/setup_backup_automation.sh` - Backup automation setup script
 - `scripts/export_openapi.py` - OpenAPI specification export script with --check mode
-- `scripts/generate_ssl_cert.sh` - Linux self-signed SSL certificate generator
-- `scripts/generate_ssl_cert.bat` - Windows self-signed SSL certificate generator
-- `docker-compose.staging.yml` - Staging environment configuration with DOMAIN env var and nginx template support
+- `scripts/generate_ssl_cert.py` - Python self-signed SSL certificate generator with idempotency
+- `scripts/generate_ssl_cert.sh` - Linux wrapper for SSL certificate generation (convenience)
+- `scripts/generate_ssl_cert.bat` - Windows wrapper for SSL certificate generation (convenience)
+- `docker-compose.staging.yml` - Staging environment configuration with cert-init service, DOMAIN env var, and nginx template support
 - `nginx/nginx.conf` - Base nginx configuration with upstreams and rate limiting
 - `nginx/templates/default.conf.template` - Nginx server block template with ${DOMAIN}
-- `nginx/ssl/.gitkeep` - SSL certificates directory placeholder (replaces nginx.staging.conf)
+- `nginx/ssl/.gitkeep` - SSL certificates directory placeholder
 - `docs/DAY13_SECURITY_REVIEW.md` - Security review documentation
 - `docs/openapi.json` - Generated OpenAPI specification (22 endpoints)
 - `docs/API.md` - Comprehensive API documentation
@@ -388,9 +398,10 @@ docker compose -f docker-compose.staging.yml up -d
 - `apps/api/routers/approvals.py` - Applied RBAC to all mutating endpoints, added route documentation
 - `apps/api/routers/system.py` - Added route documentation
 - `apps/models/base.py` - Added connection pooling configuration
-- `docker-compose.staging.yml` - Updated nginx service for template support and DOMAIN env var, replaced static nginx.staging.conf mount
+- `docker-compose.staging.yml` - Added cert-init service for automated SSL generation, updated nginx service for template support and DOMAIN env var
 - `.gitignore` - Added SSL certificate patterns (nginx/ssl/*.pem, *.key, *.crt)
 - `.github/workflows/ci.yml` - Added OpenAPI spec freshness check in CI pipeline
+- `scripts/generate_ssl_cert.py` - Added idempotency guard to skip regeneration if certificates already exist
 
 ## Conclusion
 
