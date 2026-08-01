@@ -1,0 +1,140 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-aifp_prod}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - aifp-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:8-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - aifp-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: aifp-aos-api:latest
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aifp_prod}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: INFO
+      PAYMENTS_KILL_SWITCH: ${PAYMENTS_KILL_SWITCH:-false}
+      PAYMENTS_NETWORK: ${PAYMENTS_NETWORK}
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL}
+      EVM_RPC_URL: ${EVM_RPC_URL}
+      AIFINPAY_AGENT_SECRET: ${AIFINPAY_AGENT_SECRET}
+      AIFINPAY_AGENT_PUBKEY: ${AIFINPAY_AGENT_PUBKEY}
+      AIFINPAY_MAX_USD: ${AIFINPAY_MAX_USD}
+      AIFINPAY_MCP_ENABLED: ${AIFINPAY_MCP_ENABLED:-false}
+      DAILY_SPENDING_LIMIT: ${DAILY_SPENDING_LIMIT}
+      PER_TRANSACTION_LIMIT: ${PER_TRANSACTION_LIMIT}
+      HUMAN_APPROVAL_THRESHOLD: ${HUMAN_APPROVAL_THRESHOLD}
+      RECIPIENT_ALLOWLIST: ${RECIPIENT_ALLOWLIST}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: aifp-aos-worker:latest
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aifp_prod}
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: INFO
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL}
+      EVM_RPC_URL: ${EVM_RPC_URL}
+      AIFINPAY_AGENT_SECRET: ${AIFINPAY_AGENT_SECRET}
+      AIFINPAY_AGENT_PUBKEY: ${AIFINPAY_AGENT_PUBKEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: apps/dashboard
+      dockerfile: Dockerfile.dev
+    image: aifp-aos-dashboard:latest
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  cert-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: aifp-aos-api:latest
+    working_dir: /app
+    command: ["uv", "run", "python", "scripts/generate_ssl_cert.py", "--cert-dir", "/certs"]
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./nginx/ssl:/certs
+    networks:
+      - aifp-network
+    restart: "no"
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    environment:
+      - DOMAIN=${DOMAIN}
+    depends_on:
+      api:
+        condition: service_started
+      cert-init:
+        condition: service_completed_successfully
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+networks:
+  aifp-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

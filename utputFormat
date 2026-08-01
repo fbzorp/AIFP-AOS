@@ -1,7 +1,0 @@
-HTTP/1.1 404 Not Found
-date: Sun, 26 Jul 2026 13:19:41 GMT
-server: uvicorn
-content-length: 22
-content-type: application/json
-
-{"detail":"Not Found"}
