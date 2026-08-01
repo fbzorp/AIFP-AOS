@@ -222,6 +222,7 @@ locust -f load/locustfile.py --host=http://localhost:8000 --headless -u 100 -r 1
 - **Vulnerabilities Found**: 1 known vulnerability in 1 package
   - `ecdsa` 0.19.2: PYSEC-2026-1325 (transitive dependency from solana, no fixed release exists)
 - **Status**: ⚠️ 1 CVE documented as unavoidable transitive dependency (solana ecosystem limitation)
+- **CI Handling**: Explicitly suppressed in CI via `--ignore-vuln PYSEC-2026-1325` in `.github/workflows/ci.yml` to allow CI to pass while still detecting any new vulnerabilities
 
 ### Static Analysis (bandit)
 - **Execution**: `bandit -r apps/ -f json -o bandit-report.json`
