@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from apps.models.base import get_db
+from apps.api.auth import require_operator, require_admin, require_viewer
 from apps.models.content_item import ContentItemModel
 from apps.models.approval import ApprovalModel
 from apps.models.audit_event import AuditEventModel
@@ -27,12 +28,12 @@ class ContentEditRequest(BaseModel):
     variants: Optional[List[Dict[str, Any]]] = None
 
 @router.get("/approvals")
-async def list_approvals(db: AsyncSession = Depends(get_db)):
+async def list_approvals(db: AsyncSession = Depends(get_db), user: dict = Depends(require_viewer)):
     result = await db.execute(select(ApprovalModel).order_by(ApprovalModel.created_at.desc()).limit(50))
     return result.scalars().all()
 
 @router.get("/content")
-async def list_content_queue(db: AsyncSession = Depends(get_db)):
+async def list_content_queue(db: AsyncSession = Depends(get_db), user: dict = Depends(require_viewer)):
     """Returns content items ordered by status and creation date for the queue."""
     # Prioritize pending_review and draft statuses
     result = await db.execute(
@@ -47,7 +48,7 @@ async def list_content_queue(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 @router.patch("/content/{content_id}")
-async def edit_content(content_id: str, request: ContentEditRequest, db: AsyncSession = Depends(get_db)):
+async def edit_content(content_id: str, request: ContentEditRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
     if not content:
@@ -74,7 +75,7 @@ async def edit_content(content_id: str, request: ContentEditRequest, db: AsyncSe
     return content
 
 @router.post("/content/{content_id}/submit")
-async def submit_content(content_id: str, db: AsyncSession = Depends(get_db)):
+async def submit_content(content_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
     if not content:
@@ -85,7 +86,7 @@ async def submit_content(content_id: str, db: AsyncSession = Depends(get_db)):
     return {"status": "pending_review", "content_id": content_id}
 
 @router.post("/content/{content_id}/approve")
-async def approve_content(content_id: str, request: ApprovalDecisionRequest, db: AsyncSession = Depends(get_db)):
+async def approve_content(content_id: str, request: ApprovalDecisionRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
     if not content:
@@ -128,7 +129,7 @@ async def approve_content(content_id: str, request: ApprovalDecisionRequest, db:
     }
 
 @router.post("/content/{content_id}/reject")
-async def reject_content(content_id: str, request: ApprovalDecisionRequest, db: AsyncSession = Depends(get_db)):
+async def reject_content(content_id: str, request: ApprovalDecisionRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
     if not content:
@@ -158,7 +159,7 @@ async def reject_content(content_id: str, request: ApprovalDecisionRequest, db: 
     return {"status": "rejected", "content_id": content_id}
 
 @router.post("/content/{content_id}/publish")
-async def trigger_publish(content_id: str, db: AsyncSession = Depends(get_db)):
+async def trigger_publish(content_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_admin)):
     # 1. Load content item
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
@@ -189,7 +190,7 @@ async def trigger_publish(content_id: str, db: AsyncSession = Depends(get_db)):
 # Days 10-11: Engagement Proposals & Calendar
 
 @router.get("/engagement/proposals")
-async def list_proposals(db: AsyncSession = Depends(get_db)):
+async def list_proposals(db: AsyncSession = Depends(get_db), user: dict = Depends(require_viewer)):
     result = await db.execute(
         select(EngagementProposalModel)
         .order_by(EngagementProposalModel.created_at.desc())
@@ -198,7 +199,7 @@ async def list_proposals(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 @router.post("/engagement/proposals/{proposal_id}/approve")
-async def approve_proposal(proposal_id: str, db: AsyncSession = Depends(get_db)):
+async def approve_proposal(proposal_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
     result = await db.execute(select(EngagementProposalModel).filter(EngagementProposalModel.id == proposal_id))
     proposal = result.scalars().first()
     if not proposal:
@@ -210,7 +211,7 @@ async def approve_proposal(proposal_id: str, db: AsyncSession = Depends(get_db))
     return {"status": "approved", "proposal_id": proposal_id}
 
 @router.post("/engagement/proposals/{proposal_id}/reject")
-async def reject_proposal(proposal_id: str, db: AsyncSession = Depends(get_db)):
+async def reject_proposal(proposal_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
     result = await db.execute(select(EngagementProposalModel).filter(EngagementProposalModel.id == proposal_id))
     proposal = result.scalars().first()
     if not proposal:
@@ -222,7 +223,7 @@ async def reject_proposal(proposal_id: str, db: AsyncSession = Depends(get_db)):
     return {"status": "rejected", "proposal_id": proposal_id}
 
 @router.get("/calendar")
-async def get_calendar(db: AsyncSession = Depends(get_db)):
+async def get_calendar(db: AsyncSession = Depends(get_db), user: dict = Depends(require_viewer)):
     """Returns content items that are scheduled or published."""
     result = await db.execute(
         select(ContentItemModel)

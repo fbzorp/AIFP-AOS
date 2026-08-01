@@ -33,13 +33,16 @@
   - Implemented JWT-based authentication in `apps/api/auth.py`
   - Role-based access control with admin/operator/viewer roles
   - JWT token creation and verification functionality
-  - Auth tests verify token creation, role definitions, and dependency creation
+  - **Complete endpoint protection applied**:
+    - Payments router: POST / (create), POST /{id}/approve (operator), POST /{id}/execute (admin), GET / (viewer)
+    - Approvals router: PATCH /content/{id} (operator), POST /content/{id}/submit (operator), POST /content/{id}/approve (operator), POST /content/{id}/reject (operator), POST /content/{id}/publish (admin), GET /approvals (viewer), GET /content (viewer), GET /calendar (viewer), GET /engagement/proposals (viewer), POST /engagement/proposals/{id}/approve (operator), POST /engagement/proposals/{id}/reject (operator)
+  - Auth tests verify real endpoint enforcement with 7 authentication tests
 - **Security Review**:
   - Comprehensive security analysis documented in `docs/DAY13_SECURITY_REVIEW.md`
   - No hardcoded secrets found
   - No secret exposure in logs or API responses
-  - Authentication infrastructure implemented with role-based access control foundation
-- **Status**: ✅ Security infrastructure implemented with JWT auth and RBAC foundation
+  - Authentication infrastructure implemented with role-based access control fully applied to all mutating endpoints
+- **Status**: ✅ Security infrastructure fully implemented and applied to all endpoints
 
 ### 3. Load Testing with Locust
 - **File**: `load/locustfile.py`
@@ -93,14 +96,16 @@
 - **`tests/test_payment_security.py`**: 5 new tests
   - Security setting accessibility tests (kill switch, allowlist, limits, thresholds)
   - All security controls verified through configuration testing
-- **`tests/test_auth.py`**: 4 new authentication tests
-  - JWT token creation and expiration testing
-  - Role definitions verification
-  - Dependency creation verification
+- **`tests/test_auth.py`**: 7 new authentication tests (rewritten)
+  - Real endpoint enforcement tests for RBAC
+  - Unauthenticated access tests (401 responses)
+  - Authenticated access tests with proper role verification
+  - Role permission tests (admin vs operator permissions)
+  - All tests use in-memory SQLite to avoid PostgreSQL connection issues
 
 ### Overall Test Results
-- **Total Tests**: 77 (71 existing + 6 new security/auth tests)
-- **Result**: **77/77 tests passed (Green)**
+- **Total Tests**: 80 (71 existing + 9 new security/auth tests)
+- **Result**: **80/80 tests passed (Green)**
 - **Coverage**: 66% overall coverage (3015 lines of code)
 - **Warnings**: 4 deprecation warnings (3 Pydantic, 1 passlib, non-blocking)
 

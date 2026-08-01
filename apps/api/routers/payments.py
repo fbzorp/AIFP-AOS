@@ -13,6 +13,7 @@ from apps.models.audit_event import AuditEventModel
 from apps.schemas.payment import PaymentCreate, PaymentResponse, PaymentApprove, PaymentExecute
 from apps.schemas.audit_event import AuditEventCreate
 from apps.api.config import settings
+from apps.api.auth import require_admin, require_operator, require_viewer
 from apps.integrations.wallet.client import WalletClient
 from apps.integrations.x402.client import X402Client
 from apps.integrations.aifinpay.client import AiFinPayClient
@@ -66,7 +67,8 @@ async def create_audit_event(db: AsyncSession, event_type: str, details: dict):
 @router.post("/", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
 async def create_payment(
     payment_in: PaymentCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(require_operator)
 ):
     # Emergency Kill Switch check
     if settings.PAYMENTS_KILL_SWITCH:
@@ -108,7 +110,8 @@ async def create_payment(
 async def approve_payment(
     payment_id: str,
     payment_approve: PaymentApprove,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(require_operator)
 ):
     result = await db.execute(select(PaymentModel).filter(PaymentModel.id == payment_id))
     payment = result.scalar_one_or_none()
@@ -147,7 +150,8 @@ async def approve_payment(
 @router.post("/{payment_id}/execute", response_model=PaymentResponse)
 async def execute_payment(
     payment_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(require_admin)
 ):
     # Emergency Kill Switch check
     if settings.PAYMENTS_KILL_SWITCH:
@@ -240,7 +244,8 @@ async def execute_payment(
 async def list_payments(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(require_viewer)
 ):
     result = await db.execute(select(PaymentModel).order_by(PaymentModel.created_at.desc()).offset(skip).limit(limit))
     payments = result.scalars().all()
