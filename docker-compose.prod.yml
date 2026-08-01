@@ -33,7 +33,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
     image: aifp-aos-api:latest
     environment:
       APP_ENV: production
@@ -64,7 +64,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
     image: aifp-aos-worker:latest
     environment:
       APP_ENV: production
@@ -96,7 +96,7 @@ services:
   cert-init:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
     image: aifp-aos-api:latest
     working_dir: /app
     command: ["uv", "run", "python", "scripts/generate_ssl_cert.py", "--cert-dir", "/certs"]
