@@ -1,4 +1,4 @@
-# SSL certificate placeholder
-# Place your SSL certificates here when ready for HTTPS:
-# - cert.pem
-# - key.pem
+# This file ensures the nginx/ssl directory is preserved in git
+# SSL certificates (*.pem, *.key, *.crt) are gitignored for security
+# Use scripts/generate_ssl_cert.sh (Linux/Mac) or scripts/generate_ssl_cert.bat (Windows) to generate self-signed certificates for development
+# For production, use Let's Encrypt certificates as documented in docs/DEPLOYMENT.md

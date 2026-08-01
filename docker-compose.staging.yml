@@ -88,7 +88,7 @@ services:
       dockerfile: Dockerfile.dev
     image: aifp-aos-dashboard:latest
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://nginx/api/v1}
+      VITE_API_URL: ${VITE_API_URL:-http://${DOMAIN:-staging.aifp-aos.local}/api}
     networks:
       - aifp-network
     restart: unless-stopped
@@ -99,8 +99,11 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.staging.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/templates:/etc/nginx/templates:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+    environment:
+      - DOMAIN=${DOMAIN:-staging.aifp-aos.local}
     depends_on:
       - api
     networks:
