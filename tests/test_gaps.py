@@ -12,12 +12,16 @@ from apps.models.engagement_proposal import EngagementProposalModel
 from apps.models.task import TaskModel
 from apps.agents.specialized import GrowthOrchestratorAgent, CommunityEngagementAgent
 from apps.api.main import app
+from apps.api.auth import create_test_token
 
-# Setup in-memory SQLite for testing
+# Setup in-memory SQLite for testing with proper connection pooling
 engine = create_engine(
     "sqlite:///:memory:",
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    echo=False,
 )
 TestingSessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
@@ -119,6 +123,9 @@ async def test_gap_c_approval_sets_scheduled_at():
     transport = ASGITransport(app=app)
     
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        token = create_test_token(role="operator")
+        headers = {"Authorization": f"Bearer {token}"}
+        
         with TestingSessionLocal() as session:
             # Create content
             content = ContentItemModel(
@@ -131,7 +138,7 @@ async def test_gap_c_approval_sets_scheduled_at():
             session.commit()
             
             # Approve via API
-            response = await ac.post("/api/v1/content/gap-c-1/approve", json={"approved_by": "Tester"})
+            response = await ac.post("/api/v1/content/gap-c-1/approve", json={"approved_by": "Tester"}, headers=headers)
             assert response.status_code == 200
             
             # Verify scheduled_at is set
@@ -142,7 +149,7 @@ async def test_gap_c_approval_sets_scheduled_at():
                 assert updated_content.scheduled_at is not None
             
             # Verify it appears in calendar
-            cal_response = await ac.get("/api/v1/calendar")
+            cal_response = await ac.get("/api/v1/calendar", headers=headers)
             assert cal_response.status_code == 200
             cal_data = cal_response.json()
             assert any(item["id"] == "gap-c-1" for item in cal_data)

@@ -11,7 +11,15 @@ async_db_url = settings.DATABASE_URL
 if "sqlite" in async_db_url and "aiosqlite" not in async_db_url:
     async_db_url = async_db_url.replace("sqlite://", "sqlite+aiosqlite://")
 
-async_engine = create_async_engine(async_db_url)
+# Configure async engine with proper connection pooling
+async_engine = create_async_engine(
+    async_db_url,
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    echo=False,
+)
 AsyncSessionLocal = async_sessionmaker(
     bind=async_engine,
     class_=AsyncSession,
@@ -24,7 +32,15 @@ sync_db_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2")
 if "sqlite" in sync_db_url:
     sync_db_url = sync_db_url.replace("+psycopg2", "")
 
-sync_engine = create_engine(sync_db_url)
+# Configure sync engine with proper connection pooling
+sync_engine = create_engine(
+    sync_db_url,
+    pool_size=5,
+    max_overflow=10,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    echo=False,
+)
 SessionLocal = sessionmaker(
     bind=sync_engine,
     autocommit=False,

@@ -14,6 +14,7 @@ from apps.models.audit_event import AuditEventModel
 from apps.core.policy.engine import PolicyEngine, compute_draft_hash
 from apps.workers.tasks import publish_content
 from apps.api.main import app
+from apps.api.auth import create_test_token
 from httpx import AsyncClient, ASGITransport
 
 # Setup in-memory SQLite for testing with StaticPool to share connection across threads
@@ -21,6 +22,9 @@ engine = create_engine(
     "sqlite:///:memory:",
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    echo=False,
 )
 TestingSessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
@@ -214,6 +218,12 @@ async def test_api_approval_and_publish_trigger():
     with patch("apps.api.main.Redis.from_url") as mock_redis:
         mock_redis.return_value.ping.return_value = True
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            # Create authentication tokens
+            operator_token = create_test_token(role="operator")
+            admin_token = create_test_token(role="admin")
+            operator_headers = {"Authorization": f"Bearer {operator_token}"}
+            admin_headers = {"Authorization": f"Bearer {admin_token}"}
+            
             with mock_get_sync_session() as session:
                 # 1. Create draft
                 content = ContentItemModel(
@@ -227,7 +237,7 @@ async def test_api_approval_and_publish_trigger():
                 session.commit()
                 
                 # 2. Approve via API
-                response = await ac.post("/api/v1/content/api-content-1/approve", json={"approved_by": "Tester"})
+                response = await ac.post("/api/v1/content/api-content-1/approve", json={"approved_by": "Tester"}, headers=operator_headers)
                 assert response.status_code == 200
                 data = response.json()
                 assert data["status"] == "approved"
@@ -235,7 +245,7 @@ async def test_api_approval_and_publish_trigger():
                 # 3. Trigger Publish via API
                 # Mock the dramatiq .send method
                 with patch("apps.workers.tasks.publish_content.send") as mock_send:
-                    pub_response = await ac.post("/api/v1/content/api-content-1/publish")
+                    pub_response = await ac.post("/api/v1/content/api-content-1/publish", headers=admin_headers)
                     assert pub_response.status_code == 200
                     assert pub_response.json()["status"] == "publish_enqueued"
                     mock_send.assert_called_once()

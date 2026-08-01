@@ -37,7 +37,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
 
 def require_role(required_permissions: list[str]):
     """Dependency to require specific role permissions."""
-    async def role_checker(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
+    def role_checker(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
         try:
             payload = jwt.decode(
                 credentials.credentials, 
