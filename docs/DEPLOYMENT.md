@@ -269,6 +269,19 @@ curl https://your-domain.com/api/
 curl https://your-domain.com/docs
 ```
 
+## Production Deployment Notes
+
+### Dockerfile Usage
+- **API/Worker Services**: Use `Dockerfile.prod` with `--workers` flag for production performance (no reload, non-root user)
+- **Dashboard Service**: Uses `Dockerfile` with multi-stage build (Node build + nginx static serving)
+- **cert-init Service**: Uses `Dockerfile.prod` for simplicity (one-shot service, worker optimization not needed)
+- **Development**: Uses `Dockerfile.dev` with `--reload` for hot reload during development
+
+### Database URL Configuration
+- **Docker Compose**: DATABASE_URL uses docker network hostname (e.g., `postgres:5432`)
+- **Local Testing**: DATABASE_URL should use localhost (e.g., `localhost:5432`) when running tests directly on host
+- **Switching**: Modify .env DATABASE_URL between docker hostname and localhost based on execution context
+
 ## Production Deployment Checklist
 
 - [ ] Set secure database passwords

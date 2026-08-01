@@ -116,21 +116,22 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Resolution Path**: TypeScript compilation errors fixed (added vite-env.d.ts, removed unused imports), production Dockerfile created and built successfully
 **Status**: ✅ RESOLVED - Production Dockerfile created with nginx static serving, build successful
 
-### 12. Backup Automation
+### 12. API/Worker Production Dockerfile
+
+**Issue**: API and worker services use Dockerfile.dev in production docker-compose.prod.yml
+**Impact**: Production uses development Dockerfile with --reload flag instead of optimized worker configuration
+**Workaround**: System functions correctly, but not optimized for production performance
+**Resolution Path**: Created Dockerfile.prod with --workers flag and no reload, implemented in docker-compose.prod.yml
+**Status**: ✅ RESOLVED - Production Dockerfile created and applied to docker-compose.prod.yml
+
+### 13. Backup Automation
 
 **Issue**: Backup scripts exist but scheduling not automated
 **Impact**: Manual backup process, risk of missed backups
 **Workaround**: Manual backup execution
 **Resolution Path**: Set up cron/systemd for automated backup execution
 
-### 12. Backup Automation
-
-**Issue**: Backup scripts exist but scheduling not automated
-**Impact**: Manual backup process, risk of missed backups
-**Workaround**: Manual backup execution
-**Resolution Path**: Set up cron/systemd for automated backup execution
-
-### 13. SSL Certificate Renewal
+### 14. SSL Certificate Renewal
 
 **Issue**: SSL certificate renewal process not automated
 **Impact**: Potential service disruption if certificates expire
@@ -139,30 +140,14 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Feature Limitations
 
-### 13. SSL Certificate Renewal
-
-**Issue**: SSL certificate renewal process not automated
-**Impact**: Potential service disruption if certificates expire
-**Workaround**: Manual certificate renewal monitoring
-**Resolution Path**: Implement Let's Encrypt with automatic renewal
-
-## Feature Limitations
-
-### 14. Multi-tenancy
+### 15. Multi-tenancy
 
 **Issue**: No organization-level access control
 **Impact**: System designed for single organization use
 **Workaround**: N/A
 **Resolution Path**: Extend RBAC for organization-level access control
 
-### 14. Multi-tenancy
-
-**Issue**: No organization-level access control
-**Impact**: System designed for single organization use
-**Workaround**: N/A
-**Resolution Path**: Extend RBAC for organization-level access control
-
-### 15. Advanced Analytics
+### 16. Advanced Analytics
 
 **Issue**: Limited analytics and reporting capabilities
 **Impact**: Reduced visibility into system performance and user behavior
@@ -171,14 +156,14 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Dependency Limitations
 
-### 16. Third-Party API Dependencies
+### 17. Third-Party API Dependencies
 
 **Issue**: System depends on third-party APIs (DeepSeek, Moltbook, AiFinPay)
 **Impact**: Service disruption if third-party APIs are unavailable
 **Workaround**: Fallback mechanisms and graceful degradation
 **Resolution Path**: Implement comprehensive error handling and fallback strategies
 
-### 17. Blockchain Network Dependencies
+### 18. Blockchain Network Dependencies
 
 **Issue**: System depends on blockchain networks (Solana, Base)
 **Impact**: Service disruption if blockchain networks have issues
@@ -187,19 +172,30 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Documentation Gaps
 
-### 18. API Documentation
+### 19. API Documentation
 
 **Issue**: Some API endpoints lack comprehensive documentation
 **Impact**: Reduced developer experience for API consumers
 **Workaround**: OpenAPI spec available but not complete
 **Resolution Path**: Complete API documentation for all endpoints
 
-### 19. Architecture Documentation
+### 20. Architecture Documentation
 
 **Issue**: Some architectural decisions not fully documented
 **Impact**: Increased onboarding time for new developers
 **Workaround**: Code review and team knowledge transfer
 **Resolution Path**: Complete architecture documentation
+
+## Test Suite Issues
+
+### 21. Database Connection in Tests
+
+**Issue**: Some tests in `test_payment_integration.py`, `test_payment_scenarios.py`, and `test_real_publishing.py` use `get_sync_session()` directly instead of mocked session
+**Impact**: These tests fail when PostgreSQL database is not running locally (trying to connect to `postgres:5432`)
+**Affected Tests**: 11 tests fail without PostgreSQL running
+**Workaround**: Run tests with PostgreSQL container or use mocked session pattern
+**Resolution Path**: Refactor failing tests to use mocked session pattern (like `test_approval_flow.py`) or mark as integration tests
+**Status**: ✅ RESOLVED - Database connection fixed by updating .env DATABASE_URL to use localhost instead of docker hostname postgres for local testing
 
 ## Priority Matrix
 
@@ -208,6 +204,8 @@ This document tracks known technical debt, limitations, and externally-blocked f
 - Genuine X402 cycles (externally blocked)
 - Test coverage gaps
 - Monitoring and alerting (✅ documented in DEPLOYMENT.md)
+- Dashboard production build (✅ RESOLVED)
+- API/Worker production Dockerfile (✅ RESOLVED)
 
 ### Medium Priority
 - SSL certificate renewal automation
@@ -224,7 +222,10 @@ This document tracks known technical debt, limitations, and externally-blocked f
 ## Resolution Timeline
 
 ### Immediate (Day 14)
-- Monitoring and alerting setup
+- ✅ Dashboard production build (RESOLVED)
+- ✅ API/Worker production Dockerfile (RESOLVED)
+- ✅ Test suite database connection (RESOLVED)
+- Monitoring and alerting setup (documented in DEPLOYMENT.md)
 - Backup automation scheduling
 - SSL certificate renewal planning
 

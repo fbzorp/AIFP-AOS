@@ -132,20 +132,12 @@
 
 ## Remaining Issues
 
-### 1. Dashboard Production Build (File System Issues)
-- **Issue**: Dashboard production build uses Vite dev server instead of optimized static build
-- **Impact**: Production uses development build instead of production-optimized static files
-- **Root Cause**: File system issues prevent creation of production Dockerfile
-- **Workaround**: Using Dockerfile.dev with Vite dev server for production (works functionally)
-- **Status**: ⚠️ TypeScript errors fixed, but production Dockerfile creation blocked by file system issues - accepted technical debt
-- **Priority**: LOW - System functional with Dockerfile.dev
-
-### 2. Externally-Blocked Features (§5)
+### 1. Externally-Blocked Features (§5)
 - **EVM Base Sepolia Transaction Testing**: Requires testnet funds (externally blocked)
 - **Genuine X402 Cycles (≥3 cycles)**: Requires mainnet Solana Seat PDA (externally blocked)
 - **Status**: Documented in docs/KNOWN_LIMITATIONS.md as externally blocked
 
-### 3. Transitive Dependency CVE
+### 2. Transitive Dependency CVE
 - **ecdsa**: Version 0.19.2 has 1 CVE (PYSEC-2026-1325)
 - **Status**: Transitive dependency from solana package, no fixed release exists
 - **Priority**: LOW - Documented as transitive dependency limitation
@@ -157,13 +149,11 @@
 2. **SSL Configuration**: Configure Let's Encrypt for production (infrastructure ready)
 3. **Backup Scheduling**: Set up cron/systemd for automated backup execution
 4. **Monitoring**: Deploy Prometheus/Grafana using documented integration guide
-5. **Dashboard Production Build**: Resolve file system issues and deploy production Dockerfile
 
 ### Technical Debt Resolution Path
-1. **Dashboard Production Build**: Fix file system issues, create production Dockerfile with nginx static serving
-2. **Monitoring**: Deploy Prometheus/Grafana using documented integration guide
-3. **Backup Automation**: Set up cron/systemd for automated backup execution
-4. **SSL Renewal**: Implement Let's Encrypt with automatic renewal
+1. **Monitoring**: Deploy Prometheus/Grafana using documented integration guide
+2. **Backup Automation**: Set up cron/systemd for automated backup execution
+3. **SSL Renewal**: Implement Let's Encrypt with automatic renewal
 
 ### Handover Documentation
 All handover documentation is complete and available:
@@ -184,6 +174,7 @@ The system is production-ready with the following infrastructure:
 - ✅ Rollback procedures documented
 - ✅ Restart policies configured for VPS resilience
 - ✅ Monitoring integration guide available
+- ✅ Dashboard production build with nginx static serving
 - ✅ All tests passing
 - ✅ No secrets or certificates committed
 
