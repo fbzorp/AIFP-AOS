@@ -307,7 +307,6 @@ docker compose -f docker-compose.staging.yml up -d
   - cert-init service reuses `aifp-aos-api:latest` image (cryptography library already available)
   - `generate_ssl_cert.py` includes idempotency guard - skips regeneration if certificates already exist
   - Certificate generation triggered automatically before nginx starts via `depends_on: cert-init: condition: service_completed_successfully`
-  - `generate_ssl_cert.bat` and `generate_ssl_cert.sh` remain as convenience scripts for manual invocation
   - Documentation covers Let's Encrypt for production
 - **Status**: ✅ SSL certificates properly gitignored with automated generation via cert-init service
 - **Verification**: Idempotency confirmed locally - second `docker compose up` skips regeneration
@@ -376,8 +375,8 @@ docker compose -f docker-compose.staging.yml up -d
 - `scripts/setup_backup_automation.sh` - Backup automation setup script
 - `scripts/export_openapi.py` - OpenAPI specification export script with --check mode
 - `scripts/generate_ssl_cert.py` - Python self-signed SSL certificate generator with idempotency
-- `scripts/generate_ssl_cert.sh` - Linux wrapper for SSL certificate generation (convenience)
-- `scripts/generate_ssl_cert.bat` - Windows wrapper for SSL certificate generation (convenience)
+- `scripts/generate_ssl_cert.sh` - Linux convenience wrapper for SSL certificate generation
+- `scripts/generate_ssl_cert.bat` - Windows convenience wrapper for SSL certificate generation
 - `docker-compose.staging.yml` - Staging environment configuration with cert-init service, DOMAIN env var, and nginx template support
 - `nginx/nginx.conf` - Base nginx configuration with upstreams and rate limiting
 - `nginx/templates/default.conf.template` - Nginx server block template with ${DOMAIN}
