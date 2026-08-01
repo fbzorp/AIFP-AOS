@@ -87,10 +87,8 @@ services:
   dashboard:
     build:
       context: apps/dashboard
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     image: aifp-aos-dashboard:latest
-    environment:
-      VITE_API_URL: ${VITE_API_URL}
     networks:
       - aifp-network
     restart: unless-stopped

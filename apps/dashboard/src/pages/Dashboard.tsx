@@ -1,12 +1,10 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Activity, 
-  Users, 
-  CheckCircle, 
-  Clock, 
+import {
+  Activity,
+  Users,
+  CheckCircle,
   AlertCircle,
-  BarChart3,
   Zap,
   ShieldCheck,
   Search,
@@ -17,7 +15,6 @@ import {
   ThumbsUp,
   ThumbsDown,
   Calendar,
-  MessageSquare,
   CreditCard
 } from 'lucide-react';
 import { Link } from 'react-router-dom';

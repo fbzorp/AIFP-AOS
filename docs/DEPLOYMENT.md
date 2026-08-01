@@ -8,6 +8,102 @@ This guide covers deploying the AiFinPay Autonomous OS to staging and production
 - A domain name (for production)
 - SSL certificates (for production)
 - Environment variables configured
+- Python 3.12+ (for migrations and SSL generation)
+
+## Clean Server Deployment
+
+### Step 1: Clone Repository
+
+```bash
+# Clone the repository
+git clone https://github.com/fbzorp/AIFP-AOS.git
+cd AIFP-AOS
+```
+
+### Step 2: Environment Setup
+
+```bash
+# Copy environment example
+cp .env.example .env.production
+
+# Edit .env.production with your production values
+nano .env.production
+```
+
+Required environment variables for production:
+- `POSTGRES_USER`: PostgreSQL username (no default)
+- `POSTGRES_PASSWORD`: PostgreSQL password (no default)
+- `POSTGRES_DB`: PostgreSQL database name (default: aifp_prod)
+- `DOMAIN`: Your production domain name
+- `SOLANA_RPC_URL`: Solana RPC endpoint
+- `EVM_RPC_URL`: EVM RPC endpoint
+- `AIFINPAY_AGENT_SECRET`: Ed25519 secret key
+- `AIFINPAY_AGENT_PUBKEY`: Ed25519 public key
+- `PAYMENTS_NETWORK`: Network (devnet or mainnet)
+- `DAILY_SPENDING_LIMIT`: Daily spending limit in USD
+- `PER_TRANSACTION_LIMIT`: Per-transaction limit in USD
+- `HUMAN_APPROVAL_THRESHOLD`: Approval threshold in USD
+- `RECIPIENT_ALLOWLIST`: Comma-separated allowed addresses
+
+### Step 3: Build and Start Services
+
+```bash
+# Build production images
+docker compose -f docker-compose.prod.yml --env-file .env.production build
+
+# Start all services
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+```
+
+The `cert-init` service will automatically generate self-signed SSL certificates on first run. For production, replace these with Let's Encrypt certificates.
+
+### Step 4: Run Database Migrations
+
+```bash
+# Run migrations
+docker compose -f docker-compose.prod.yml --env-file .env.production exec api alembic upgrade head
+```
+
+### Step 5: Health Check
+
+```bash
+# Check service status
+docker compose -f docker-compose.prod.yml --env-file .env.production ps
+
+# Check API health
+curl https://your-domain.com/health
+
+# Check nginx status
+docker compose -f docker-compose.prod.yml --env-file .env.production logs nginx
+```
+
+### Step 6: Configure Production SSL (Optional)
+
+For production, replace self-signed certificates with Let's Encrypt:
+
+```bash
+# Install certbot
+sudo apt-get install certbot
+
+# Generate certificates
+sudo certbot certonly --standalone -d your-domain.com
+
+# Stop nginx container
+docker compose -f docker-compose.prod.yml --env-file .env.production stop nginx
+
+# Copy certificates
+sudo cp /etc/letsencrypt/live/your-domain.com/fullchain.pem nginx/ssl/
+sudo cp /etc/letsencrypt/live/your-domain.com/privkey.pem nginx/ssl/
+
+# Set permissions
+sudo chmod 644 nginx/ssl/fullchain.pem
+sudo chmod 600 nginx/ssl/privkey.pem
+
+# Restart nginx
+docker compose -f docker-compose.prod.yml --env-file .env.production start nginx
+```
+
+## Environment Configuration
 
 ## Environment Configuration
 
@@ -303,6 +399,106 @@ Important configuration files to back up:
 - API logs: `docker compose -f docker-compose.staging.yml logs api`
 - Nginx logs: `docker compose -f docker-compose.staging.yml logs nginx`
 - Worker logs: `docker compose -f docker-compose.staging.yml logs worker`
+
+### Monitoring Integration
+
+For production monitoring, integrate with Prometheus and Grafana:
+
+```bash
+# Add Prometheus to docker-compose.prod.yml
+prometheus:
+  image: prom/prometheus:latest
+  volumes:
+    - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  ports:
+    - "9090:9090"
+
+# Add Grafana to docker-compose.prod.yml
+grafana:
+  image: grafana/grafana:latest
+  ports:
+    - "3001:3000"
+  environment:
+    - GF_SECURITY_ADMIN_PASSWORD=your_secure_password
+```
+
+Monitor metrics:
+- API response times
+- Payment transaction success rates
+- Worker task queue depth
+- Database connection pool usage
+- Nginx request rates
+
+## VPS Restart Resume Behavior
+
+### Automatic Restart Configuration
+
+All long-running services in `docker-compose.prod.yml` and `docker-compose.staging.yml` are configured with `restart: unless-stopped` to ensure they automatically resume after a VPS reboot:
+
+- `postgres`: `restart: unless-stopped`
+- `redis`: `restart: unless-stopped`
+- `api`: `restart: unless-stopped`
+- `worker`: `restart: unless-stopped`
+- `dashboard`: `restart: unless-stopped`
+- `nginx`: `restart: unless-stopped`
+
+The `cert-init` service has `restart: "no"` as it is a one-shot initialization service that should only run once to generate SSL certificates.
+
+### How It Works
+
+When the VPS reboots:
+1. Docker daemon starts automatically (via systemd)
+2. Docker Compose automatically restarts all services with `restart: unless-stopped`
+3. Services start in dependency order (postgres → redis → api/worker → dashboard → nginx)
+4. Nginx waits for API to be healthy before starting
+5. Worker resumes processing any pending tasks from Redis queue
+
+### Verification
+
+To verify reboot-resume behavior:
+
+```bash
+# Check current service status
+docker compose -f docker-compose.prod.yml ps
+
+# Simulate reboot (or wait for actual reboot)
+sudo reboot
+
+# After reboot, check services are back up
+docker compose -f docker-compose.prod.yml ps
+
+# Verify API health
+curl https://your-domain.com/health
+
+# Check worker is processing tasks
+docker compose -f docker-compose.prod.yml logs worker | tail -20
+```
+
+Expected output after reboot:
+```
+NAME              STATUS              PORTS
+postgres          running (healthy)   5432/tcp
+redis             running (healthy)   6379/tcp
+api               running (healthy)   8000/tcp
+worker            running             -
+dashboard         running             80/tcp
+nginx             running             80/tcp, 443/tcp
+```
+
+### Manual Restart
+
+If services don't automatically restart:
+
+```bash
+# Start all services
+docker compose -f docker-compose.prod.yml up -d
+
+# Start specific service
+docker compose -f docker-compose.prod.yml up -d api
+
+# Check service logs
+docker compose -f docker-compose.prod.yml logs -f api
+```
 
 ## Performance Optimization
 

@@ -1,10 +1,10 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  DollarSign, 
-  ExternalLink, 
-  CheckCircle, 
-  Clock, 
+import {
+  DollarSign,
+  ExternalLink,
+  CheckCircle,
+  Clock,
   XCircle,
   Zap,
   Network,
@@ -12,7 +12,7 @@ import {
   Timer,
   CreditCard
 } from 'lucide-react';
-import { fetchPayments, Payment, cn } from '../lib/api';
+import { fetchPayments, cn } from '../lib/api';
 
 const Payments: React.FC = () => {
   const { data: payments, isLoading } = useQuery({

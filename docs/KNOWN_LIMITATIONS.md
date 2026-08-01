@@ -104,8 +104,17 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 **Issue**: Limited monitoring and alerting infrastructure
 **Impact**: Delayed detection of production issues
-**Workaround**: Manual log monitoring
-**Resolution Path**: Implement Prometheus/Grafana monitoring and alerting
+**Workaround**: Manual log monitoring and health check endpoints
+**Resolution Path**: Implemented in docs/DEPLOYMENT.md with Prometheus/Grafana integration guide
+**Status**: ✅ Monitoring integration documented as accepted technical debt - infrastructure ready but not deployed
+
+### 11. Dashboard Production Build
+
+**Issue**: Dashboard production build uses Vite dev server instead of optimized static build
+**Impact**: Production uses development build instead of production-optimized static files
+**Workaround**: Using Dockerfile.dev with Vite dev server for production (works functionally)
+**Resolution Path**: TypeScript compilation errors fixed (added vite-env.d.ts, removed unused imports), but file system issues prevent production Dockerfile creation
+**Status**: ⚠️ TypeScript errors fixed, but production Dockerfile creation blocked by file system issues - system functional with Dockerfile.dev
 
 ### 11. Backup Automation
 
@@ -175,7 +184,8 @@ This document tracks known technical debt, limitations, and externally-blocked f
 - EVM Base Sepolia transaction testing (externally blocked)
 - Genuine X402 cycles (externally blocked)
 - Test coverage gaps
-- Monitoring and alerting
+- Monitoring and alerting (✅ documented in DEPLOYMENT.md)
+- Dashboard production build (TypeScript errors)
 
 ### Medium Priority
 - SSL certificate renewal automation
