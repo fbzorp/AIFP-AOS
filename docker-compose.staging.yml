@@ -93,6 +93,22 @@ services:
       - aifp-network
     restart: unless-stopped
 
+  cert-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: aifp-aos-api:latest
+    working_dir: /app
+    command: ["uv", "run", "python", "scripts/generate_ssl_cert.py", "--cert-dir", "/certs"]
+    environment:
+      - DOMAIN=${DOMAIN:-staging.aifp-aos.local}
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./nginx/ssl:/certs
+    networks:
+      - aifp-network
+    restart: "no"
+
   nginx:
     image: nginx:alpine
     ports:
@@ -105,7 +121,10 @@ services:
     environment:
       - DOMAIN=${DOMAIN:-staging.aifp-aos.local}
     depends_on:
-      - api
+      api:
+        condition: service_started
+      cert-init:
+        condition: service_completed_successfully
     networks:
       - aifp-network
     restart: unless-stopped
