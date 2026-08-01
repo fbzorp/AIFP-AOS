@@ -112,18 +112,25 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 **Issue**: Dashboard production build uses Vite dev server instead of optimized static build
 **Impact**: Production uses development build instead of production-optimized static files
-**Workaround**: Using Dockerfile.dev with Vite dev server for production (works functionally)
-**Resolution Path**: TypeScript compilation errors fixed (added vite-env.d.ts, removed unused imports), but file system issues prevent production Dockerfile creation
-**Status**: ⚠️ TypeScript errors fixed, but production Dockerfile creation blocked by file system issues - system functional with Dockerfile.dev
+**Workaround**: Previously using Dockerfile.dev with Vite dev server for production
+**Resolution Path**: TypeScript compilation errors fixed (added vite-env.d.ts, removed unused imports), production Dockerfile created and built successfully
+**Status**: ✅ RESOLVED - Production Dockerfile created with nginx static serving, build successful
 
-### 11. Backup Automation
+### 12. Backup Automation
 
 **Issue**: Backup scripts exist but scheduling not automated
 **Impact**: Manual backup process, risk of missed backups
 **Workaround**: Manual backup execution
 **Resolution Path**: Set up cron/systemd for automated backup execution
 
-### 12. SSL Certificate Renewal
+### 12. Backup Automation
+
+**Issue**: Backup scripts exist but scheduling not automated
+**Impact**: Manual backup process, risk of missed backups
+**Workaround**: Manual backup execution
+**Resolution Path**: Set up cron/systemd for automated backup execution
+
+### 13. SSL Certificate Renewal
 
 **Issue**: SSL certificate renewal process not automated
 **Impact**: Potential service disruption if certificates expire
@@ -132,14 +139,30 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Feature Limitations
 
-### 13. Multi-tenancy
+### 13. SSL Certificate Renewal
+
+**Issue**: SSL certificate renewal process not automated
+**Impact**: Potential service disruption if certificates expire
+**Workaround**: Manual certificate renewal monitoring
+**Resolution Path**: Implement Let's Encrypt with automatic renewal
+
+## Feature Limitations
+
+### 14. Multi-tenancy
 
 **Issue**: No organization-level access control
 **Impact**: System designed for single organization use
 **Workaround**: N/A
 **Resolution Path**: Extend RBAC for organization-level access control
 
-### 14. Advanced Analytics
+### 14. Multi-tenancy
+
+**Issue**: No organization-level access control
+**Impact**: System designed for single organization use
+**Workaround**: N/A
+**Resolution Path**: Extend RBAC for organization-level access control
+
+### 15. Advanced Analytics
 
 **Issue**: Limited analytics and reporting capabilities
 **Impact**: Reduced visibility into system performance and user behavior
@@ -148,14 +171,14 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Dependency Limitations
 
-### 15. Third-Party API Dependencies
+### 16. Third-Party API Dependencies
 
 **Issue**: System depends on third-party APIs (DeepSeek, Moltbook, AiFinPay)
 **Impact**: Service disruption if third-party APIs are unavailable
 **Workaround**: Fallback mechanisms and graceful degradation
 **Resolution Path**: Implement comprehensive error handling and fallback strategies
 
-### 16. Blockchain Network Dependencies
+### 17. Blockchain Network Dependencies
 
 **Issue**: System depends on blockchain networks (Solana, Base)
 **Impact**: Service disruption if blockchain networks have issues
@@ -164,14 +187,14 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Documentation Gaps
 
-### 17. API Documentation
+### 18. API Documentation
 
 **Issue**: Some API endpoints lack comprehensive documentation
 **Impact**: Reduced developer experience for API consumers
 **Workaround**: OpenAPI spec available but not complete
 **Resolution Path**: Complete API documentation for all endpoints
 
-### 18. Architecture Documentation
+### 19. Architecture Documentation
 
 **Issue**: Some architectural decisions not fully documented
 **Impact**: Increased onboarding time for new developers
@@ -185,7 +208,6 @@ This document tracks known technical debt, limitations, and externally-blocked f
 - Genuine X402 cycles (externally blocked)
 - Test coverage gaps
 - Monitoring and alerting (✅ documented in DEPLOYMENT.md)
-- Dashboard production build (TypeScript errors)
 
 ### Medium Priority
 - SSL certificate renewal automation
