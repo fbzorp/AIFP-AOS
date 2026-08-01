@@ -8,6 +8,7 @@ from redis import Redis
 from apps.api.config import settings
 from apps.models.base import get_db
 from apps.api.routers import system, approvals, payments
+from apps.api.auth import create_access_token, create_test_token
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

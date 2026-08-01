@@ -1,7 +1,6 @@
 """
 Payment security integration tests for critical workflow protection.
 Tests verify security settings are accessible and configurable.
-Full endpoint enforcement tests require proper async database session handling.
 """
 
 import pytest
