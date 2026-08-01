@@ -68,6 +68,12 @@ backups/
 *.sql
 *.sql.gz
 
+# SSL Certificates (never commit real certificates)
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+!nginx/ssl/.gitkeep
+
 # Docker
 
 # OS

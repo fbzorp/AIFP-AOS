@@ -283,14 +283,68 @@ docker compose -f docker-compose.staging.yml up -d
 - **Recommendation**: Monitor for ecdsa security updates from solana maintainers
 - **Priority**: LOW - Documented as transitive dependency limitation
 
+## Permanent Solutions for Runtime Caveats
+
+### 1. Nginx Domain Parameterization
+- **Problem**: Hardcoded domain name in nginx configuration
+- **Solution**: 
+  - Created `nginx/templates/default.conf.template` with `${DOMAIN}` environment variable
+  - Updated `docker-compose.staging.yml` to use nginx template mounting
+  - Added `DOMAIN` environment variable with default value
+  - nginx:alpine automatically runs `envsubst` on template files
+- **Status**: ✅ Fully parameterized, no hardcoded domains
+- **Documentation**: See `docs/DEPLOYMENT.md` for deployment instructions
+
+### 2. SSL Certificate Security
+- **Problem**: Risk of committing real SSL certificates
+- **Solution**:
+  - Updated `.gitignore` to prevent committing `nginx/ssl/*.pem`, `*.key`, `*.crt`
+  - Added `nginx/ssl/.gitkeep` to preserve directory structure
+  - Created `scripts/generate_ssl_cert.sh` (Linux/Mac) and `scripts/generate_ssl_cert.bat` (Windows)
+  - Scripts generate self-signed certificates for development only
+  - Documentation covers Let's Encrypt for production
+- **Status**: ✅ SSL certificates properly gitignored with generation scripts
+- **Documentation**: See `docs/DEPLOYMENT.md` for SSL setup instructions
+
+### 3. OpenAPI Spec Freshness Enforcement
+- **Problem**: Risk of API documentation drift from actual routes
+- **Solution**:
+  - Added `--check` mode to `scripts/export_openapi.py`
+  - CI pipeline now runs OpenAPI freshness check automatically
+  - Fails CI if `docs/openapi.json` is stale
+  - Clear error message instructs developers to regenerate spec
+- **Status**: ✅ CI enforces OpenAPI spec freshness
+- **Usage**: `python scripts/export_openapi.py --check`
+
+### Deployment Documentation
+- **New File**: `docs/DEPLOYMENT.md` - Comprehensive deployment guide
+- **Coverage**:
+  - Environment configuration for staging/production
+  - SSL certificate setup (self-signed and Let's Encrypt)
+  - Nginx templating and configuration
+  - Deployment verification steps
+  - Production deployment checklist
+  - Security considerations
+  - Troubleshooting guide
+  - Backup and restore procedures
+  - Monitoring and performance optimization
+- **Status**: ✅ Complete deployment documentation available
+
 ## Next-Day Plan (Day 14)
 
 ### Priority Items
 1. **Production Deployment**: Deploy staging environment with authentication infrastructure
 2. **Backup Scheduling**: Set up cron/systemd for automated backup execution
-3. **SSL/TLS Configuration**: Configure HTTPS for staging with Let's Encrypt
+3. **SSL/TLS Configuration**: Configure HTTPS for staging with Let's Encrypt (infrastructure ready)
 4. **Monitoring Setup**: Add application monitoring (Prometheus/Grafana)
 5. **User Management**: Add user authentication endpoints for token generation
+
+### Runtime Caveats Resolved
+- ✅ Nginx domain parameterization implemented
+- ✅ SSL certificate security enforced via gitignore
+- ✅ OpenAPI spec freshness enforced in CI
+- ✅ Comprehensive deployment documentation added
+- Staging deployment infrastructure is production-ready
 
 ### Stretch Goals
 - **CI/CD Pipeline**: Add automated deployment to staging on merge to main
@@ -311,13 +365,17 @@ docker compose -f docker-compose.staging.yml up -d
 - `scripts/restore_database.sh` - Database restoration script
 - `scripts/monitor_backups.sh` - Backup health monitoring script
 - `scripts/setup_backup_automation.sh` - Backup automation setup script
-- `scripts/export_openapi.py` - OpenAPI specification export script
-- `docker-compose.staging.yml` - Staging environment configuration
-- `nginx/nginx.staging.conf` - Nginx configuration for staging
-- `nginx/.gitkeep` - SSL certificates placeholder
+- `scripts/export_openapi.py` - OpenAPI specification export script with --check mode
+- `scripts/generate_ssl_cert.sh` - Linux self-signed SSL certificate generator
+- `scripts/generate_ssl_cert.bat` - Windows self-signed SSL certificate generator
+- `docker-compose.staging.yml` - Staging environment configuration with DOMAIN env var and nginx template support
+- `nginx/nginx.conf` - Base nginx configuration with upstreams and rate limiting
+- `nginx/templates/default.conf.template` - Nginx server block template with ${DOMAIN}
+- `nginx/ssl/.gitkeep` - SSL certificates directory placeholder (replaces nginx.staging.conf)
 - `docs/DAY13_SECURITY_REVIEW.md` - Security review documentation
 - `docs/openapi.json` - Generated OpenAPI specification (22 endpoints)
 - `docs/API.md` - Comprehensive API documentation
+- `docs/DEPLOYMENT.md` - Comprehensive deployment guide
 - `bandit-report.json` - Bandit security analysis report
 
 ### Modified Files
@@ -330,6 +388,9 @@ docker compose -f docker-compose.staging.yml up -d
 - `apps/api/routers/approvals.py` - Applied RBAC to all mutating endpoints, added route documentation
 - `apps/api/routers/system.py` - Added route documentation
 - `apps/models/base.py` - Added connection pooling configuration
+- `docker-compose.staging.yml` - Updated nginx service for template support and DOMAIN env var, replaced static nginx.staging.conf mount
+- `.gitignore` - Added SSL certificate patterns (nginx/ssl/*.pem, *.key, *.crt)
+- `.github/workflows/ci.yml` - Added OpenAPI spec freshness check in CI pipeline
 
 ## Conclusion
 
