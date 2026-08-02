@@ -60,46 +60,50 @@ const Payments: React.FC = () => {
       label: 'Total Payments', 
       value: payments?.length || 0, 
       icon: DollarSign, 
-      color: 'text-green-400' 
+      color: 'text-accent',
+      bgColor: 'bg-accent/10'
     },
     { 
       label: 'Successful', 
       value: payments?.filter(p => p.status === 'success').length || 0, 
       icon: CheckCircle, 
-      color: 'text-green-400' 
+      color: 'text-green-400',
+      bgColor: 'bg-green-500/10'
     },
     { 
       label: 'Pending', 
       value: payments?.filter(p => p.status === 'pending').length || 0, 
       icon: Clock, 
-      color: 'text-amber-400' 
+      color: 'text-amber-400',
+      bgColor: 'bg-amber-500/10'
     },
     { 
       label: 'Failed', 
       value: payments?.filter(p => p.status === 'failed').length || 0, 
       icon: XCircle, 
-      color: 'text-red-400' 
+      color: 'text-red-400',
+      bgColor: 'bg-red-500/10'
     },
   ];
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-8 space-y-8 animate-fade-in">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight gradient-text">Payment Dashboard</h1>
-        <p className="text-surface-400 mt-1">Monitor and manage AI agent payments</p>
+        <p className="text-gray-400 mt-1">Monitor and manage AI agent payments</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, i) => (
-          <div key={i} className="stat-card">
+          <div key={i} className="stat-card group">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-sm font-medium text-surface-400">{stat.label}</p>
-                <h3 className="text-2xl font-bold mt-1">{isLoading ? '...' : stat.value}</h3>
+                <p className="text-sm font-medium text-gray-400">{stat.label}</p>
+                <h3 className="text-2xl font-bold mt-1 group-hover:text-accent transition-colors">{isLoading ? '...' : stat.value}</h3>
               </div>
-              <div className={cn("p-2 rounded-lg bg-surface-800", stat.color)}>
+              <div className={cn("p-2 rounded-lg", stat.bgColor, stat.color)}>
                 <stat.icon size={20} />
               </div>
             </div>
@@ -111,10 +115,10 @@ const Payments: React.FC = () => {
       <div className="glass-card p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
-            <CreditCard size={20} className="text-primary-400" />
+            <CreditCard size={20} className="text-accent" />
             <h2 className="text-xl font-semibold">Payment Transactions</h2>
           </div>
-          <span className="px-2 py-1 rounded-md bg-primary-500/10 text-primary-400 text-xs font-bold">
+          <span className="px-2 py-1 rounded-md bg-accent/10 text-accent text-xs font-bold">
             {payments?.length || 0} Total
           </span>
         </div>
@@ -122,7 +126,7 @@ const Payments: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-left text-xs font-medium text-surface-400 uppercase tracking-wider">
+              <tr className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                 <th className="pb-3 pr-4">ID</th>
                 <th className="pb-3 pr-4">Purpose</th>
                 <th className="pb-3 pr-4">Amount</th>
@@ -138,31 +142,31 @@ const Payments: React.FC = () => {
                 <th className="pb-3 pr-4">Error</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-surface-800">
+            <tbody className="divide-y divide-[#3730a3]">
               {isLoading ? (
                 <tr>
-                  <td colSpan={13} className="py-8 text-center text-surface-500">
+                  <td colSpan={13} className="py-8 text-center text-gray-500">
                     Loading payments...
                   </td>
                 </tr>
               ) : payments && payments.length > 0 ? (
                 payments.map((payment) => (
-                  <tr key={payment.id} className="text-sm">
-                    <td className="py-3 pr-4 font-mono text-xs text-surface-400">
+                  <tr key={payment.id} className="text-sm hover:bg-[#3730a3]/20 transition-colors cursor-pointer">
+                    <td className="py-3 pr-4 font-mono text-xs text-gray-400">
                       {payment.id.slice(0, 8)}...
                     </td>
-                    <td className="py-3 pr-4 font-medium text-surface-100">
+                    <td className="py-3 pr-4 font-medium text-white">
                       {payment.purpose}
                     </td>
                     <td className="py-3 pr-4">
-                      <span className="text-surface-100">
+                      <span className="text-white">
                         {payment.amount} {payment.currency}
                       </span>
                     </td>
                     <td className="py-3 pr-4">
                       <div className="flex items-center space-x-1">
                         <Network size={14} className="text-blue-400" />
-                        <span className="text-surface-300">{payment.network}</span>
+                        <span className="text-gray-300">{payment.network}</span>
                       </div>
                     </td>
                     <td className="py-3 pr-4">
@@ -174,33 +178,33 @@ const Payments: React.FC = () => {
                         <span className="capitalize">{payment.status}</span>
                       </span>
                     </td>
-                    <td className="py-3 pr-4 text-surface-300">
+                    <td className="py-3 pr-4 text-gray-300">
                       {payment.approved_by || '-'}
                     </td>
-                    <td className="py-3 pr-4 text-surface-300">
+                    <td className="py-3 pr-4 text-gray-300">
                       {payment.mcp_tool || '-'}
                     </td>
-                    <td className="py-3 pr-4 font-mono text-xs text-surface-400">
+                    <td className="py-3 pr-4 font-mono text-xs text-gray-400">
                       {payment.request_id ? `${payment.request_id.slice(0, 8)}...` : '-'}
                     </td>
                     <td className="py-3 pr-4">
                       {payment.latency_ms ? (
                         <div className="flex items-center space-x-1">
                           <Timer size={14} className="text-purple-400" />
-                          <span className="text-surface-300">
+                          <span className="text-gray-300">
                             {payment.latency_ms.toFixed(1)}ms
                           </span>
                         </div>
                       ) : '-'}
                     </td>
-                    <td className="py-3 pr-4 text-surface-300">
+                    <td className="py-3 pr-4 text-gray-300">
                       {payment.cost_usd ? `$${payment.cost_usd.toFixed(4)}` : '-'}
                     </td>
                     <td className="py-3 pr-4">
                       {payment.wallet ? (
                         <div className="flex items-center space-x-1">
                           <Wallet size={14} className="text-green-400" />
-                          <span className="font-mono text-xs text-surface-400">
+                          <span className="font-mono text-xs text-gray-400">
                             {payment.wallet.slice(0, 6)}...{payment.wallet.slice(-4)}
                           </span>
                         </div>
@@ -212,7 +216,7 @@ const Payments: React.FC = () => {
                           href={payment.tx_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center space-x-1 text-primary-400 hover:text-primary-300 transition-colors"
+                          className="inline-flex items-center space-x-1 text-accent hover:text-accent-hover transition-colors"
                         >
                           <ExternalLink size={14} />
                           <span className="font-mono text-xs">
@@ -220,7 +224,7 @@ const Payments: React.FC = () => {
                           </span>
                         </a>
                       ) : (
-                        <span className="text-surface-500">-</span>
+                        <span className="text-gray-500">-</span>
                       )}
                     </td>
                     <td className="py-3 pr-4 text-red-400 text-xs max-w-xs truncate">
@@ -230,7 +234,7 @@ const Payments: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={13} className="py-8 text-center text-surface-500">
+                  <td colSpan={13} className="py-8 text-center text-gray-500">
                     No payment transactions found
                   </td>
                 </tr>

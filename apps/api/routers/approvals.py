@@ -74,6 +74,28 @@ async def edit_content(content_id: str, request: ContentEditRequest, db: AsyncSe
     await db.commit()
     return content
 
+@router.post("/content", summary="Create new content item", description="Create a new content item for the approval queue. Requires operator role.")
+async def create_content(content: dict, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
+    new_content = ContentItemModel(
+        title=content.get("title", "Untitled"),
+        channel=content.get("channel", "twitter"),
+        objective=content.get("objective", ""),
+        body=content.get("body"),
+        target_audience=content.get("target_audience", "general"),
+        format=content.get("format", "post"),
+        cta=content.get("cta", "Learn more"),
+        source_id=content.get("source_id"),
+        author_agent=content.get("author_agent", "Human Operator"),
+        status=content.get("status", "draft"),
+        variants=content.get("variants"),
+        compliance_status=content.get("compliance_status"),
+        compliance_reason=content.get("compliance_reason")
+    )
+    db.add(new_content)
+    await db.commit()
+    await db.refresh(new_content)
+    return new_content
+
 @router.post("/content/{content_id}/submit")
 async def submit_content(content_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))

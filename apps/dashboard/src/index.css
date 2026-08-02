@@ -1,27 +1,29 @@
+@import './styles/globals.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-surface-950 text-surface-50 antialiased;
+    @apply bg-[#1e1b4b] text-white antialiased;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-surface-900/50 backdrop-blur-md border border-surface-800 rounded-2xl shadow-glass transition-all duration-300;
+    @apply bg-[#1e1b4b]/30 backdrop-blur-md border border-[#3730a3]/50 rounded-2xl shadow-card transition-all duration-300;
   }
   
   .glass-card:hover {
-    @apply bg-surface-800/60 border-surface-700 shadow-glass-hover scale-[1.01];
+    @apply bg-[#3730a3]/40 border-[#6366f1]/50 shadow-card-hover scale-[1.01];
   }
 
   .stat-card {
-    @apply glass-card p-6 flex flex-col justify-between;
+    @apply glass-card p-6 flex flex-col justify-between cursor-pointer;
   }
 
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-400 to-primary-600;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#DC2626] to-indigo-500;
   }
 }
