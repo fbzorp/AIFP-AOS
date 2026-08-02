@@ -101,7 +101,7 @@ dev = [
     { name = "pytest", specifier = ">=8.2.2" },
     { name = "pytest-asyncio", specifier = ">=0.23.7" },
     { name = "pytest-cov", specifier = ">=4.1.0" },
-    { name = "respx", specifier = ">=0.21.1" },
+    { name = "respx", specifier = ">=0.23.1" },
 ]
 
 [[package]]
