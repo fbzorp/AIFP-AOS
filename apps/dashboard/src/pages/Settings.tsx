@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, Shield, Database, Bell, Zap, Moon, Sun, ArrowRight, X } from 'lucide-react';
-import Modal from '../components/Modal';
+import { Settings as SettingsIcon, Shield, Database, Bell, Zap, Moon, Sun, ArrowRight } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
   const [activePanel, setActivePanel] = useState<string | null>(null);
@@ -251,4 +250,4 @@ const SettingsPage: React.FC = () => {
   );
 };
 
-export default SettingsPage as Settings;
+export default SettingsPage;

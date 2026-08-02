@@ -14,8 +14,6 @@ import {
   Target,
   ThumbsUp,
   ThumbsDown,
-  Calendar,
-  CreditCard,
   Plus,
   Send
 } from 'lucide-react';
@@ -41,7 +39,7 @@ const Dashboard: React.FC = () => {
   const [isCreateContentModalOpen, setIsCreateContentModalOpen] = useState(false);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [selectedContentForPublish, setSelectedContentForPublish] = useState<any>(null);
-  const { data: metrics, isLoading: metricsLoading, error: metricsError } = useQuery({
+  const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ['metrics'],
     queryFn: fetchMetrics,
     refetchInterval: 3000,
@@ -54,7 +52,7 @@ const Dashboard: React.FC = () => {
     retry: 1,
   });
 
-  const { data: sources, isLoading: sourcesLoading } = useQuery({
+  const { data: sources } = useQuery({
     queryKey: ['sources'],
     queryFn: fetchSources,
     refetchInterval: 10000,

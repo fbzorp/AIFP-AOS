@@ -1,8 +1,8 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Users, Search, Zap, Shield, Database, Play, ArrowRight } from 'lucide-react';
-import { fetchAgents, cn } from '../lib/api';
+import { Users, Play, ArrowRight } from 'lucide-react';
+import { fetchAgents } from '../lib/api';
 
 const Agents: React.FC = () => {
   const { data: agents, isLoading } = useQuery({
@@ -61,7 +61,7 @@ const Agents: React.FC = () => {
                 </span>
               </div>
               
-              {Object.entries(agent.capabilities || {}).slice(0, 2).map(([key, value]) => (
+              {Object.entries(agent.capabilities || {}).slice(0, 2).map(([key]) => (
                 <div key={key} className="flex items-center gap-2 text-xs">
                   <div className="w-1.5 h-1.5 rounded-full bg-accent"></div>
                   <span className="text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span>

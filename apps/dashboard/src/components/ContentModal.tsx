@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { FileText, Send, X, Sparkles } from 'lucide-react';
+import { Send } from 'lucide-react';
 import Modal from './Modal';
-import { api, cn, submitContent, createContent } from '../lib/api';
+import { submitContent, createContent } from '../lib/api';
 
 interface ContentModalProps {
   isOpen: boolean;

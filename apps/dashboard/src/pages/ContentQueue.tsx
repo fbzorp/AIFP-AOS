@@ -16,7 +16,7 @@ import {
   approveContent, 
   rejectContent,
   editContent,
-  cn 
+  cn
 } from '../lib/api';
 import PublishModal from '../components/PublishModal';
 import ContentModal from '../components/ContentModal';
@@ -55,15 +55,6 @@ const ContentQueue: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['content'] });
       setEditingId(null);
       setEditForm({ title: '', body: '' });
-    },
-  });
-
-  const publishMutation = useMutation({
-    mutationFn: ({ id }: { id: string }) => api.post(`/content/${id}/publish`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['content'] });
-      queryClient.invalidateQueries({ queryKey: ['metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['calendar'] });
     },
   });
 

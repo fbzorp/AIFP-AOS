@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Shield, Zap, Database, Users, Clock, Play, Pause, RotateCcw } from 'lucide-react';
-import { fetchAgents, api, cn } from '../lib/api';
+import { ArrowLeft, Shield, Zap, Database, Users, Clock, Play, RotateCcw } from 'lucide-react';
+import { fetchAgents, api } from '../lib/api';
 
 const AgentDetails: React.FC = () => {
   const { agentName } = useParams<{ agentName: string }>();

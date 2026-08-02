@@ -246,14 +246,9 @@ const Payments: React.FC = () => {
 
       {/* MCP Integration Info */}
       <div className="glass-card p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <Zap size={20} className="text-accent" />
-            <h2 className="text-xl font-semibold">MCP Integration Details</h2>
-          </div>
-          <button className="px-3 py-1.5 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors text-sm font-medium">
-            Test MCP Connection
-          </button>
+        <div className="flex items-center space-x-2 mb-4">
+          <Zap size={20} className="text-accent" />
+          <h2 className="text-xl font-semibold">MCP Integration Details</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div className="p-4 rounded-lg bg-[#1e1b4b]/50 border border-[#3730a3]/30">
