@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Activity,
   Users,
+  Target,
   X
 } from 'lucide-react';
 
@@ -71,6 +72,7 @@ export default function Sidebar({ onToggle, mobileMenuOpen = false, onMobileMenu
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: Target, label: 'Campaigns', path: '/campaigns' },
     { icon: Users, label: 'Agents', path: '/agents' },
     { icon: FileText, label: 'Content Queue', path: '/content-queue' },
     { icon: CreditCard, label: 'Payments', path: '/payments' },

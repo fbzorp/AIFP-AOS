@@ -246,30 +246,50 @@ const Payments: React.FC = () => {
 
       {/* MCP Integration Info */}
       <div className="glass-card p-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <Zap size={20} className="text-primary-400" />
-          <h2 className="text-xl font-semibold">MCP Integration Details</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <Zap size={20} className="text-accent" />
+            <h2 className="text-xl font-semibold">MCP Integration Details</h2>
+          </div>
+          <button className="px-3 py-1.5 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors text-sm font-medium">
+            Test MCP Connection
+          </button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-          <div className="p-4 rounded-lg bg-surface-800/50 border border-surface-700/50">
-            <p className="text-surface-400 mb-1">Total MCP Calls</p>
-            <p className="text-2xl font-bold text-surface-100">
+          <div className="p-4 rounded-lg bg-[#1e1b4b]/50 border border-[#3730a3]/30">
+            <p className="text-gray-400 mb-1">Total MCP Calls</p>
+            <p className="text-2xl font-bold text-white">
               {payments?.filter(p => p.mcp_tool).length || 0}
             </p>
           </div>
-          <div className="p-4 rounded-lg bg-surface-800/50 border border-surface-700/50">
-            <p className="text-surface-400 mb-1">Avg Latency</p>
-            <p className="text-2xl font-bold text-surface-100">
+          <div className="p-4 rounded-lg bg-[#1e1b4b]/50 border border-[#3730a3]/30">
+            <p className="text-gray-400 mb-1">Avg Latency</p>
+            <p className="text-2xl font-bold text-white">
               {payments && payments.filter(p => p.latency_ms).length > 0
                 ? `${(payments.filter(p => p.latency_ms).reduce((sum, p) => sum + (p.latency_ms || 0), 0) / payments.filter(p => p.latency_ms).length).toFixed(1)}ms`
                 : '-'}
             </p>
           </div>
-          <div className="p-4 rounded-lg bg-surface-800/50 border border-surface-700/50">
-            <p className="text-surface-400 mb-1">Total Cost</p>
-            <p className="text-2xl font-bold text-surface-100">
+          <div className="p-4 rounded-lg bg-[#1e1b4b]/50 border border-[#3730a3]/30">
+            <p className="text-gray-400 mb-1">Total Cost</p>
+            <p className="text-2xl font-bold text-white">
               ${payments?.filter(p => p.cost_usd).reduce((sum, p) => sum + (p.cost_usd || 0), 0).toFixed(4) || '0.0000'}
             </p>
+          </div>
+        </div>
+        
+        {/* MCP Tools Used */}
+        <div className="mt-4">
+          <p className="text-sm text-gray-400 mb-2">MCP Tools Used:</p>
+          <div className="flex flex-wrap gap-2">
+            {Array.from(new Set(payments?.filter(p => p.mcp_tool).map(p => p.mcp_tool) || []))?.map((tool, i) => (
+              <span key={i} className="px-2 py-1 rounded bg-[#3730a3]/30 text-gray-300 text-xs">
+                {tool}
+              </span>
+            ))}
+            {payments?.filter(p => p.mcp_tool).length === 0 && (
+              <span className="text-gray-500 text-sm">No MCP calls recorded yet</span>
+            )}
           </div>
         </div>
       </div>
