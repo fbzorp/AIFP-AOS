@@ -152,14 +152,14 @@ const Dashboard: React.FC = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-        <Link to="/content-queue" className="stat-card group block">
+        <Link to="/agents" className="stat-card group block">
           <div className="flex justify-between items-start">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-400 truncate">Content Queue</p>
-              <h3 className="text-2xl font-bold mt-1 group-hover:text-accent transition-colors">{metricsLoading ? '...' : (content?.length || 0)}</h3>
+              <p className="text-sm font-medium text-gray-400 truncate">Active Agents</p>
+              <h3 className="text-2xl font-bold mt-1 group-hover:text-accent transition-colors">{metricsLoading ? '...' : (agents?.length || 0)}</h3>
             </div>
             <div className="p-2 rounded-lg flex-shrink-0 ml-2 bg-accent/10 text-accent">
-              <FileText size={20} />
+              <Users size={20} />
             </div>
           </div>
         </Link>
@@ -177,11 +177,11 @@ const Dashboard: React.FC = () => {
         <Link to="/content-queue" className="stat-card group block">
           <div className="flex justify-between items-start">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-400 truncate">Tasks Succeeded</p>
-              <h3 className="text-2xl font-bold mt-1 group-hover:text-accent transition-colors">{metricsLoading ? '...' : (metrics?.tasks?.succeeded || 0)}</h3>
+              <p className="text-sm font-medium text-gray-400 truncate">Content Queue</p>
+              <h3 className="text-2xl font-bold mt-1 group-hover:text-accent transition-colors">{metricsLoading ? '...' : (content?.length || 0)}</h3>
             </div>
-            <div className="p-2 rounded-lg flex-shrink-0 ml-2 bg-green-500/10 text-green-400">
-              <CheckCircle size={20} />
+            <div className="p-2 rounded-lg flex-shrink-0 ml-2 bg-accent/10 text-accent">
+              <FileText size={20} />
             </div>
           </div>
         </Link>
