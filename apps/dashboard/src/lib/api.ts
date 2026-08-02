@@ -150,15 +150,7 @@ export const fetchMetrics = async (): Promise<Metrics> => {
     return data;
   } catch (error) {
     console.error('Failed to fetch metrics:', error);
-    // Return default data when API is unavailable
-    return {
-      agents: 9,
-      tasks: { succeeded: 156, failed: 12, pending: 23 },
-      campaigns: 3,
-      sources: 15,
-      recent_activity: [],
-      mcp_calls: 42
-    };
+    throw error;
   }
 };
 
@@ -168,13 +160,7 @@ export const fetchAgents = async (): Promise<Agent[]> => {
     return data;
   } catch (error) {
     console.error('Failed to fetch agents:', error);
-    // Return default agents when API is unavailable
-    return [
-      { name: 'Market Analyst', role: 'Research', description: 'Analyzes market trends and gathers intelligence', capabilities: {} },
-      { name: 'Content Creator', role: 'Content', description: 'Generates marketing content and copy', capabilities: {} },
-      { name: 'Compliance Officer', role: 'Safety', description: 'Ensures content meets compliance standards', capabilities: {} },
-      { name: 'Payment Manager', role: 'Finance', description: 'Handles payment processing and approval', capabilities: {} },
-    ];
+    throw error;
   }
 };
 

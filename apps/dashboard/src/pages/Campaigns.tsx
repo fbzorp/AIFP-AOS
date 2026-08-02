@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Target, Play, Clock, CheckCircle, AlertCircle, Plus, ArrowRight, Zap } from 'lucide-react';
-import { api, cn } from '../lib/api';
+import { useQuery } from '@tanstack/react-query';
+import { Target, Play, Clock, CheckCircle, AlertCircle, Plus, Zap } from 'lucide-react';
+import { api } from '../lib/api';
 import CreateTaskModal from '../components/CreateTaskModal';
 
 const Campaigns: React.FC = () => {
   const [isCreateCampaignModalOpen, setIsCreateCampaignModalOpen] = useState(false);
-  const queryClient = useQueryClient();
 
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ['campaigns'],
@@ -18,16 +17,6 @@ const Campaigns: React.FC = () => {
     queryKey: ['tasks'],
     queryFn: () => api.get('/tasks').then(res => res.data),
     refetchInterval: 5000,
-  });
-
-  const createCampaignMutation = useMutation({
-    mutationFn: (objective: string) => api.post('/campaigns', { objective }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['metrics'] });
-      setIsCreateCampaignModalOpen(false);
-    },
   });
 
   return (

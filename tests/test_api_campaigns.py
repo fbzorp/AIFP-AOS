@@ -1,13 +1,21 @@
 import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, AsyncMock, patch
-from apps.api.main import app
 from apps.models.base import get_sync_session
 from apps.models.audit_event import AuditEventModel
 from apps.models.task import TaskModel
 from apps.core.orchestrator.engine import Orchestrator
+from apps.api.auth import create_test_token
+
+from fastapi.testclient import TestClient
+from apps.api.main import app
 
 client = TestClient(app)
+
+@pytest.fixture
+def auth_headers():
+    """Generate valid JWT token for testing."""
+    token = create_test_token(role="admin")
+    return {"Authorization": f"Bearer {token}"}
 
 @pytest.fixture
 def mock_orchestrator_result():
@@ -19,7 +27,7 @@ def mock_orchestrator_result():
         "status": "executing"
     }
 
-def test_create_campaign_endpoint(mock_orchestrator_result):
+def test_create_campaign_endpoint(mock_orchestrator_result, auth_headers):
     """
     Test POST /api/v1/campaigns returns the correct response from the orchestrator.
     """
@@ -30,7 +38,8 @@ def test_create_campaign_endpoint(mock_orchestrator_result):
     with patch('apps.api.routers.system.get_agent', return_value=mock_agent):
         response = client.post(
             "/api/v1/campaigns",
-            json={"objective": "Increase social media presence"}
+            json={"objective": "Increase social media presence"},
+            headers=auth_headers
         )
         
         assert response.status_code == 200
@@ -40,14 +49,15 @@ def test_create_campaign_endpoint(mock_orchestrator_result):
         assert data["outcome"] == "campaign_dispatched"
         mock_agent.execute.assert_called_once_with({"objective": "Increase social media presence"})
 
-def test_create_campaign_agent_not_found():
+def test_create_campaign_agent_not_found(auth_headers):
     """
     Test POST /api/v1/campaigns returns 500 if orchestrator is missing.
     """
     with patch('apps.api.routers.system.get_agent', return_value=None):
         response = client.post(
             "/api/v1/campaigns",
-            json={"objective": "Test objective"}
+            json={"objective": "Test objective"},
+            headers=auth_headers
         )
         assert response.status_code == 500
         assert "not found" in response.json()["detail"]

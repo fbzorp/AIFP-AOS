@@ -149,26 +149,6 @@ export default function Sidebar({ onToggle, mobileMenuOpen = false, onMobileMenu
           ))}
         </nav>
 
-        {/* Quick Stats (When Open and Not Mobile) */}
-        {isOpen && !isMobile && (
-          <div className="px-4 py-4 border-t border-[#3730a3]">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Active Agents</span>
-                <span className="font-semibold text-accent">9</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Campaigns</span>
-                <span className="font-semibold text-blue-400">3</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Tasks</span>
-                <span className="font-semibold text-green-400">156</span>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Footer */}
         <div className="p-4 border-t border-[#3730a3]">
           <div className="flex items-center justify-between">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Sparkles, Target, FileText, Shield, Zap, Users, Search } from 'lucide-react';
+import { Plus, Sparkles, Target, FileText, Shield, Search } from 'lucide-react';
 import Modal from './Modal';
 import { api, cn, createCampaign } from '../lib/api';
 

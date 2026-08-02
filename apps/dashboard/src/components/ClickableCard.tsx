@@ -1,4 +1,4 @@
-import { React, ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { cn } from '../lib/api';
 
 interface ClickableCardProps {

@@ -44,6 +44,48 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Create Task",
+        "operationId": "create_task_api_v1_tasks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/audit": {
@@ -118,7 +160,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/sources": {
@@ -199,6 +246,51 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Approvals"
+        ],
+        "summary": "Create new content item",
+        "description": "Create a new content item for the approval queue. Requires operator role.",
+        "operationId": "create_content_api_v1_content_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "type": "object",
+                "title": "Content"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
               }
             }
           }
@@ -1165,6 +1257,25 @@
           "created_at"
         ],
         "title": "PaymentResponse"
+      },
+      "TaskCreateRequest": {
+        "properties": {
+          "task_type": {
+            "type": "string",
+            "title": "Task Type"
+          },
+          "input_data": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Input Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_type",
+          "input_data"
+        ],
+        "title": "TaskCreateRequest"
       },
       "ValidationError": {
         "properties": {
