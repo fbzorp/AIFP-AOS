@@ -7,6 +7,7 @@ import Payments from './pages/Payments'
 import Settings from './pages/Settings'
 import ContentQueue from './pages/ContentQueue'
 import AgentDetails from './pages/AgentDetails'
+import Agents from './pages/Agents'
 import Sidebar from './components/Sidebar'
 
 function App() {
@@ -77,6 +78,7 @@ function App() {
             <Route path="/payments" element={<Payments />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/content-queue" element={<ContentQueue />} />
+            <Route path="/agents" element={<Agents />} />
             <Route path="/agent/:agentName" element={<AgentDetails />} />
           </Routes>
         </main>

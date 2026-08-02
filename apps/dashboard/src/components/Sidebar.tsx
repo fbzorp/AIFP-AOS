@@ -71,6 +71,7 @@ export default function Sidebar({ onToggle, mobileMenuOpen = false, onMobileMenu
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+    { icon: Users, label: 'Agents', path: '/agents' },
     { icon: FileText, label: 'Content Queue', path: '/content-queue' },
     { icon: CreditCard, label: 'Payments', path: '/payments' },
     { icon: Calendar, label: 'Calendar', path: '/calendar' },
