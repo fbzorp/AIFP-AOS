@@ -17,6 +17,10 @@ router = APIRouter()
 class CampaignCreateRequest(BaseModel):
     objective: str
 
+class TaskCreateRequest(BaseModel):
+    task_type: str
+    input_data: dict
+
 @router.get("/agents", summary="List all available agents", description="Retrieve information about all registered agents including their roles, descriptions, and capabilities.")
 async def get_agents():
     agents = list_agents()
@@ -55,6 +59,28 @@ async def create_campaign(request: CampaignCreateRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/tasks")
+async def create_task(request: TaskCreateRequest, db: AsyncSession = Depends(get_db)):
+    from apps.models.task import TaskModel
+    from apps.core.audit.service import record_event
+    from apps.workers.tasks import run_agent_task
+    
+    new_task = TaskModel(
+        task_type=request.task_type,
+        input_data=request.input_data,
+        status="pending"
+    )
+    db.add(new_task)
+    await db.commit()
+    await db.refresh(new_task)
+    
+    record_event(db, "Human", "task_created", f"Created task {new_task.id} of type {request.task_type}", {"task_id": new_task.id})
+    
+    # Enqueue the task
+    run_agent_task.send(new_task.id)
+    
+    return new_task
 
 @router.get("/sources")
 async def get_sources(db: AsyncSession = Depends(get_db)):
