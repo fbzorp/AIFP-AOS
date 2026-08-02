@@ -62,6 +62,16 @@ def test_create_campaign_agent_not_found(auth_headers):
         assert response.status_code == 500
         assert "not found" in response.json()["detail"]
 
+def test_create_campaign_unauthorized():
+    """
+    Test POST /api/v1/campaigns returns 401 when no Authorization header is supplied.
+    """
+    response = client.post(
+        "/api/v1/campaigns",
+        json={"objective": "Test objective"}
+    )
+    assert response.status_code == 401
+
 def test_orchestrator_audit_trail():
     """
     Verify that Orchestrator.create_campaign records task_enqueued events.

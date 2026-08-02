@@ -50,7 +50,7 @@ async def get_campaigns(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 @router.post("/campaigns")
-async def create_campaign(request: CampaignCreateRequest, user: dict = Depends(lambda: {"sub": "demo_user", "role": "admin"})):
+async def create_campaign(request: CampaignCreateRequest, user: dict = Depends(require_operator)):
     orchestrator = get_agent("Growth Orchestrator")
     if not orchestrator:
         raise HTTPException(status_code=500, detail="Growth Orchestrator agent not found")
