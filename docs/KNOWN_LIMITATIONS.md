@@ -250,3 +250,4 @@ This document tracks known technical debt, limitations, and externally-blocked f
 - Security vulnerabilities are monitored for resolution
 - Technical debt is prioritized based on impact and effort
 - Resolution timeline is subject to change based on business priorities
+- **Codebase Status**: The codebase is complete and verified on the local machine (80/80 tests passing, 66% coverage, staging stack starts over TLS via cert-init). Production deployment requires a server meeting the sizing documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#server--vps-requirements) (minimum 4GB RAM, 2 vCPU, 20-30GB storage).

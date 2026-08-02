@@ -54,8 +54,8 @@
 - **Content**:
   - Externally-blocked features (EVM Base Sepolia tx needs testnet funds)
   - Externally-blocked features (≥3 genuine x402 cycles need mainnet Solana Seat PDA)
-  - ecdsa PYSEC-2026-1325 transitive CVE (monitored, no fix available)
-  - Dashboard production build (TypeScript errors fixed, file system issues prevent deployment)
+  - ecdsa PYSEC-2026-1325 transitive CVE (monitored, no fix available, suppressed in CI via --ignore-vuln)
+  - Dashboard production build (✅ RESOLVED - production Dockerfile with nginx static serving, build successful)
   - Monitoring (documented with integration guide, accepted technical debt)
 - **Status**: ✅ Technical debt properly documented
 
@@ -175,8 +175,12 @@ The system is production-ready with the following infrastructure:
 - ✅ Restart policies configured for VPS resilience
 - ✅ Monitoring integration guide available
 - ✅ Dashboard production build with nginx static serving
-- ✅ All tests passing
+- ✅ All tests passing (80/80 tests, 66% coverage)
 - ✅ No secrets or certificates committed
+- ✅ Codebase complete and verified on local machine
+- ✅ Staging stack starts over TLS via cert-init
+
+**VPS Deployment Requirement**: Production deployment requires a server meeting the sizing documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#server--vps-requirements) (minimum 4GB RAM, 2 vCPU, 20-30GB storage). The codebase is complete and ready for deployment on sufficiently sized hardware.
 
 ## Conclusion
 

@@ -9,6 +9,275 @@ This guide covers deploying the AiFinPay Autonomous OS to staging and production
 - SSL certificates (for production)
 - Environment variables configured
 - Python 3.12+ (for migrations and SSL generation)
+- Basic Linux administration skills
+
+### Server / VPS Requirements
+
+**Minimum Viable Specs:**
+- **RAM**: 4 GB (required for dashboard Vite build, uv dependency installation, and running all services)
+- **CPU**: 2 vCPU (for concurrent container operations)
+- **Storage**: 20-30 GB (for Docker images, PostgreSQL data, Redis, and logs)
+- **OS**: Ubuntu 22.04 LTS or similar Linux distribution
+
+**Recommended Specs:**
+- **RAM**: 4-8 GB (for comfortable operation under load, backups, and concurrent database operations)
+- **CPU**: 2-4 vCPU (for better performance during peak usage)
+- **Storage**: 40+ GB (for data growth, backups, and logs)
+- **OS**: Ubuntu 22.04 LTS or similar Linux distribution
+
+**⚠️ Important Notes:**
+- **1 GB / 1 vCPU servers are NOT sufficient** - image builds (dashboard `npm run build`, `uv sync`) and concurrent containers will exhaust memory
+- PostgreSQL and Redis require consistent memory allocation for reliable operation
+- Docker image caching and layered builds require additional disk space
+- Persistent volumes for PostgreSQL and Redis will grow over time
+
+**Resource Breakdown by Service:**
+- **API**: ~500MB RAM (Python + FastAPI + dependencies)
+- **Worker**: ~500MB RAM (Python + Dramatiq + tasks)
+- **Dashboard**: ~1GB RAM during build, ~200MB runtime (nginx static serving)
+- **PostgreSQL**: ~1GB RAM (database + queries + connections)
+- **Redis**: ~200MB RAM (caching + task queue)
+- **Nginx**: ~100MB RAM (reverse proxy + SSL)
+- **Build overhead**: ~1GB RAM (docker build operations)
+
+## Pre-Deployment Checklist
+
+### 1. Domain Configuration
+
+**Required for Production:**
+- Purchase a domain name (e.g., from Namecheap, GoDaddy, Cloudflare)
+- Configure DNS to point to your VPS IP address
+- DNS Record Types:
+  - **A Record**: `@` → `YOUR_VPS_IP`
+  - **A Record**: `www` → `YOUR_VPS_IP`
+
+**DNS Propagation:**
+- DNS changes typically take 15-60 minutes to propagate
+- Verify with: `nslookup your-domain.com`
+- Or use online tools like `digwebinterface.com`
+
+**Staging (Optional):**
+- Can use subdomain like `staging.your-domain.com`
+- Configure similarly with A records
+
+### 2. SSL Certificates
+
+**Option A: Let's Encrypt (Recommended for Production)**
+```bash
+# Install certbot on your VPS
+sudo apt-get update
+sudo apt-get install certbot
+
+# Generate certificates (requires domain pointing to VPS)
+sudo certbot certonly --standalone -d your-domain.com -d www.your-domain.com
+
+# Certificate location:
+# /etc/letsencrypt/live/your-domain.com/fullchain.pem
+# /etc/letsencrypt/live/your-domain.com/privkey.pem
+```
+
+**Option B: Self-Signed (For Testing/Staging)**
+```bash
+# Use the provided SSL generation script
+cd /path/to/AIFP-AOS
+python scripts/generate_ssl_cert.py --cert-dir nginx/ssl
+```
+
+**Option C: Commercial SSL**
+- Purchase from certificate authority
+- Follow their installation instructions
+- Place certificates in `nginx/ssl/` directory
+
+**Automatic Renewal (Let's Encrypt):**
+```bash
+# Test renewal
+sudo certbot renew --dry-run
+
+# Set up auto-renewal (cron)
+sudo crontab -e
+# Add: 0 0,12 * * * certbot renew --quiet
+```
+
+### 3. Environment Variables Configuration
+
+**Database Configuration:**
+```bash
+# Generate strong passwords
+POSTGRES_USER=$(openssl rand -base64 16)
+POSTGRES_PASSWORD=$(openssl rand -base64 32)
+POSTGRES_DB=aifp_prod  # or staging database name
+```
+
+**API Keys Required:**
+- **DeepSeek API**: Get from https://platform.deepseek.com/
+  - `DEEPSEEK_API_KEY`: Your API key
+  - `DEEPSEEK_PRIMARY_MODEL`: deepseek/deepseek-v4-flash
+  - `DEEPSEEK_REASONING_MODEL`: deepseek/deepseek-v4-pro
+
+- **Moltbook API**: Get from Moltbook developer portal
+  - `MOLTBOOK_AGENT_API_KEY`: Your agent API key
+  - `MOLTBOOK_APP_KEY`: Your app key
+
+- **X (Twitter) API**: Get from X developer portal
+  - `X_API_KEY`: Consumer key
+  - `X_API_SECRET`: Consumer secret
+  - `X_ACCESS_TOKEN`: Access token
+  - `X_ACCESS_TOKEN_SECRET`: Access token secret
+
+- **Telegram Bot**: Get from @BotFather
+  - `TELEGRAM_BOT_TOKEN`: Your bot token
+
+**Blockchain Configuration:**
+```bash
+# Solana Configuration
+SOLANA_RPC_URL=https://api.devnet.solana.com  # or mainnet RPC
+SOLANA_PRIVATE_KEY=your_base58_private_key    # Never commit this!
+
+# EVM Configuration  
+EVM_RPC_URL=https://base-sepolia.g.alchemy.com/v2/YOUR_KEY  # or mainnet
+EVM_PRIVATE_KEY=your_hex_private_key                        # Never commit this!
+```
+
+**AiFinPay Integration:**
+```bash
+# Generate Ed25519 keypair
+AIFINPAY_AGENT_SECRET=your_base58_secret_key
+AIFINPAY_AGENT_PUBKEY=your_base58_public_key
+AIFINPAY_MAX_USD=0.10  # Per MCP call limit
+AIFINPAY_MCP_ENABLED=true
+```
+
+**Payment Security Limits:**
+```bash
+DAILY_SPENDING_LIMIT=100.00         # Daily total limit in USD
+PER_TRANSACTION_LIMIT=50.00         # Max per transaction in USD
+HUMAN_APPROVAL_THRESHOLD=25.00     # Require approval above this amount
+PAYMENTS_KILL_SWITCH=false          # Emergency stop switch
+RECIPIENT_ALLOWLIST=address1,address2,address3  # Comma-separated
+```
+
+**Network Configuration:**
+```bash
+PAYMENTS_NETWORK=devnet  # Options: devnet, mainnet
+APP_ENV=production       # Options: development, staging, production
+DOMAIN=your-domain.com   # Your production domain
+```
+
+**Complete .env.production Example:**
+```bash
+# Application
+APP_ENV=production
+DOMAIN=your-domain.com
+LOG_LEVEL=INFO
+
+# Database
+POSTGRES_USER=your_secure_username
+POSTGRES_PASSWORD=your_secure_password
+POSTGRES_DB=aifp_prod
+DATABASE_URL=postgresql+asyncpg://your_secure_username:your_secure_password@postgres:5432/aifp_prod
+
+# Redis
+REDIS_URL=redis://redis:6379/0
+
+# DeepSeek AI
+DEEPSEEK_API_KEY=sk-your-api-key
+DEEPSEEK_PRIMARY_MODEL=deepseek/deepseek-v4-flash
+DEEPSEEK_REASONING_MODEL=deepseek/deepseek-v4-pro
+DEEPSEEK_API_BASE=https://api.deepseek.com
+DAILY_LLM_BUDGET_USD=25.00
+
+# Moltbook
+MOLTBOOK_BASE_URL=https://www.moltbook.com
+MOLTBOOK_AGENT_API_KEY=your-agent-api-key
+MOLTBOOK_APP_KEY=your-app-key
+MOLTBOOK_AUTOPUBLISH=false
+MOLTBOOK_ALLOWED_SUBMOLTS=general,agents,introductions,aifintech
+
+# X (Twitter)
+X_API_KEY=your-consumer-key
+X_API_SECRET=your-consumer-secret
+X_ACCESS_TOKEN=your-access-token
+X_ACCESS_TOKEN_SECRET=your-access-token-secret
+X_AUTOPUBLISH=false
+
+# Telegram
+TELEGRAM_BOT_TOKEN=your-bot-token
+
+# Blockchain
+SOLANA_RPC_URL=https://api.devnet.solana.com
+SOLANA_PRIVATE_KEY=your_base58_private_key
+EVM_RPC_URL=https://base-sepolia.g.alchemy.com/v2/your-key
+EVM_PRIVATE_KEY=your_hex_private_key
+
+# X402
+X402_ENABLED=true
+X402_FACILITATOR_URL=https://api.aifinpay.io
+PAYMENTS_NETWORK=devnet
+
+# Payment Security
+DAILY_SPENDING_LIMIT=100.00
+PER_TRANSACTION_LIMIT=50.00
+HUMAN_APPROVAL_THRESHOLD=25.00
+RECIPIENT_ALLOWLIST=address1,address2,address3
+PAYMENTS_KILL_SWITCH=false
+
+# AiFinPay Integration
+AIFP_BASE_URL=https://api.aifinpay.io
+AIFINPAY_AGENT_SECRET=your_base58_secret
+AIFINPAY_AGENT_PUBKEY=your_base58_public_key
+AIFINPAY_MAX_USD=0.10
+AIFINPAY_MCP_ENABLED=true
+```
+
+### 4. VPS Preparation
+
+**System Requirements:**
+- **Minimum**: 2GB RAM, 20GB storage, 1 CPU
+- **Recommended**: 4GB RAM, 40GB storage, 2 CPUs
+- **OS**: Ubuntu 22.04 LTS or similar
+
+**Install Docker:**
+```bash
+# Update system
+sudo apt-get update
+
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Install Docker Compose
+sudo apt-get install docker-compose-plugin
+
+# Add user to docker group
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+**Firewall Configuration:**
+```bash
+# Allow HTTP/HTTPS
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+
+# Allow SSH
+sudo ufw allow 22/tcp
+
+# Enable firewall
+sudo ufw enable
+```
+
+**System Optimization:**
+```bash
+# Increase file descriptors (for high traffic)
+echo "* soft nofile 65536" | sudo tee -a /etc/security/limits.conf
+echo "* hard nofile 65536" | sudo tee -a /etc/security/limits.conf
+
+# Configure swap (if low RAM)
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+```
 
 ## Clean Server Deployment
 
