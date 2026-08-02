@@ -19,6 +19,7 @@ AIFP-AOS is a comprehensive content growth platform that combines:
 - Python 3.12+ (for local development)
 - PostgreSQL 17 (for local development)
 - Redis 8 (for local development)
+- **Server Requirements**: Minimum 4GB RAM, 2 vCPU, 20-30GB storage for production deployment (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#server--vps-requirements) for detailed sizing)
 
 ### Local Development
 
