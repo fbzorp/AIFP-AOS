@@ -44,7 +44,7 @@ const Dashboard: React.FC = () => {
   const { data: metrics, isLoading: metricsLoading, error: metricsError } = useQuery({
     queryKey: ['metrics'],
     queryFn: fetchMetrics,
-    refetchInterval: 5000,
+    refetchInterval: 3000,
     retry: 1,
   });
 
@@ -66,7 +66,7 @@ const Dashboard: React.FC = () => {
   const { data: content, isLoading: contentLoading } = useQuery({
     queryKey: ['content'],
     queryFn: fetchContent,
-    refetchInterval: 10000,
+    refetchInterval: 3000,
     retry: 1,
   });
 
@@ -163,14 +163,14 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </Link>
-        <Link to="/payments" className="stat-card group block">
+        <Link to="/campaigns" className="stat-card group block">
           <div className="flex justify-between items-start">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-400 truncate">Payments</p>
-              <h3 className="text-2xl font-bold mt-1 group-hover:text-accent transition-colors">View</h3>
+              <p className="text-sm font-medium text-gray-400 truncate">Campaigns</p>
+              <h3 className="text-2xl font-bold mt-1 group-hover:text-accent transition-colors">{metricsLoading ? '...' : (metrics?.campaigns || 0)}</h3>
             </div>
-            <div className="p-2 rounded-lg flex-shrink-0 ml-2 bg-green-500/10 text-green-400">
-              <CreditCard size={20} />
+            <div className="p-2 rounded-lg flex-shrink-0 ml-2 bg-purple-500/10 text-purple-400">
+              <Target size={20} />
             </div>
           </div>
         </Link>
