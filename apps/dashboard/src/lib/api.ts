@@ -15,13 +15,14 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_URL;
   }
 
-  // Default to '/api' for same-origin relative paths
+  // Default to empty string for same-origin relative paths
   // This makes requests work on any domain/IP without configuration
-  return '/api';
+  // and prevents double-prefixing issues with nginx proxy
+  return '';
 };
 
 const API_BASE_URL = getApiBaseUrl();
-const API_V1_URL = `${API_BASE_URL}/v1`;
+const API_V1_URL = `${API_BASE_URL}/api/v1`;
 
 export const api = axios.create({
   baseURL: API_V1_URL,
@@ -214,7 +215,7 @@ export const editContent = async (contentId: string, updates: { title?: string; 
 
 export const fetchHealth = async (): Promise<Health> => {
   try {
-    const { data } = await axios.get('/health');
+    const { data } = await axios.get(`${API_BASE_URL}/health`);
     return data;
   } catch (error) {
     console.error('Failed to fetch health:', error);
