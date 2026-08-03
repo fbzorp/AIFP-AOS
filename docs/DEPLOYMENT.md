@@ -487,10 +487,14 @@ docker compose -f docker-compose.staging.yml --env-file .env.staging up -d nginx
 
 ### Accessing Services
 
-- **Dashboard**: `https://your-domain.com`
-- **API**: `https://your-domain.com/api`
-- **API Documentation**: `https://your-domain.com/docs`
+**Important**: All services are accessed through nginx on ports 80 (HTTP) and 443 (HTTPS). The dashboard is served as a static build by nginx, not the Vite dev server.
+
+- **Dashboard**: `https://your-domain.com` (or `http://localhost/` for local testing)
+- **API**: `https://your-domain.com/api` (proxied to FastAPI)
+- **API Documentation**: `https://your-domain.com/docs` (FastAPI auto-docs)
 - **Health Check**: `https://your-domain.com/health`
+
+**Note**: The dashboard is NOT accessible on port 3000 (that's dev-only), and the API is NOT directly accessible on port 8000 in production (it's behind nginx).
 
 ## Deployment Verification
 

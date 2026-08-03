@@ -26,7 +26,8 @@ const getApiBaseUrl = () => {
     }
   }
 
-  return 'http://localhost:8000';
+  // For production/staging behind nginx, use relative path
+  return '/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
