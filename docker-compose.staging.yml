@@ -10,7 +10,7 @@ services:
     networks:
       - aifp-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aifp}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aifp} -d ${POSTGRES_DB:-aifp_staging}"]
       interval: 10s
       timeout: 5s
       retries: 5
