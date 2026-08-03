@@ -33,8 +33,10 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
     image: aifp-aos-api:latest
+    expose:
+      - "8000"
     environment:
       APP_ENV: staging
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/${POSTGRES_DB:-aifp_staging}
@@ -64,8 +66,9 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
     image: aifp-aos-worker:latest
+    command: ["uv", "run", "dramatiq", "apps.workers.tasks"]
     environment:
       APP_ENV: staging
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/${POSTGRES_DB:-aifp_staging}
@@ -98,7 +101,7 @@ services:
   cert-init:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
     image: aifp-aos-api:latest
     working_dir: /app
     command: ["uv", "run", "python", "scripts/generate_ssl_cert.py", "--cert-dir", "/certs"]

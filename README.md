@@ -79,10 +79,13 @@ Staging environment features:
 ### Production Environment
 
 ```bash
-# Build and start production
-docker compose -f docker-compose.prod.yml build
-docker compose -f docker-compose.prod.yml up -d
+# Build and start production (works out-of-the-box on any machine)
+docker compose -f docker-compose.prod.yml up -d --build
 ```
+
+Then open `http://localhost/` (or your VPS domain/IP) in your browser.
+
+**No configuration required** - the dashboard uses same-origin relative paths that work on any domain/IP automatically.
 
 Production environment requires:
 - Production SSL certificates (Let's Encrypt recommended)
@@ -92,8 +95,8 @@ Production environment requires:
 - Monitoring and alerting setup
 
 **Access URLs:**
-- Dashboard: `https://your-domain.com` (served by nginx)
-- API: `https://your-domain.com/api` (proxied through nginx)
+- Dashboard: `http://localhost/` or `https://your-domain.com` (served by nginx)
+- API: `http://localhost/api/v1` or `https://your-domain.com/api/v1` (proxied through nginx)
 - **Note**: Dashboard is built as static files and served by nginx on port 80/443, not port 3000. API is behind nginx, not directly accessible on port 8000.
 
 ## Environment Variables

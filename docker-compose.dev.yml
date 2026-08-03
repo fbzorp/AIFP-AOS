@@ -93,6 +93,7 @@ services:
       - /app/node_modules
     environment:
       - VITE_API_URL=${VITE_API_URL}
+      - VITE_DEV_API_PROXY=http://aifp_api_dev:8000
     depends_on:
       - api
 
