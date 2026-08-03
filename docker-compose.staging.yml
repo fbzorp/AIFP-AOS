@@ -10,10 +10,11 @@ services:
     networks:
       - aifp-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aifp"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aifp}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:8-alpine
@@ -27,6 +28,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   api:
     build:
@@ -85,10 +87,10 @@ services:
   dashboard:
     build:
       context: apps/dashboard
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ""
     image: aifp-aos-dashboard:latest
-    environment:
-      VITE_API_URL: ${VITE_API_URL:-http://${DOMAIN:-staging.aifp-aos.local}/api}
     networks:
       - aifp-network
     restart: unless-stopped

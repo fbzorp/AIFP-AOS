@@ -88,6 +88,8 @@ services:
     build:
       context: apps/dashboard
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ""
     image: aifp-aos-dashboard:latest
     networks:
       - aifp-network

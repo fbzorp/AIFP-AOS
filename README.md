@@ -45,9 +45,16 @@ The development environment includes:
 ### Staging Environment
 
 ```bash
+# Copy and configure environment file
+cp .env.example .env.staging
+# Edit .env.staging with your staging configuration
+
 # Build and start staging
-docker compose -f docker-compose.staging.yml build
-docker compose -f docker-compose.staging.yml up -d
+docker compose -f docker-compose.staging.yml --env-file .env.staging build
+docker compose -f docker-compose.staging.yml --env-file .env.staging up -d
+
+# Run database migrations (required on first run)
+docker compose -f docker-compose.staging.yml --env-file .env.staging exec api uv run alembic upgrade head
 
 # Generate SSL certificates (automatic on first run)
 # SSL certs are generated automatically by cert-init service
@@ -58,9 +65,16 @@ Staging environment features:
 - Production-like configuration
 - No source code bind-mounts
 - Persistent PostgreSQL and Redis volumes
-- Nginx reverse proxy with SSL
+- Nginx reverse proxy with SSL (ports 80/443)
+- Dashboard served as static build (not Vite dev server)
 - Rate limiting and security headers
 - Separate from development environment
+
+**Access URLs:**
+- Dashboard: `http://localhost/` (or `https://staging.aifp-aos.local`)
+- API: `http://localhost/api/v1` (proxied through nginx)
+- Health Check: `http://localhost/health`
+- **Note**: Dashboard is NOT on port 3000 in staging (that's dev-only)
 
 ### Production Environment
 
@@ -77,6 +91,11 @@ Production environment requires:
 - Proper backup configuration
 - Monitoring and alerting setup
 
+**Access URLs:**
+- Dashboard: `https://your-domain.com` (served by nginx)
+- API: `https://your-domain.com/api` (proxied through nginx)
+- **Note**: Dashboard is built as static files and served by nginx on port 80/443, not port 3000. API is behind nginx, not directly accessible on port 8000.
+
 ## Environment Variables
 
 ### Core Configuration
@@ -84,6 +103,7 @@ Production environment requires:
 - `DATABASE_URL`: PostgreSQL connection string
 - `REDIS_URL`: Redis connection string
 - `LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
+- `VITE_API_URL`: Dashboard API base URL (build-time arg for production/staging - default: empty string for same-origin API calls)
 
 ### DeepSeek Integration
 - `DEEPSEEK_API_KEY`: DeepSeek API key
