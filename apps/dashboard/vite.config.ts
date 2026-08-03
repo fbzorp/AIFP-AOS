@@ -12,5 +12,17 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3000,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_DEV_API_PROXY || 'http://aifp_api_dev:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/health': {
+        target: process.env.VITE_DEV_API_PROXY || 'http://aifp_api_dev:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 })

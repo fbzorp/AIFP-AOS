@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER:-aifp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prod_password}
       POSTGRES_DB: ${POSTGRES_DB:-aifp_prod}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - aifp-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aifp}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,9 +35,11 @@ services:
       context: .
       dockerfile: Dockerfile.prod
     image: aifp-aos-api:latest
+    expose:
+      - "8000"
     environment:
       APP_ENV: production
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aifp_prod}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-prod_password}@postgres:5432/${POSTGRES_DB:-aifp_prod}
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: INFO
       PAYMENTS_KILL_SWITCH: ${PAYMENTS_KILL_SWITCH:-false}
@@ -66,9 +68,10 @@ services:
       context: .
       dockerfile: Dockerfile.prod
     image: aifp-aos-worker:latest
+    command: ["uv", "run", "dramatiq", "apps.workers.tasks"]
     environment:
       APP_ENV: production
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aifp_prod}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-prod_password}@postgres:5432/${POSTGRES_DB:-aifp_prod}
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: INFO
       SOLANA_RPC_URL: ${SOLANA_RPC_URL}

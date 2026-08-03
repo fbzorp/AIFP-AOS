@@ -10,28 +10,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 const getApiBaseUrl = () => {
+  // Optional override for custom deployments
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
 
-  if (window.location.hostname.endsWith('.app.github.dev')) {
-    const hostname = window.location.hostname;
-    const parts = hostname.split('-');
-    if (parts.length > 1) {
-      const portPart = parts[parts.length - 1].split('.')[0];
-      if (portPart === '3000') {
-        const apiHostname = hostname.replace('-3000.app.github.dev', '-8000.app.github.dev');
-        return `https://${apiHostname}`;
-      }
-    }
-  }
-
-  // For production/staging behind nginx, use relative path
+  // Default to '/api' for same-origin relative paths
+  // This makes requests work on any domain/IP without configuration
   return '/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
-const API_V1_URL = `${API_BASE_URL}/api/v1`;
+const API_V1_URL = `${API_BASE_URL}/v1`;
 
 export const api = axios.create({
   baseURL: API_V1_URL,
@@ -224,7 +214,7 @@ export const editContent = async (contentId: string, updates: { title?: string; 
 
 export const fetchHealth = async (): Promise<Health> => {
   try {
-    const { data } = await axios.get(`${API_BASE_URL}/health`);
+    const { data } = await axios.get('/health');
     return data;
   } catch (error) {
     console.error('Failed to fetch health:', error);
