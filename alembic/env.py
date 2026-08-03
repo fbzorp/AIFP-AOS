@@ -17,6 +17,7 @@ from apps.models.task import TaskModel
 from apps.models.approval import ApprovalModel
 from apps.models.source import SourceModel
 from apps.models.payment import PaymentModel
+from apps.models.engagement_proposal import EngagementProposalModel
 
 config = context.config
 if config.config_file_name is not None:
@@ -27,6 +28,9 @@ if db_url:
     if "+asyncpg" in db_url:
         db_url = db_url.replace("+asyncpg", "+psycopg2")
     config.set_main_option("sqlalchemy.url", db_url)
+    print(f"Using DATABASE_URL for alembic: {db_url}")
+else:
+    print("DATABASE_URL not set, using default from alembic.ini")
 
 target_metadata = Base.metadata
 
