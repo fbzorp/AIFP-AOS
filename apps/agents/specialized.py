@@ -451,6 +451,71 @@ class FounderContentAgent(BaseAgent):
     def get_capabilities(self) -> Dict[str, Any]:
         return {"purpose": "Creates materials for founder's account...", "tools": ["drafting"], "inputs": ["update"], "outputs": ["variants"], "policies": ["manual_approval"], "kpis": ["approval_rate"]}
 
+class SEOContentAgent(BaseAgent):
+    def __init__(self) -> None:
+        super().__init__(
+            name="SEO Content", 
+            role="SEO Writer",
+            description="Generates Google-search-optimized long-form content with SEO metadata.",
+            model=deepseek_fast()
+        )
+
+    async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        content_item_id = input_data.get('content_item_id')
+        
+        def _get_context():
+            with get_sync_session() as session:
+                item = session.query(ContentItemModel).filter(ContentItemModel.id == content_item_id).first()
+                source = None
+                if item and item.source_id:
+                    source = session.query(SourceModel).filter(SourceModel.id == item.source_id).first()
+                return item, source
+
+        item, source = await asyncio.to_thread(_get_context)
+        if not item:
+            return {"error": "Content item not found"}
+
+        source_text = source.raw_content if source else "No source provided."
+        system_prompt = (
+            "You are the SEO Content Agent for AiFinPay. "
+            "Generate Google-search-optimized long-form content based on the provided context. "
+            "Include: SEO title tag (50-60 chars), meta description (150-160 chars), H1, H2 subheadings, "
+            "target keyword list (3-5 keywords), and the article body. "
+            "Focus on SEO best practices: keyword density, readability, and search intent matching."
+        )
+        schema_hint = "{seo_title_tag: string, meta_description: string, keywords: [string], h1: string, h2_subheadings: [string], body: string}"
+        
+        generation = await complete_json(
+            model=self.model,
+            system_prompt=system_prompt,
+            user_content=f"Title: {item.title}\nObjective: {item.objective}\nSource: {source_text}",
+            schema_hint=schema_hint
+        )
+
+        def _update_item():
+            with get_sync_session() as session:
+                db_item = session.query(ContentItemModel).filter(ContentItemModel.id == content_item_id).first()
+                db_item.body = generation.get("body")
+                # Store SEO metadata in variants to preserve it
+                seo_metadata = {
+                    "seo_title_tag": generation.get("seo_title_tag"),
+                    "meta_description": generation.get("meta_description"),
+                    "keywords": generation.get("keywords"),
+                    "h1": generation.get("h1"),
+                    "h2_subheadings": generation.get("h2_subheadings")
+                }
+                db_item.variants = seo_metadata
+                db_item.author_agent = self.name
+                db_item.status = "draft"
+                record_event(session, self.name, "content_generated", f"Generated SEO content for {content_item_id}", {"item_id": content_item_id, "seo_metadata": seo_metadata})
+                session.commit()
+
+        await asyncio.to_thread(_update_item)
+        return {"agent": self.name, "outcome": "seo_content_generated", "item_id": content_item_id}
+
+    def get_capabilities(self) -> Dict[str, Any]:
+        return {"purpose": "Creates Google-optimized content with SEO metadata...", "tools": ["seo_optimization"], "inputs": ["topic"], "outputs": ["draft"], "policies": ["seo_best_practices"], "kpis": ["search_ranking"]}
+
 class SocialPublishingAgent(BaseAgent):
     def __init__(self) -> None:
         super().__init__(

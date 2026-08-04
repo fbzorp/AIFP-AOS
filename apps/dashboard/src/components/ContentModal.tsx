@@ -93,6 +93,7 @@ export default function ContentModal({ isOpen, onClose }: ContentModalProps) {
           >
             <option value="twitter">Twitter/X</option>
             <option value="linkedin">LinkedIn</option>
+            <option value="google">Google / SEO</option>
             <option value="blog">Blog</option>
             <option value="moltbook">Moltbook</option>
           </select>
