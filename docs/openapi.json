@@ -913,6 +913,82 @@
         }
       }
     },
+    "/api/v1/settings/credentials": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Get Credentials",
+        "description": "Get masked status of all configured credentials.\nReturns only masked values, never the raw secrets.",
+        "operationId": "get_credentials_api_v1_settings_credentials_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CredentialStatus"
+                  },
+                  "type": "array",
+                  "title": "Response Get Credentials Api V1 Settings Credentials Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Update Credential",
+        "description": "Update a credential value in the process-local settings.\n\nNote: This updates the runtime settings object only. For durable changes,\nyou must update the environment variable and redeploy the service.\nThis design ensures secrets are never written to the database or committed files.",
+        "operationId": "update_credential_api_v1_settings_credentials_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CredentialUpdateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health Check",
@@ -1039,6 +1115,75 @@
         },
         "type": "object",
         "title": "ContentEditRequest"
+      },
+      "CredentialStatus": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "configured": {
+            "type": "boolean",
+            "title": "Configured"
+          },
+          "masked": {
+            "type": "string",
+            "title": "Masked"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "configured",
+          "masked",
+          "description"
+        ],
+        "title": "CredentialStatus"
+      },
+      "CredentialUpdateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "value"
+        ],
+        "title": "CredentialUpdateRequest"
+      },
+      "CredentialUpdateResponse": {
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "title": "Success"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "credential_name": {
+            "type": "string",
+            "title": "Credential Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "success",
+          "message",
+          "credential_name"
+        ],
+        "title": "CredentialUpdateResponse"
       },
       "HTTPValidationError": {
         "properties": {
@@ -1337,6 +1482,10 @@
     {
       "name": "Payments",
       "description": "Payment processing, approval workflows, and transaction execution"
+    },
+    {
+      "name": "Settings",
+      "description": "System settings and credential management (admin only)"
     }
   ]
 }

@@ -1,9 +1,45 @@
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, Shield, Database, Bell, Zap, Moon, Sun, ArrowRight } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Settings as SettingsIcon, Shield, Database, Bell, Zap, Moon, Sun, ArrowRight, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { fetchCredentials, updateCredential } from '../lib/api';
 
 const SettingsPage: React.FC = () => {
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const queryClient = useQueryClient();
+
+  // Fetch credentials when security panel is opened
+  const { data: credentials = [], isLoading: credentialsLoading, error: credentialsError } = useQuery({
+    queryKey: ['credentials'],
+    queryFn: fetchCredentials,
+    enabled: activePanel === 'security',
+    retry: 1
+  });
+
+  // Update credential mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ name, value }: { name: string; value: string }) => updateCredential(name, value),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['credentials'] });
+    }
+  });
+
+  const [editingCredential, setEditingCredential] = useState<string | null>(null);
+  const [credentialValues, setCredentialValues] = useState<Record<string, string>>({});
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+
+  const handleSaveCredential = async (name: string) => {
+    setSaveStatus('saving');
+    try {
+      await updateMutation.mutateAsync({ name, value: credentialValues[name] || '' });
+      setSaveStatus('success');
+      setEditingCredential(null);
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (error) {
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }
+  };
 
   const panels = [
     { id: 'general', icon: SettingsIcon, color: 'text-accent', bgColor: 'bg-accent/10', title: 'General', description: 'Basic system configuration and preferences' },
@@ -45,23 +81,104 @@ const SettingsPage: React.FC = () => {
       case 'security':
         return (
           <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">API Key</label>
-              <input type="password" defaultValue="sk-xxxxxxxxxxxx" className="w-full px-4 py-2 rounded-lg bg-[#1e1b4b]/50 border border-[#3730a3] text-white focus:outline-none focus:border-accent" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Session Timeout (minutes)</label>
-              <input type="number" defaultValue="30" className="w-full px-4 py-2 rounded-lg bg-[#1e1b4b]/50 border border-[#3730a3] text-white focus:outline-none focus:border-accent" />
-            </div>
-            <div className="flex items-center justify-between p-4 rounded-lg bg-[#1e1b4b]/50 border border-[#3730a3]/30">
-              <div>
-                <p className="text-white font-medium">Two-Factor Authentication</p>
-                <p className="text-sm text-gray-400">Require 2FA for admin access</p>
+            {credentialsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="animate-spin text-accent" size={24} />
+                <span className="ml-2 text-gray-400">Loading credentials...</span>
               </div>
-              <button className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors">
-                Enable
-              </button>
-            </div>
+            ) : credentialsError ? (
+              <div className="flex items-center justify-center py-8 text-red-400">
+                <AlertCircle size={24} className="mr-2" />
+                <span>Failed to load credentials</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {credentials.map((cred) => (
+                  <div key={cred.name} className="p-4 rounded-lg bg-[#1e1b4b]/50 border border-[#3730a3]/30">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-300 mb-1">{cred.name}</label>
+                        <p className="text-xs text-gray-500 mb-2">{cred.description}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded ${cred.configured ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                        {cred.configured ? 'Configured' : 'Not Set'}
+                      </span>
+                    </div>
+                    
+                    {editingCredential === cred.name ? (
+                      <div className="space-y-2">
+                        <input
+                          type="password"
+                          placeholder="Enter new value"
+                          value={credentialValues[cred.name] || ''}
+                          onChange={(e) => setCredentialValues({ ...credentialValues, [cred.name]: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg bg-[#0f0a2e]/50 border border-[#3730a3] text-white text-sm focus:outline-none focus:border-accent"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSaveCredential(cred.name)}
+                            disabled={saveStatus === 'saving'}
+                            className="px-3 py-1.5 rounded-lg bg-accent text-white text-sm hover:bg-accent-hover transition-colors disabled:opacity-50 flex items-center"
+                          >
+                            {saveStatus === 'saving' ? (
+                              <>
+                                <Loader2 size={14} className="animate-spin mr-1" />
+                                Saving...
+                              </>
+                            ) : saveStatus === 'success' ? (
+                              <>
+                                <CheckCircle size={14} className="mr-1" />
+                                Saved
+                              </>
+                            ) : saveStatus === 'error' ? (
+                              <>
+                                <AlertCircle size={14} className="mr-1" />
+                                Error
+                              </>
+                            ) : (
+                              'Save'
+                            )}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingCredential(null);
+                              setCredentialValues({ ...credentialValues, [cred.name]: '' });
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-gray-500/20 text-gray-300 text-sm hover:bg-gray-500/30 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <input
+                            type="password"
+                            readOnly
+                            value={cred.masked}
+                            className="w-full px-3 py-2 rounded-lg bg-[#0f0a2e]/30 border border-[#3730a3]/50 text-gray-400 text-sm cursor-not-allowed"
+                          />
+                        </div>
+                        <button
+                          onClick={() => setEditingCredential(cred.name)}
+                          className="ml-2 px-3 py-1.5 rounded-lg bg-[#3730a3] text-white text-sm hover:bg-[#3730a3]/50 transition-colors"
+                        >
+                          Update
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                
+                <div className="mt-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <p className="text-amber-400 text-sm">
+                    <strong>Note:</strong> Credential updates are applied to the runtime settings only. 
+                    For durable changes, update the environment variable and redeploy the service.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         );
       case 'database':

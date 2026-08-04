@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from redis import Redis
 from apps.api.config import settings
 from apps.models.base import get_db
-from apps.api.routers import system, approvals, payments
+from apps.api.routers import system, approvals, payments, settings
 from apps.api.auth import create_access_token, create_test_token
 
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +36,10 @@ app = FastAPI(
         {
             "name": "Payments",
             "description": "Payment processing, approval workflows, and transaction execution"
+        },
+        {
+            "name": "Settings",
+            "description": "System settings and credential management (admin only)"
         }
     ]
 )
@@ -51,6 +55,7 @@ app.add_middleware(
 app.include_router(system.router, prefix="/api/v1", tags=["System"])
 app.include_router(approvals.router, prefix="/api/v1", tags=["Approvals"])
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["Payments"])
+app.include_router(settings.router, prefix="/api/v1", tags=["Settings"])
 
 @app.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)):
