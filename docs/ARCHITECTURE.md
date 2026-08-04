@@ -85,7 +85,7 @@ graph TB
 - **API**: FastAPI REST API with JWT authentication and RBAC
 
 ### Application Layer
-- **APIAuth**: JWT token generation and verification, role-based access control
+- **APIAuth**: JWT token generation and verification, role-based access control with 4-role system (founder_admin, smm_manager, viewer, service_agent)
 - **Payments**: Payment creation, approval, and execution with safety controls
 - **Approvals**: Content approval queue and workflow management
 - **System**: Health checks, configuration, and system status endpoints
@@ -136,8 +136,52 @@ graph TB
 1. Client authenticates with credentials
 2. JWT token generated with user role
 3. Token validated on each request
-4. RBAC checks applied based on user role
+4. RBAC checks applied based on user role and permissions
 5. Request processed if authorized
+
+## Role-Based Access Control (RBAC)
+
+### 4-Role System
+
+The system implements a 4-role RBAC model with granular permission sets:
+
+#### 1. Founder/Admin (`founder_admin`)
+- **Permissions**: `read`, `write`, `approve`, `execute`, `publish`, `admin`
+- **Description**: Full system access including administrative operations, payment execution, and content publishing
+- **Use Case**: System administrators and founders requiring complete control
+
+#### 2. SMM Manager (`smm_manager`)
+- **Permissions**: `read`, `write`, `approve`, `publish`
+- **Description**: Content and campaign management with approval and publishing rights, but no execution or admin privileges
+- **Use Case**: Social media managers who can create, approve, and publish content but cannot execute payments or perform admin operations
+
+#### 3. Viewer (`viewer`)
+- **Permissions**: `read`
+- **Description**: Read-only access for viewing content, campaigns, and system status
+- **Use Case**: Stakeholders who need visibility without modification rights
+
+#### 4. Service/Agent (`service_agent`)
+- **Permissions**: `read`, `execute`
+- **Description**: Machine-to-machine service account with read and execute permissions only
+- **Use Case**: Automated agents and services that can read data and execute tasks but cannot approve, publish, or perform administrative operations
+
+### Permission Enforcement
+
+- **Approve Operations**: Restricted to `founder_admin` and `smm_manager` roles
+- **Publish Operations**: Restricted to `founder_admin` and `smm_manager` roles
+- **Execute Operations**: Restricted to `founder_admin` and `service_agent` roles
+- **Write Operations**: Restricted to `founder_admin` and `smm_manager` roles
+- **Admin Operations**: Restricted to `founder_admin` role only
+- **Read Operations**: Available to all roles
+
+### API Endpoint Protection
+
+Key endpoints are protected by permission-based dependencies:
+- `/api/v1/approvals/content/{id}/approve` → `require_approver`
+- `/api/v1/approvals/content/{id}/publish` → `require_publisher`
+- `/api/v1/payments/{id}/execute` → `require_admin`
+- `/api/v1/campaigns` (POST) → `require_writer`
+- `/api/v1/tasks` (POST) → `require_writer`
 
 ## Deployment Architecture
 

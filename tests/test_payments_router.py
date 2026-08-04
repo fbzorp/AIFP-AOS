@@ -10,14 +10,14 @@ client = TestClient(app)
 @pytest.fixture
 def auth_headers():
     """Generate valid JWT token for testing."""
-    token = create_test_token(role="admin")
+    token = create_test_token(role="founder_admin")
     return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
-def operator_headers():
-    """Generate valid JWT token for operator role."""
-    token = create_test_token(role="operator")
+def writer_headers():
+    """Generate valid JWT token for write permission."""
+    token = create_test_token(role="smm_manager")
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -72,24 +72,24 @@ def test_create_payment_insufficient_role(viewer_headers):
     assert response.status_code == 403
 
 
-def test_create_payment_success(operator_headers):
-    """Test POST /payments with operator role - tests RBAC only"""
+def test_create_payment_success(writer_headers):
+    """Test POST /payments with write permission - tests RBAC only"""
     # Skip this test if it causes event loop issues - just test RBAC with other tests
-    # The other tests already verify operator role works for kill switch and allowlist
+    # The other tests already verify write permission works for kill switch and allowlist
     pytest.skip("Skipping due to async event loop issues with TestClient")
 
 
-def test_create_payment_kill_switch(operator_headers):
+def test_create_payment_kill_switch(writer_headers):
     """Test POST /payments with kill switch - tests RBAC only"""
     # Skip this test if it causes event loop issues - just test RBAC with other tests
-    # The other tests already verify operator role works for other scenarios
+    # The other tests already verify write permission works for other scenarios
     pytest.skip("Skipping due to async event loop issues with TestClient")
 
 
-def test_create_payment_not_allowlisted(operator_headers):
+def test_create_payment_not_allowlisted(writer_headers):
     """Test POST /payments with allowlist - tests RBAC only"""
     # Skip this test if it causes event loop issues - just test RBAC with other tests
-    # The other tests already verify operator role works for other scenarios
+    # The other tests already verify write permission works for other scenarios
     pytest.skip("Skipping due to async event loop issues with TestClient")
 
 
@@ -109,10 +109,10 @@ def test_approve_payment_insufficient_role(viewer_headers):
     assert response.status_code == 403
 
 
-def test_approve_payment_not_found(operator_headers):
-    """Test POST /payments/{id}/approve with operator role - tests RBAC only"""
+def test_approve_payment_not_found(writer_headers):
+    """Test POST /payments/{id}/approve with write permission - tests RBAC only"""
     # Skip this test if it causes event loop issues - just test RBAC with other tests
-    # The other tests already verify operator role works for insufficient role checks
+    # The other tests already verify write permission works for insufficient role checks
     pytest.skip("Skipping due to async event loop issues with TestClient")
 
 
@@ -122,9 +122,9 @@ def test_execute_payment_unauthorized():
     assert response.status_code == 401
 
 
-def test_execute_payment_insufficient_role(operator_headers):
-    """Test POST /payments/{id}/execute returns 403 with operator role"""
-    response = client.post("/api/v1/payments/test_id/execute", headers=operator_headers)
+def test_execute_payment_insufficient_role(writer_headers):
+    """Test POST /payments/{id}/execute returns 403 with smm_manager role"""
+    response = client.post("/api/v1/payments/test_id/execute", headers=writer_headers)
     assert response.status_code == 403
 
 

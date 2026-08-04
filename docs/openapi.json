@@ -261,7 +261,7 @@
           "Approvals"
         ],
         "summary": "Create new content item",
-        "description": "Create a new content item for the approval queue. Requires operator role.",
+        "description": "Create a new content item for the approval queue. Requires write permission.",
         "operationId": "create_content_api_v1_content_post",
         "requestBody": {
           "content": {
@@ -308,7 +308,7 @@
           "Approvals"
         ],
         "summary": "Edit content item",
-        "description": "Edit an existing content item (title, body, variants). Resets status to draft. Requires operator role.",
+        "description": "Edit an existing content item (title, body, variants). Resets status to draft. Requires write permission.",
         "operationId": "edit_content_api_v1_content__content_id__patch",
         "security": [
           {
@@ -409,7 +409,7 @@
           "Approvals"
         ],
         "summary": "Approve content for publishing",
-        "description": "Approve content item and set scheduled date. Requires operator role.",
+        "description": "Approve content item and set scheduled date. Requires approve permission.",
         "operationId": "approve_content_api_v1_content__content_id__approve_post",
         "security": [
           {
@@ -520,7 +520,7 @@
           "Approvals"
         ],
         "summary": "Publish approved content",
-        "description": "Enqueue approved content for publishing to external platforms. Requires admin role.",
+        "description": "Enqueue approved content for publishing to external platforms. Requires publish permission.",
         "operationId": "trigger_publish_api_v1_content__content_id__publish_post",
         "security": [
           {
@@ -705,7 +705,7 @@
           "Payments"
         ],
         "summary": "Create a new payment request",
-        "description": "Create a new payment request with automatic approval for small amounts. Requires operator role.",
+        "description": "Create a new payment request with automatic approval for small amounts. Requires write permission.",
         "operationId": "create_payment_api_v1_payments__post",
         "security": [
           {
@@ -813,7 +813,7 @@
           "Payments"
         ],
         "summary": "Approve a pending payment",
-        "description": "Approve a pending payment request for execution. Enforces spending limits and daily caps. Requires operator role.",
+        "description": "Approve a pending payment request for execution. Enforces spending limits and daily caps. Requires approve permission.",
         "operationId": "approve_payment_api_v1_payments__payment_id__approve_post",
         "security": [
           {

@@ -62,7 +62,7 @@ async def test_edit_content_endpoint():
         session.add(item)
         await session.commit()
 
-    token = create_test_token(role="operator")
+    token = create_test_token(role="smm_manager")
     headers = {"Authorization": f"Bearer {token}"}
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:

@@ -147,7 +147,16 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Workaround**: N/A
 **Resolution Path**: Extend RBAC for organization-level access control
 
-### 16. Advanced Analytics
+### 16. RBAC Role Granularity
+
+**Issue**: Current 4-role RBAC system may not cover all organizational needs
+**Affected Areas**: Role definitions in `apps/api/auth.py`
+**Impact**: Some organizations may require additional roles or more granular permission sets
+**Workaround**: Custom role definitions can be added to the ROLES dict in auth.py
+**Resolution Path**: Implement dynamic role configuration or RBAC admin interface
+**Status**: ✅ IMPLEMENTED - 4-role system (founder_admin, smm_manager, viewer, service_agent) with permission-based access control
+
+### 17. Advanced Analytics
 
 **Issue**: Limited analytics and reporting capabilities
 **Impact**: Reduced visibility into system performance and user behavior
@@ -156,14 +165,14 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Dependency Limitations
 
-### 17. Third-Party API Dependencies
+### 18. Third-Party API Dependencies
 
 **Issue**: System depends on third-party APIs (DeepSeek, Moltbook, AiFinPay)
 **Impact**: Service disruption if third-party APIs are unavailable
 **Workaround**: Fallback mechanisms and graceful degradation
 **Resolution Path**: Implement comprehensive error handling and fallback strategies
 
-### 18. Blockchain Network Dependencies
+### 19. Blockchain Network Dependencies
 
 **Issue**: System depends on blockchain networks (Solana, Base)
 **Impact**: Service disruption if blockchain networks have issues
@@ -172,14 +181,14 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Documentation Gaps
 
-### 19. API Documentation
+### 20. API Documentation
 
 **Issue**: Some API endpoints lack comprehensive documentation
 **Impact**: Reduced developer experience for API consumers
 **Workaround**: OpenAPI spec available but not complete
 **Resolution Path**: Complete API documentation for all endpoints
 
-### 20. Architecture Documentation
+### 21. Architecture Documentation
 
 **Issue**: Some architectural decisions not fully documented
 **Impact**: Increased onboarding time for new developers
@@ -188,7 +197,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Test Suite Issues
 
-### 21. Database Connection in Tests
+### 22. Database Connection in Tests
 
 **Issue**: Some tests in `test_payment_integration.py`, `test_payment_scenarios.py`, and `test_real_publishing.py` use `get_sync_session()` directly instead of mocked session
 **Impact**: These tests fail when PostgreSQL database is not running locally (trying to connect to `postgres:5432`)
@@ -206,6 +215,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 - Monitoring and alerting (✅ documented in DEPLOYMENT.md)
 - Dashboard production build (✅ RESOLVED)
 - API/Worker production Dockerfile (✅ RESOLVED)
+- RBAC role granularity (✅ IMPLEMENTED - 4-role system)
 
 ### Medium Priority
 - SSL certificate renewal automation
@@ -225,6 +235,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 - ✅ Dashboard production build (RESOLVED)
 - ✅ API/Worker production Dockerfile (RESOLVED)
 - ✅ Test suite database connection (RESOLVED)
+- ✅ RBAC 4-role implementation (IMPLEMENTED)
 - Monitoring and alerting setup (documented in DEPLOYMENT.md)
 - Backup automation scheduling
 - SSL certificate renewal planning

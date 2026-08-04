@@ -19,9 +19,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Role definitions
 ROLES = {
-    "admin": ["read", "write", "approve", "execute"],
-    "operator": ["read", "write", "approve"],
-    "viewer": ["read"]
+    "founder_admin": ["read", "write", "approve", "execute", "publish", "admin"],
+    "smm_manager": ["read", "write", "approve", "publish"],
+    "viewer": ["read"],
+    "service_agent": ["read", "execute"]
 }
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -64,11 +65,16 @@ def require_role(required_permissions: list[str]):
         return payload
     return role_checker
 
-# Common role dependencies
-require_admin = require_role(["read", "write", "approve", "execute"])
-require_operator = require_role(["read", "write", "approve"])
+# Permission-based dependencies
+require_approver = require_role(["approve"])
+require_publisher = require_role(["publish"])
+require_writer = require_role(["write"])
 require_viewer = require_role(["read"])
+require_admin = require_role(["admin"])
 
-def create_test_token(role: str = "admin") -> str:
+# Backward-compatible aliases for existing imports
+require_operator = require_writer  # Maps old operator to write permission
+
+def create_test_token(role: str = "founder_admin") -> str:
     """Create a test JWT token for testing purposes."""
     return create_access_token({"sub": "test_user", "role": role})

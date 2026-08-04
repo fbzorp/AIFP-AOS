@@ -11,7 +11,7 @@ from apps.models.campaign import CampaignModel
 from apps.models.source import SourceModel
 from apps.models.content_item import ContentItemModel
 from apps.agents.registry import list_agents, get_agent
-from apps.api.auth import require_operator
+from apps.api.auth import require_writer, require_admin
 
 router = APIRouter()
 
@@ -50,7 +50,7 @@ async def get_campaigns(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 @router.post("/campaigns")
-async def create_campaign(request: CampaignCreateRequest, user: dict = Depends(require_operator)):
+async def create_campaign(request: CampaignCreateRequest, user: dict = Depends(require_writer)):
     orchestrator = get_agent("Growth Orchestrator")
     if not orchestrator:
         raise HTTPException(status_code=500, detail="Growth Orchestrator agent not found")
@@ -62,7 +62,7 @@ async def create_campaign(request: CampaignCreateRequest, user: dict = Depends(r
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/tasks")
-async def create_task(request: TaskCreateRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
+async def create_task(request: TaskCreateRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_writer)):
     from apps.models.task import TaskModel
     from apps.core.audit.service import record_event
     from apps.workers.tasks import run_agent_task

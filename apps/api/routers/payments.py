@@ -13,7 +13,7 @@ from apps.models.audit_event import AuditEventModel
 from apps.schemas.payment import PaymentCreate, PaymentResponse, PaymentApprove, PaymentExecute
 from apps.schemas.audit_event import AuditEventCreate
 from apps.api.config import settings
-from apps.api.auth import require_admin, require_operator, require_viewer
+from apps.api.auth import require_admin, require_writer, require_approver, require_viewer
 from apps.integrations.wallet.client import WalletClient
 from apps.integrations.x402.client import X402Client
 from apps.integrations.aifinpay.client import AiFinPayClient
@@ -64,11 +64,11 @@ async def create_audit_event(db: AsyncSession, event_type: str, details: dict):
     await db.refresh(audit_event)
     return audit_event
 
-@router.post("/", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED, summary="Create a new payment request", description="Create a new payment request with automatic approval for small amounts. Requires operator role.")
+@router.post("/", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED, summary="Create a new payment request", description="Create a new payment request with automatic approval for small amounts. Requires write permission.")
 async def create_payment(
     payment_in: PaymentCreate,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(require_operator)
+    user: dict = Depends(require_writer)
 ):
     # Emergency Kill Switch check
     if settings.PAYMENTS_KILL_SWITCH:
@@ -106,12 +106,12 @@ async def create_payment(
 
     return payment
 
-@router.post("/{payment_id}/approve", response_model=PaymentResponse, summary="Approve a pending payment", description="Approve a pending payment request for execution. Enforces spending limits and daily caps. Requires operator role.")
+@router.post("/{payment_id}/approve", response_model=PaymentResponse, summary="Approve a pending payment", description="Approve a pending payment request for execution. Enforces spending limits and daily caps. Requires approve permission.")
 async def approve_payment(
     payment_id: str,
     payment_approve: PaymentApprove,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(require_operator)
+    user: dict = Depends(require_approver)
 ):
     result = await db.execute(select(PaymentModel).filter(PaymentModel.id == payment_id))
     payment = result.scalar_one_or_none()
