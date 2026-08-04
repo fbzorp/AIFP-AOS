@@ -42,11 +42,13 @@ The API implements role-based access control (RBAC) with three roles:
 | `operator`| read, write, approve               | Content and payment management  |
 | `viewer`  | read                              | Read-only access                |
 
-### Role Dependencies
+### Permission Dependencies
 
-- `require_admin`: Requires admin role (read, write, approve, execute)
-- `require_operator`: Requires operator role (read, write, approve)  
-- `require_viewer`: Requires viewer role (read)
+- `require_admin`: Requires admin permission
+- `require_approver`: Requires approve permission
+- `require_publisher`: Requires publish permission
+- `require_writer`: Requires write permission
+- `require_viewer`: Requires read permission
 
 ## API Endpoints
 
@@ -103,7 +105,7 @@ The API implements role-based access control (RBAC) with three roles:
 
 #### Create Payment
 - **Endpoint**: `POST /api/v1/payments/`
-- **Authentication**: `require_operator`
+- **Authentication**: `require_writer`
 - **Description**: Create a new payment request with automatic approval for small amounts
 - **Request**:
 ```json
@@ -125,7 +127,7 @@ The API implements role-based access control (RBAC) with three roles:
 
 #### Approve Payment
 - **Endpoint**: `POST /api/v1/payments/{payment_id}/approve`
-- **Authentication**: `require_operator`
+- **Authentication**: `require_approver`
 - **Description**: Approve a pending payment for execution
 - **Request**:
 ```json
@@ -151,7 +153,7 @@ The API implements role-based access control (RBAC) with three roles:
 
 #### Edit Content
 - **Endpoint**: `PATCH /api/v1/content/{content_id}`
-- **Authentication**: `require_operator`
+- **Authentication**: `require_writer`
 - **Description**: Edit content item (title, body, variants). Resets status to draft
 - **Request**:
 ```json
@@ -164,7 +166,7 @@ The API implements role-based access control (RBAC) with three roles:
 
 #### Approve Content
 - **Endpoint**: `POST /api/v1/content/{content_id}/approve`
-- **Authentication**: `require_operator`
+- **Authentication**: `require_approver`
 - **Description**: Approve content item and set scheduled date
 - **Request**:
 ```json

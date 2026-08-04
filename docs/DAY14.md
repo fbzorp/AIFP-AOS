@@ -91,7 +91,7 @@
   - Removed hardcoded fallback data in api.ts (metrics/agents now re-throw errors)
   - Removed hardcoded Quick Stats from Sidebar (no fake numbers in demo)
   - Removed dead Test MCP Connection button from Payments page
-  - Added RBAC to POST /tasks and POST /campaigns endpoints (require_operator)
+  - Added RBAC to POST /tasks and POST /campaigns endpoints (require_writer)
   - Updated test_api_campaigns.py to use real JWT tokens (create_test_token)
   - Regenerated OpenAPI spec (now includes POST /content and POST /tasks)
   - Fixed all TypeScript/Vite build errors (unused imports, missing imports)

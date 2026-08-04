@@ -119,7 +119,7 @@ async def test_authenticated_content_approval():
     headers = {"Authorization": f"Bearer {token}"}
     
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.post("/api/v1/approvals/content/test_id/approve", json={
+        response = await client.post("/api/v1/content/test_id/approve", json={
             "approved_by": "test_user",
             "expires_in_hours": 24
         }, headers=headers)
