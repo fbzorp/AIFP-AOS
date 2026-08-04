@@ -19,6 +19,7 @@ from apps.api.config import settings
 from apps.workers.tasks import _perform_publish_logic
 from apps.integrations.moltbook.client import MoltbookClient
 from apps.integrations.mcp.client import MCPClient
+from .adk_orchestrator import get_adk_orchestrator
 
 # Initialize MCP client
 mcp_client = MCPClient(
@@ -41,18 +42,27 @@ class GrowthOrchestratorAgent(BaseAgent):
         objective = input_data.get('objective', 'default_campaign')
         discussions = await self._discover_allowed_discussions()
 
-        # Define the campaign plan (Day 8: News-to-Content Flow)
-        # Content Strategy -> Technical/Founder Content -> Compliance review -> Content Queue
-        # Discussion content is fetched read-only during planning and is passed
-        # unchanged to the specialist, which sanitizes it before model use.
-        steps = [
-            {"agent": "Market Intelligence", "input": {"topic": objective}},
-            {"agent": "Content Strategy", "input": {"objective": objective}},
-            {
-                "agent": "Community Engagement",
-                "input": {"discussions": discussions},
-            },
-        ]
+        # Try to use ADK Marketing Manager for intelligent routing
+        adk_orchestrator = get_adk_orchestrator()
+        orchestration_result = await adk_orchestrator.orchestrate_campaign(objective)
+        
+        # Use ADK-routed steps if available, otherwise use static fallback
+        if orchestration_result["routing_method"] == "adk_routed":
+            steps = orchestration_result["steps"]
+            # Add discussions to the Community Engagement step if available
+            for step in steps:
+                if step.get("agent") == "Community Engagement" and discussions:
+                    step["input"]["discussions"] = discussions
+        else:
+            # Static fallback (original behavior)
+            steps = [
+                {"agent": "Market Intelligence", "input": {"topic": objective}},
+                {"agent": "Content Strategy", "input": {"objective": objective}},
+                {
+                    "agent": "Community Engagement",
+                    "input": {"discussions": discussions},
+                },
+            ]
 
         # Offload synchronous DB work to a thread to avoid blocking the event loop
         result = await asyncio.to_thread(self._dispatch_campaign, objective, steps)
@@ -64,6 +74,7 @@ class GrowthOrchestratorAgent(BaseAgent):
             "tasks": result["tasks"],
             "status": "executing",
             "discussions_discovered": len(discussions),
+            "routing_method": orchestration_result["routing_method"],
         }
 
     async def _discover_allowed_discussions(self, limit: int = 10) -> List[Dict[str, str]]:
