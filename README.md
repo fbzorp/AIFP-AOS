@@ -229,7 +229,12 @@ locust -f load/locustfile.py --host=http://localhost:8000 --headless -u 10 -r 2 
 ## Security
 
 - **JWT Authentication**: Token-based authentication with role-based access control
-- **RBAC**: Admin, Operator, and Viewer roles with appropriate permissions
+- **RBAC**: 4-role system (founder_admin, smm_manager, viewer, service_agent) with granular permission sets
+  - `founder_admin`: Full system access (read, write, approve, execute, publish, admin)
+  - `smm_manager`: Content management (read, write, approve, publish)
+  - `viewer`: Read-only access (read)
+  - `service_agent`: Machine-to-machine (read, execute)
+- **Permission Enforcement**: Approve/publish gated to founder_admin and smm_manager; execute gated to founder_admin and service_agent
 - **Security Scanning**: pip-audit, bandit, and gitleaks integrated in CI
 - **Payment Safety**: Kill switches, allowlists, and spending limits
 - **Secrets Management**: Environment variables only, no hardcoded secrets

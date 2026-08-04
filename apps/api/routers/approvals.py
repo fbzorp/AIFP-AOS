@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from apps.models.base import get_db
-from apps.api.auth import require_operator, require_admin, require_viewer
+from apps.api.auth import require_approver, require_publisher, require_writer, require_viewer
 from apps.models.content_item import ContentItemModel
 from apps.models.approval import ApprovalModel
 from apps.models.audit_event import AuditEventModel
@@ -47,8 +47,8 @@ async def list_content_queue(db: AsyncSession = Depends(get_db), user: dict = De
     )
     return result.scalars().all()
 
-@router.patch("/content/{content_id}", summary="Edit content item", description="Edit an existing content item (title, body, variants). Resets status to draft. Requires operator role.")
-async def edit_content(content_id: str, request: ContentEditRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
+@router.patch("/content/{content_id}", summary="Edit content item", description="Edit an existing content item (title, body, variants). Resets status to draft. Requires write permission.")
+async def edit_content(content_id: str, request: ContentEditRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_writer)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
     if not content:
@@ -74,8 +74,8 @@ async def edit_content(content_id: str, request: ContentEditRequest, db: AsyncSe
     await db.commit()
     return content
 
-@router.post("/content", summary="Create new content item", description="Create a new content item for the approval queue. Requires operator role.")
-async def create_content(content: dict, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
+@router.post("/content", summary="Create new content item", description="Create a new content item for the approval queue. Requires write permission.")
+async def create_content(content: dict, db: AsyncSession = Depends(get_db), user: dict = Depends(require_writer)):
     new_content = ContentItemModel(
         title=content.get("title", "Untitled"),
         channel=content.get("channel", "twitter"),
@@ -97,7 +97,7 @@ async def create_content(content: dict, db: AsyncSession = Depends(get_db), user
     return new_content
 
 @router.post("/content/{content_id}/submit")
-async def submit_content(content_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
+async def submit_content(content_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_writer)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
     if not content:
@@ -107,8 +107,8 @@ async def submit_content(content_id: str, db: AsyncSession = Depends(get_db), us
     await db.commit()
     return {"status": "pending_review", "content_id": content_id}
 
-@router.post("/content/{content_id}/approve", summary="Approve content for publishing", description="Approve content item and set scheduled date. Requires operator role.")
-async def approve_content(content_id: str, request: ApprovalDecisionRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
+@router.post("/content/{content_id}/approve", summary="Approve content for publishing", description="Approve content item and set scheduled date. Requires approve permission.")
+async def approve_content(content_id: str, request: ApprovalDecisionRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_approver)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
     if not content:
@@ -151,7 +151,7 @@ async def approve_content(content_id: str, request: ApprovalDecisionRequest, db:
     }
 
 @router.post("/content/{content_id}/reject")
-async def reject_content(content_id: str, request: ApprovalDecisionRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
+async def reject_content(content_id: str, request: ApprovalDecisionRequest, db: AsyncSession = Depends(get_db), user: dict = Depends(require_approver)):
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
     if not content:
@@ -180,8 +180,8 @@ async def reject_content(content_id: str, request: ApprovalDecisionRequest, db: 
     await db.commit()
     return {"status": "rejected", "content_id": content_id}
 
-@router.post("/content/{content_id}/publish", summary="Publish approved content", description="Enqueue approved content for publishing to external platforms. Requires admin role.")
-async def trigger_publish(content_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_admin)):
+@router.post("/content/{content_id}/publish", summary="Publish approved content", description="Enqueue approved content for publishing to external platforms. Requires publish permission.")
+async def trigger_publish(content_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_publisher)):
     # 1. Load content item
     result = await db.execute(select(ContentItemModel).filter(ContentItemModel.id == content_id))
     content = result.scalars().first()
@@ -221,7 +221,7 @@ async def list_proposals(db: AsyncSession = Depends(get_db), user: dict = Depend
     return result.scalars().all()
 
 @router.post("/engagement/proposals/{proposal_id}/approve")
-async def approve_proposal(proposal_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
+async def approve_proposal(proposal_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_approver)):
     result = await db.execute(select(EngagementProposalModel).filter(EngagementProposalModel.id == proposal_id))
     proposal = result.scalars().first()
     if not proposal:
@@ -233,7 +233,7 @@ async def approve_proposal(proposal_id: str, db: AsyncSession = Depends(get_db),
     return {"status": "approved", "proposal_id": proposal_id}
 
 @router.post("/engagement/proposals/{proposal_id}/reject")
-async def reject_proposal(proposal_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_operator)):
+async def reject_proposal(proposal_id: str, db: AsyncSession = Depends(get_db), user: dict = Depends(require_approver)):
     result = await db.execute(select(EngagementProposalModel).filter(EngagementProposalModel.id == proposal_id))
     proposal = result.scalars().first()
     if not proposal:

@@ -123,7 +123,7 @@ async def test_gap_c_approval_sets_scheduled_at():
     transport = ASGITransport(app=app)
     
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        token = create_test_token(role="operator")
+        token = create_test_token(role="smm_manager")
         headers = {"Authorization": f"Bearer {token}"}
         
         with TestingSessionLocal() as session:

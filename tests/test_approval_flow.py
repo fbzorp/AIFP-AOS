@@ -223,9 +223,9 @@ async def test_api_approval_and_publish_trigger():
         mock_redis.return_value.ping.return_value = True
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             # Create authentication tokens
-            operator_token = create_test_token(role="operator")
-            admin_token = create_test_token(role="admin")
-            operator_headers = {"Authorization": f"Bearer {operator_token}"}
+            writer_token = create_test_token(role="smm_manager")
+            admin_token = create_test_token(role="founder_admin")
+            writer_headers = {"Authorization": f"Bearer {writer_token}"}
             admin_headers = {"Authorization": f"Bearer {admin_token}"}
             
             with mock_get_sync_session() as session:
@@ -241,7 +241,7 @@ async def test_api_approval_and_publish_trigger():
                 session.commit()
                 
                 # 2. Approve via API
-                response = await ac.post("/api/v1/content/api-content-1/approve", json={"approved_by": "Tester"}, headers=operator_headers)
+                response = await ac.post("/api/v1/content/api-content-1/approve", json={"approved_by": "Tester"}, headers=writer_headers)
                 assert response.status_code == 200
                 data = response.json()
                 assert data["status"] == "approved"

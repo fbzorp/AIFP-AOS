@@ -14,7 +14,7 @@ client = TestClient(app)
 @pytest.fixture
 def auth_headers():
     """Generate valid JWT token for testing."""
-    token = create_test_token(role="admin")
+    token = create_test_token(role="founder_admin")
     return {"Authorization": f"Bearer {token}"}
 
 @pytest.fixture
