@@ -56,19 +56,17 @@ async def test_adk_orchestrator_static_fallback():
             
             assert result["routing_method"] == "static_fallback"
             assert result["objective"] == "test objective"
-            assert len(result["steps"]) == 3  # Static steps: Market Intelligence, Content Strategy, Community Engagement
+            assert len(result["steps"]) == 4  # Static steps: Market Intelligence, Content Strategy, SEO Content, Community Engagement
             assert result["steps"][0]["agent"] == "Market Intelligence"
             assert result["steps"][1]["agent"] == "Content Strategy"
-            assert result["steps"][2]["agent"] == "Community Engagement"
+            assert result["steps"][2]["agent"] == "SEO Content"
+            assert result["steps"][3]["agent"] == "Community Engagement"
 
 
 @pytest.mark.asyncio
 async def test_adk_orchestrator_adk_routing():
     """Test that ADK routing is used when available."""
     mock_model = Mock()
-    mock_session = Mock()
-    mock_session.commit = Mock()
-    mock_session.close = Mock()
     
     # Mock the ADK Runner response
     mock_runner = Mock()
@@ -79,20 +77,19 @@ async def test_adk_orchestrator_adk_routing():
     with patch('apps.agents.adk_orchestrator.deepseek_reasoning', return_value=mock_model):
         with patch('apps.agents.adk_orchestrator.LlmAgent'):
             with patch('apps.agents.adk_orchestrator.Runner', return_value=mock_runner):
-                orchestrator = ADKOrchestrator()
-                orchestrator._initialized = True
-                orchestrator.runner = mock_runner
-                
-                result = await orchestrator.orchestrate_campaign("test objective", mock_session)
-                
-                assert result["routing_method"] == "adk_routed"
-                assert result["objective"] == "test objective"
-                assert len(result["steps"]) == 2
-                assert result["steps"][0]["agent"] == "Market Intelligence"
-                assert result["steps"][1]["agent"] == "Content Strategy"
-                mock_runner.run_async.assert_called_once()
-                mock_session.commit.assert_called_once()
-                mock_session.close.assert_called_once()
+                with patch('apps.models.base.SessionLocal'):
+                    orchestrator = ADKOrchestrator()
+                    orchestrator._initialized = True
+                    orchestrator.runner = mock_runner
+                    
+                    result = await orchestrator.orchestrate_campaign("test objective")
+                    
+                    assert result["routing_method"] == "adk_routed"
+                    assert result["objective"] == "test objective"
+                    assert len(result["steps"]) == 2
+                    assert result["steps"][0]["agent"] == "Market Intelligence"
+                    assert result["steps"][1]["agent"] == "Content Strategy"
+                    mock_runner.run_async.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -102,16 +99,17 @@ async def test_specialist_tool_creation():
         orchestrator = ADKOrchestrator()
         tools = orchestrator.create_specialist_tools()
         
-        assert len(tools) == 8  # 8 specialists
-        
-        # FunctionTool API doesn't expose name directly, check count
-        assert len(tools) == 8
+        assert len(tools) == 9  # 9 specialists (added SEO Content)
 
 
 @pytest.mark.asyncio
 async def test_specialist_tool_execution():
     """Test that specialist tools execute the correct agents."""
     mock_agent = Mock()
+    # The agent.execute is async, so we need to mock it to return a coroutine
+    async def mock_execute(input_data):
+        return {"agent": "Market Intelligence", "outcome": "success"}
+    mock_agent.execute = mock_execute
     
     with patch('apps.agents.adk_orchestrator.get_agent', return_value=mock_agent):
         orchestrator = ADKOrchestrator()
@@ -120,9 +118,10 @@ async def test_specialist_tool_execution():
         # Execute the first tool (Market Intelligence)
         result = await tools[0].func({"test": "data"})
         
-        # The tool should return the specialist name and status
+        # The tool should return the specialist name and real result
         assert result["specialist"] == "Market Intelligence"
-        assert result["status"] == "async_execution_required"
+        assert result["result"]["agent"] == "Market Intelligence"
+        assert result["result"]["outcome"] == "success"
 
 
 @pytest.mark.asyncio
@@ -194,10 +193,11 @@ async def test_adk_response_parsing_fallback():
     steps = orchestrator._parse_adk_response(mock_response)
     
     # Should return static steps as fallback
-    assert len(steps) == 3
+    assert len(steps) == 4
     assert steps[0]["agent"] == "Market Intelligence"
     assert steps[1]["agent"] == "Content Strategy"
-    assert steps[2]["agent"] == "Community Engagement"
+    assert steps[2]["agent"] == "SEO Content"
+    assert steps[3]["agent"] == "Community Engagement"
 
 
 @pytest.mark.asyncio
@@ -212,7 +212,7 @@ async def test_adk_response_parsing_no_json():
     steps = orchestrator._parse_adk_response(mock_response)
     
     # Should return static steps as fallback
-    assert len(steps) == 3
+    assert len(steps) == 4
     assert steps[0]["agent"] == "Market Intelligence"
 
 
@@ -235,8 +235,8 @@ async def test_moltbook_tools_permission_gating():
     orchestrator = ADKOrchestrator()
     tools = orchestrator.create_specialist_tools()
     
-    # All 8 tools should exist
-    assert len(tools) == 8
+    # All 9 tools should exist (added SEO Content)
+    assert len(tools) == 9
     
     # The actual gating happens in the specialist's execute() methods via MOLTBOOK_AUTOPUBLISH
     # This test verifies that the tools are created, not their permission logic

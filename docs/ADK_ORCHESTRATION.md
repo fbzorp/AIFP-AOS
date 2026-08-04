@@ -18,16 +18,17 @@ The Marketing Manager is an ADK `LlmAgent` that acts as the central routing coor
 
 ### Specialist Agents
 
-The system maintains 8 specialized agents, each wrapped as an ADK `FunctionTool`:
+The system maintains 9 specialized agents, each wrapped as an ADK `FunctionTool`:
 
 1. **Market Intelligence** - Researches market trends, discussions, and opportunities
 2. **Content Strategy** - Plans content strategy and editorial calendar
 3. **Technical Content** - Creates technical documentation and tutorials
 4. **Founder Content** - Creates founder-led content and thought leadership
-5. **Social Publishing** - Manages social media publishing (Moltbook access)
-6. **Community Engagement** - Handles community interactions (Moltbook access)
-7. **Analytics** - Tracks content performance and provides insights
-8. **Compliance & Brand** - Ensures content meets brand guidelines
+5. **SEO Content** - Creates Google-search-optimized long-form content with SEO metadata
+6. **Social Publishing** - Manages social media publishing (Moltbook access)
+7. **Community Engagement** - Handles community interactions (Moltbook access)
+8. **Analytics** - Tracks content performance and provides insights
+9. **Compliance & Brand** - Ensures content meets brand guidelines
 
 ### Model Gateway
 
@@ -102,6 +103,7 @@ The ADK orchestrator preserves all existing infrastructure:
 - **Policy Engine**: Approval gates remain enforced
 - **Dramatiq Queue**: Task queue integration unchanged
 - **Moltbook Tools**: Permission gating preserved
+- **Real Execution**: `_execute_specialist` now truly executes specialists with proper async handling
 
 ## Routing Flow
 
@@ -125,6 +127,19 @@ The ADK orchestrator preserves all existing infrastructure:
 5. Static steps fed into existing `_dispatch_campaign()`/`Orchestrator.create_campaign()`
 6. Audit event recorded as `static_fallback`
 7. Tasks enqueued via dramatiq as usual
+
+### Specialist Tool Execution
+
+The `_execute_specialist` method now truly executes specialist agents by calling their async `execute()` method:
+
+- **Async Handling**: Safely handles async execution in both sync and async contexts
+- **Event Loop Detection**: Uses `asyncio.get_running_loop()` to detect if called from within an event loop
+- **Thread Pool Execution**: When called from within an event loop, runs the coroutine in a fresh loop using `ThreadPoolExecutor` + `asyncio.run()`
+- **Direct Execution**: When no event loop is running, uses `asyncio.run()` directly
+- **Error Handling**: Preserves existing try/except error envelope for graceful degradation
+- **Result Return**: Returns the actual specialist result dict with `{"specialist": name, "result": result}`
+
+This ensures ADK tools can genuinely execute specialists while maintaining compatibility with the existing async/await infrastructure.
 
 ## Moltbook Tool Integration
 
@@ -154,6 +169,48 @@ The ADK orchestrator does NOT bypass the approval process:
 4. If approved, execute publish operation
 5. Record audit event
 
+## SEO Content Generation
+
+### SEO Content Specialist
+
+The system includes a dedicated SEO Content specialist for Google-search-optimized content:
+
+- **Agent**: `SEOContentAgent` in `apps/agents/specialized.py`
+- **Role**: SEO Writer
+- **Purpose**: Creates Google-search-optimized long-form content with SEO metadata
+- **Routing**: Items with `channel="google"` or `channel="seo"` are routed to SEO Content
+- **SEO Metadata**: Generates and stores:
+  - SEO title tag (50-60 characters)
+  - Meta description (150-160 characters)
+  - Target keyword list (3-5 keywords)
+  - H1 heading
+  - H2 subheadings
+  - Article body
+- **Storage**: SEO metadata stored in `ContentItemModel.variants` (JSON field)
+- **Workflow**: SEO Content → Compliance & Brand → Approval → Dashboard display
+
+### SEO Routing Logic
+
+The task routing in `apps/workers/tasks.py` extends the Content Strategy follow-on logic:
+
+```python
+# Check for SEO/Google channel
+seo_keywords = ["google", "seo", "article", "blog"]
+if any(kw in (item.channel or "").lower() for kw in seo_keywords) or \
+   any(kw in (item.format or "").lower() for kw in seo_keywords) or \
+   any(kw in (item.objective or "").lower() for kw in seo_keywords):
+    target_agent = "SEO Content"
+```
+
+### SEO Content Publishing
+
+Google SEO content is NOT a Moltbook submolt - it follows a different publishing path:
+
+- **Publish Path**: Approved SEO items remain at "approved"/"published" status as demonstrable artifacts
+- **Dashboard Display**: SEO body and metadata visible in dashboard Content Queue
+- **Audit Logging**: SEO operations logged honestly (no dry-run masquerading as live publish)
+- **No Moltbook Force**: SEO items are not forced through Moltbook allowlist
+
 ## Testing
 
 ### ADK Orchestration Tests (`tests/test_adk_orchestration.py`)
@@ -169,8 +226,8 @@ Comprehensive test suite with 13 tests:
    - `test_adk_orchestrator_static_fallback` - Tests static fallback without key
 
 3. **Tool Tests**
-   - `test_specialist_tool_creation` - Verifies 8 specialist tools created
-   - `test_specialist_tool_execution` - Tests tool execution
+   - `test_specialist_tool_creation` - Verifies 9 specialist tools created (added SEO Content)
+   - `test_specialist_tool_execution` - Tests real specialist execution via async/await
    - `test_specialist_tool_not_found` - Tests error handling for missing agents
 
 4. **Integration Tests**
@@ -184,6 +241,24 @@ Comprehensive test suite with 13 tests:
 
 6. **Utility Tests**
    - `test_singleton_instance` - Verifies singleton pattern
+
+### SEO Content Tests (`tests/test_seo_content.py`)
+
+Test suite for SEO Content specialist (3 tests):
+
+1. **SEO Content Generation**
+   - `test_seo_content_agent_generates_seo_content` - Tests SEO metadata generation and persistence
+   - `test_seo_content_agent_handles_missing_item` - Tests error handling for missing items
+   - `test_seo_content_agent_capabilities` - Verifies agent capabilities
+
+### Orchestration Flow Tests (`tests/test_orchestration_flow.py`)
+
+Extended test suite for SEO routing (2 tests):
+
+1. **SEO Routing Test**
+   - `test_seo_content_routing_flow` - Tests google/seo channel routing to SEO Content → Compliance & Brand
+2. **Regression Test**
+   - `test_dispatch_happens_after_commit_regression` - Ensures .send() only called after commit
 
 ### Key Test Features
 

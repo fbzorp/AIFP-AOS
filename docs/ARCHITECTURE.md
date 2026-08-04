@@ -22,6 +22,7 @@ graph TB
         ContentStrategy[Content Strategy Agent]
         TechnicalWriter[Technical Writer Agent]
         FounderContent[Founder Content Agent]
+        SEOContent[SEO Content Agent]
         SocialPublishing[Social Publishing Agent]
         CommunityEngagement[Community Engagement Agent]
         Analytics[Analytics Agent]
@@ -61,6 +62,7 @@ graph TB
     MarketingManager --> ContentStrategy
     MarketingManager --> TechnicalWriter
     MarketingManager --> FounderContent
+    MarketingManager --> SEOContent
     MarketingManager --> SocialPublishing
     MarketingManager --> CommunityEngagement
     MarketingManager --> Analytics
@@ -70,6 +72,7 @@ graph TB
     ContentStrategy --> DeepSeek
     TechnicalWriter --> DeepSeek
     FounderContent --> DeepSeek
+    SEOContent --> DeepSeek
     SocialPublishing --> Moltbook
     CommunityEngagement --> Moltbook
     Analytics --> Moltbook
@@ -113,6 +116,7 @@ graph TB
 - **Content Strategy Agent**: Generates content strategy and content calendar
 - **Technical Writer Agent**: Creates technical documentation and blog posts
 - **Founder Content Agent**: Creates founder-led content and thought leadership pieces
+- **SEO Content Agent**: Creates Google-search-optimized long-form content with SEO metadata (title tag, meta description, keywords, H1/H2 structure)
 - **Social Publishing Agent**: Manages social media publishing (Moltbook access with approval gating)
 - **Community Engagement Agent**: Handles community interactions and engagement proposals (Moltbook access with approval gating)
 - **Analytics Agent**: Tracks content performance and provides insights

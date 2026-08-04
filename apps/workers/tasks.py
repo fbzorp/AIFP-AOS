@@ -58,15 +58,23 @@ def run_agent_task(task_id: str):
             if task.task_type == "Content Strategy" and result.get("outcome") == "weekly_plan_created":
                 item_ids = result.get("items", [])
                 for item_id in item_ids:
-                    # Get the item to decide Technical vs Founder routing
+                    # Get the item to decide Technical vs Founder vs SEO routing
                     item = session.query(ContentItemModel).filter(ContentItemModel.id == item_id).first()
                     if not item: continue
                     
-                    # Decide routing: Technical for developer/SDK/technical formats, Founder otherwise
+                    # Decide routing: SEO for google/seo channels, Technical for developer/SDK/technical formats, Founder otherwise
                     target_agent = "Founder Content"
+                    seo_keywords = ["google", "seo", "article", "blog"]
                     tech_keywords = ["technical", "sdk", "tutorial", "code", "mcp", "x402", "developer"]
-                    if any(kw in (item.format or "").lower() for kw in tech_keywords) or \
-                       any(kw in (item.objective or "").lower() for kw in tech_keywords):
+                    
+                    # Check for SEO/Google channel or format
+                    if any(kw in (item.channel or "").lower() for kw in seo_keywords) or \
+                       any(kw in (item.format or "").lower() for kw in seo_keywords) or \
+                       any(kw in (item.objective or "").lower() for kw in seo_keywords):
+                        target_agent = "SEO Content"
+                    # Check for Technical keywords
+                    elif any(kw in (item.format or "").lower() for kw in tech_keywords) or \
+                         any(kw in (item.objective or "").lower() for kw in tech_keywords):
                         target_agent = "Technical Content"
                     
                     # Create follow-on task row
@@ -84,7 +92,7 @@ def run_agent_task(task_id: str):
                     # Collect ID for dispatch AFTER commit
                     follow_on_tasks.append(new_task.id)
 
-            elif task.task_type in ["Technical Content", "Founder Content"] and result.get("outcome") in ["tutorial_generated", "founder_draft_ready"]:
+            elif task.task_type in ["Technical Content", "Founder Content", "SEO Content"] and result.get("outcome") in ["tutorial_generated", "founder_draft_ready", "seo_content_generated"]:
                 item_id = result.get("item_id")
                 if item_id:
                     # Create follow-on task row

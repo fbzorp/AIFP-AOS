@@ -4,6 +4,8 @@ This agent uses ADK's LlmAgent and Runner to intelligently route tasks to specia
 """
 
 import logging
+import asyncio
+import concurrent.futures
 from typing import Dict, Any, List, Optional
 from google.adk.agents import LlmAgent
 from google.adk import Runner
@@ -11,7 +13,7 @@ from google.adk.tools import FunctionTool
 from apps.core.models.factory import deepseek_reasoning
 from apps.agents.registry import get_agent
 from apps.core.audit.service import record_event
-from apps.models.base import get_sync_session
+from apps.models.base import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +26,15 @@ Available specialists and their roles:
 2. Content Strategy - Plans content strategy and editorial calendar based on intelligence
 3. Technical Content - Creates technical documentation, tutorials, and developer-focused content
 4. Founder Content - Creates founder-led content, announcements, and thought leadership pieces
-5. Social Publishing - Manages social media publishing and distribution (can publish to Moltbook)
-6. Community Engagement - Handles community interactions, discussions, and engagement proposals (can publish to Moltbook)
-7. Analytics - Tracks content performance and provides insights
-8. Compliance & Brand - Ensures content meets brand guidelines and compliance requirements
+5. SEO Content - Creates Google-search-optimized long-form content with SEO metadata (title tag, meta description, keywords, H1/H2 structure)
+6. Social Publishing - Manages social media publishing and distribution (can publish to Moltbook)
+7. Community Engagement - Handles community interactions, discussions, and engagement proposals (can publish to Moltbook)
+8. Analytics - Tracks content performance and provides insights
+9. Compliance & Brand - Ensures content meets brand guidelines and compliance requirements
 
 When given a marketing objective, determine the optimal sequence of specialist agents to involve.
-For content creation campaigns, typically: Market Intelligence -> Content Strategy -> Technical/Founder Content -> Compliance & Brand -> Social Publishing
+For content creation campaigns, typically: Market Intelligence -> Content Strategy -> Technical/Founder/SEO Content -> Compliance & Brand -> Social Publishing
+For SEO-focused campaigns: Market Intelligence -> Content Strategy -> SEO Content -> Compliance & Brand
 For community-focused campaigns: Market Intelligence -> Community Engagement -> Social Publishing
 For analytics and optimization: Market Intelligence -> Analytics
 
@@ -60,11 +64,15 @@ class ADKOrchestrator:
             return False
         
         try:
-            # Create Marketing Manager root agent
+            # Create specialist tools
+            tools = self.create_specialist_tools()
+            
+            # Create Marketing Manager root agent with tools
             self.root_agent = LlmAgent(
                 name="marketing_manager",
                 model=model,
-                instruction=MARKETING_MANAGER_INSTRUCTION
+                instruction=MARKETING_MANAGER_INSTRUCTION,
+                tools=tools
             )
             
             # Create ADK Runner
@@ -87,6 +95,7 @@ class ADKOrchestrator:
             "Content Strategy", 
             "Technical Content",
             "Founder Content",
+            "SEO Content",
             "Social Publishing",
             "Community Engagement",
             "Analytics",
@@ -118,10 +127,18 @@ class ADKOrchestrator:
                 return {"error": f"Specialist '{specialist_name}' not found"}
             
             # Execute the specialist (preserves existing persistence/audit/approval logic)
-            # Note: The specialist execute is async, but we're in a sync context here
-            # In production, this would need to be run in an event loop
-            # For now, return a placeholder to indicate async execution is needed
-            return {"specialist": specialist_name, "status": "async_execution_required", "input": input_data}
+            # Handle async execution in both sync and async contexts
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an async context, need to run in a thread
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, agent.execute(input_data))
+                    result = future.result()
+            except RuntimeError:
+                # No running loop, safe to use asyncio.run
+                result = asyncio.run(agent.execute(input_data))
+            
+            return {"specialist": specialist_name, "result": result}
             
         except Exception as e:
             logger.error(f"Error executing specialist {specialist_name}: {e}")
@@ -133,53 +150,63 @@ class ADKOrchestrator:
         
         Returns the ordered list of specialist steps for the campaign.
         """
-        if db_session is None:
-            # Get a synchronous session
-            from apps.models.base import SessionLocal
-            db_session = SessionLocal()
+        from apps.models.base import get_sync_session
         
-        # Try to use ADK routing if available
-        if self.initialize():
-            try:
-                logger.info(f"Using ADK Marketing Manager to orchestrate campaign: {objective}")
-                
-                # Run the Marketing Manager via ADK Runner
-                user_message = f"Plan a marketing campaign for the following objective: {objective}"
-                response = await self.runner.run_async(user_message=user_message)
-                
-                # Parse the response to extract steps
-                steps = self._parse_adk_response(response)
-                
-                # Record audit event for ADK routing
-                try:
-                    record_event(
-                        db_session,
-                        agent_name="Marketing Manager (ADK)",
-                        event_type="campaign_orchestrated",
-                        message=f"ADK-routed campaign: {objective}",
-                        metadata={"objective": objective, "routing_method": "adk_routed", "steps": steps}
-                    )
-                    db_session.commit()
-                except Exception as e:
-                    logger.error(f"Failed to record audit event: {e}")
-                    if hasattr(db_session, 'rollback'):
-                        db_session.rollback()
-                finally:
-                    if hasattr(db_session, 'close'):
-                        db_session.close()
-                
-                return {
-                    "routing_method": "adk_routed",
-                    "steps": steps,
-                    "objective": objective
-                }
-                
-            except Exception as e:
-                logger.error(f"ADK orchestration failed, falling back to static: {e}")
-                return self._static_fallback(objective, db_session)
+        # Use provided session or create new one
+        if db_session is None:
+            session_provided = False
+            db_session = SessionLocal()
         else:
-            logger.info("ADK not available, using static fallback for campaign orchestration")
-            return self._static_fallback(objective, db_session)
+            session_provided = True
+        
+        try:
+            # Try to use ADK routing if available
+            if self.initialize():
+                try:
+                    logger.info(f"Using ADK Marketing Manager to orchestrate campaign: {objective}")
+                    
+                    # Run the Marketing Manager via ADK Runner
+                    user_message = f"Plan a marketing campaign for the following objective: {objective}"
+                    response = await self.runner.run_async(user_message=user_message)
+                    
+                    # Parse the response to extract steps
+                    steps = self._parse_adk_response(response)
+                    
+                    # Record audit event for ADK routing
+                    try:
+                        record_event(
+                            db_session,
+                            agent_name="Marketing Manager (ADK)",
+                            event_type="campaign_orchestrated",
+                            message=f"ADK-routed campaign: {objective}",
+                            metadata={"objective": objective, "routing_method": "adk_routed", "steps": steps}
+                        )
+                        db_session.commit()
+                    except Exception as e:
+                        logger.error(f"Failed to record audit event: {e}")
+                        if hasattr(db_session, 'rollback'):
+                            db_session.rollback()
+                    finally:
+                        if not session_provided and hasattr(db_session, 'close'):
+                            db_session.close()
+                    
+                    return {
+                        "routing_method": "adk_routed",
+                        "steps": steps,
+                        "objective": objective
+                    }
+                    
+                except Exception as e:
+                    logger.error(f"ADK orchestration failed, falling back to static: {e}")
+                    return self._static_fallback(objective, db_session, session_provided)
+            else:
+                logger.info("ADK not available, using static fallback for campaign orchestration")
+                return self._static_fallback(objective, db_session, session_provided)
+        except Exception as e:
+            logger.error(f"Orchestration error: {e}")
+            if not session_provided and hasattr(db_session, 'close'):
+                db_session.close()
+            raise
     
     def _parse_adk_response(self, response: Any) -> List[Dict[str, Any]]:
         """Parse ADK response to extract the ordered list of specialist steps."""
@@ -215,7 +242,7 @@ class ADKOrchestrator:
             logger.error(f"Error parsing ADK response: {e}")
             return self._get_static_steps()
     
-    def _static_fallback(self, objective: str, db_session) -> Dict[str, Any]:
+    def _static_fallback(self, objective: str, db_session, session_provided: bool = False) -> Dict[str, Any]:
         """Static fallback orchestration when ADK is not available."""
         logger.info(f"Using static fallback for campaign: {objective}")
         
@@ -230,13 +257,14 @@ class ADKOrchestrator:
                 message=f"Static-fallback campaign: {objective}",
                 metadata={"objective": objective, "routing_method": "static_fallback", "steps": steps}
             )
-            db_session.commit()
+            if not session_provided:
+                db_session.commit()
         except Exception as e:
             logger.error(f"Failed to record audit event: {e}")
-            if hasattr(db_session, 'rollback'):
+            if not session_provided and hasattr(db_session, 'rollback'):
                 db_session.rollback()
         finally:
-            if hasattr(db_session, 'close'):
+            if not session_provided and hasattr(db_session, 'close'):
                 db_session.close()
         
         return {
@@ -250,6 +278,7 @@ class ADKOrchestrator:
         return [
             {"agent": "Market Intelligence", "input": {"topic": "campaign"}, "reason": "Research market trends and opportunities"},
             {"agent": "Content Strategy", "input": {"objective": "campaign"}, "reason": "Plan content strategy and calendar"},
+            {"agent": "SEO Content", "input": {"objective": "campaign"}, "reason": "Create Google-optimized content"},
             {"agent": "Community Engagement", "input": {"objective": "campaign"}, "reason": "Handle community interactions and discussions"}
         ]
 

@@ -121,6 +121,88 @@ def test_news_to_content_orchestration_flow(mock_send, mock_complete_json, mock_
         assert db_item.status == "pending_review"
 
 @patch("apps.workers.tasks.get_sync_session")
+@patch("apps.agents.specialized.get_sync_session")
+@patch("apps.agents.specialized.complete_json")
+@patch("apps.workers.tasks.run_agent_task.send")
+def test_seo_content_routing_flow(mock_send, mock_complete_json, mock_agent_session, mock_worker_session, db_session):
+    """Test that google/seo channel items route to SEO Content agent."""
+    # Setup mocks
+    mock_worker_session.return_value.__enter__.return_value = db_session
+    mock_agent_session.return_value.__enter__.return_value = db_session
+    
+    # Mock LLM responses for each agent
+    def side_effect(model, system_prompt, user_content, schema_hint):
+        if "weekly content plan" in system_prompt.lower():
+            return {
+                "items": [
+                    {
+                        "channel": "google",
+                        "target_audience": "Search users",
+                        "objective": "SEO optimization",
+                        "format": "article",
+                        "cta": "Read more",
+                        "kpi": "traffic",
+                        "source_id": "src_1",
+                        "title": "SEO Guide for Fintech"
+                    }
+                ]
+            }
+        elif "google-search-optimized" in system_prompt.lower():
+            return {
+                "seo_title_tag": "SEO Guide for Fintech - Complete Guide",
+                "meta_description": "Learn SEO strategies for fintech...",
+                "keywords": ["fintech seo", "search optimization"],
+                "h1": "SEO Guide for Fintech",
+                "h2_subheadings": ["Keyword Research", "On-Page Optimization"],
+                "body": "This is the SEO-optimized article body..."
+            }
+        elif "compliance and brand violations" in system_prompt.lower():
+            return {"status": "approved", "reason": "SEO content meets guidelines"}
+        return {}
+
+    mock_complete_json.side_effect = side_effect
+
+    # 1. Start with a Content Strategy task
+    strategy_task = TaskModel(
+        task_type="Content Strategy",
+        input_data={"objective": "SEO Campaign"},
+        status="pending"
+    )
+    db_session.add(strategy_task)
+    db_session.commit()
+
+    # Run the strategy task
+    run_agent_task(strategy_task.id)
+
+    # Assertions for Strategy
+    assert strategy_task.status == "succeeded"
+    items = db_session.query(ContentItemModel).all()
+    assert len(items) == 1
+    assert items[0].channel == "google"
+    
+    # Verify SEO Content task was enqueued
+    assert mock_send.call_count == 1
+    seo_task_id = mock_send.call_args_list[0].args[0]
+    
+    # 2. Run the SEO Content task
+    run_agent_task(seo_task_id)
+    
+    # After SEO generation, Compliance task should be enqueued
+    assert mock_send.call_count == 2
+    compliance_task_id = mock_send.call_args_list[1].args[0]
+    
+    # 3. Run compliance task
+    run_agent_task(compliance_task_id)
+    
+    # Final assertions
+    db_item = db_session.query(ContentItemModel).filter(ContentItemModel.id == items[0].id).first()
+    assert db_item.author_agent == "SEO Content"
+    assert db_item.compliance_status == "approved"
+    assert db_item.status == "pending_review"
+    assert db_item.body == "This is the SEO-optimized article body..."
+    assert db_item.variants["seo_title_tag"] == "SEO Guide for Fintech - Complete Guide"
+
+@patch("apps.workers.tasks.get_sync_session")
 @patch("apps.workers.tasks.run_agent_task.send")
 @patch("apps.workers.tasks.asyncio.run")
 @patch("apps.workers.tasks.get_agent")
@@ -165,3 +247,4 @@ def test_dispatch_happens_after_commit_regression(mock_get_agent, mock_asyncio_r
     
     # If we reached here, the task was found during .send()
     assert mock_send.call_count == 1
+
