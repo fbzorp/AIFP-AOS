@@ -311,3 +311,36 @@ export const executePayment = async (paymentId: string): Promise<Payment> => {
   const { data } = await api.post(`/payments/${paymentId}/execute`);
   return data;
 };
+
+export interface CredentialStatus {
+  name: string;
+  configured: boolean;
+  masked: string;
+  description: string;
+}
+
+export interface CredentialUpdateResponse {
+  success: boolean;
+  message: string;
+  credential_name: string;
+}
+
+export const fetchCredentials = async (): Promise<CredentialStatus[]> => {
+  try {
+    const { data } = await api.get('/settings/credentials');
+    return data;
+  } catch (error) {
+    console.error('Failed to fetch credentials:', error);
+    throw error;
+  }
+};
+
+export const updateCredential = async (name: string, value: string): Promise<CredentialUpdateResponse> => {
+  try {
+    const { data } = await api.patch('/settings/credentials', { name, value });
+    return data;
+  } catch (error) {
+    console.error('Failed to update credential:', error);
+    throw error;
+  }
+};
