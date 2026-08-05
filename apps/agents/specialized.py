@@ -19,6 +19,7 @@ from apps.api.config import settings
 from apps.workers.tasks import _perform_publish_logic
 from apps.integrations.moltbook.client import MoltbookClient
 from apps.integrations.mcp.client import MCPClient
+from apps.core.embeddings import embed_text
 from .adk_orchestrator import get_adk_orchestrator
 
 # Initialize MCP client
@@ -235,6 +236,17 @@ class MarketIntelligenceAgent(BaseAgent):
             
             def _persist_source():
                 with get_sync_session() as session:
+                    # Compute embedding for semantic search
+                    summary = analysis.get("summary", "")
+                    raw_content = item.get("content", "")
+                    combined_text = f"{summary} {raw_content}"
+                    
+                    try:
+                        embedding = embed_text(combined_text)
+                    except Exception as e:
+                        logger.warning(f"Failed to compute embedding for source {url}: {e}")
+                        embedding = None
+                    
                     new_source = SourceModel(
                         url=url,
                         url_hash=url_hash,
@@ -243,7 +255,8 @@ class MarketIntelligenceAgent(BaseAgent):
                         relevance_score=analysis.get("relevance_score", 0.0),
                         content_angle=analysis.get("content_angle"),
                         topic=topic,
-                        raw_content=item.get("content")
+                        raw_content=item.get("content"),
+                        embedding=embedding
                     )
                     session.add(new_source)
                     session.flush()
@@ -287,6 +300,30 @@ class ContentStrategyAgent(BaseAgent):
         
         def _get_top_sources():
             with get_sync_session() as session:
+                # Try semantic retrieval first
+                try:
+                    # Import pgvector only if available
+                    from pgvector.sqlalchemy import Vector
+                    
+                    # Embed the objective for semantic search
+                    query_embedding = embed_text(objective)
+                    
+                    # Use pgvector cosine distance for semantic retrieval
+                    sources = session.query(SourceModel).filter(
+                        SourceModel.embedding.isnot(None)
+                    ).order_by(
+                        SourceModel.embedding.cosine_distance(query_embedding)
+                    ).limit(5).all()
+                    
+                    # If we got results, use them
+                    if sources:
+                        return sources
+                except ImportError:
+                    logger.warning("pgvector not available, falling back to relevance_score")
+                except Exception as e:
+                    logger.warning(f"Semantic retrieval failed, falling back to relevance_score: {e}")
+                
+                # Fallback to relevance_score ordering (original behavior)
                 return session.query(SourceModel).order_by(desc(SourceModel.relevance_score)).limit(5).all()
         
         sources = await asyncio.to_thread(_get_top_sources)

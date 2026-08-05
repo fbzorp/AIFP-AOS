@@ -1,7 +1,7 @@
 import pytest
 import hashlib
 from unittest.mock import patch, AsyncMock, MagicMock
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Column, JSON
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
@@ -32,9 +32,19 @@ def mock_get_sync_session():
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    # Create tables without the Vector column for SQLite compatibility
+    from apps.models.source import SourceModel
+    # Temporarily patch Vector type for SQLite
+    from sqlalchemy import JSON
+    original_vector = SourceModel.embedding
+    SourceModel.embedding = Column(JSON, nullable=True)
+    
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+    
+    # Restore original column definition
+    SourceModel.embedding = original_vector
 
 @pytest.mark.asyncio
 async def test_market_intelligence_stores_sources():
@@ -53,8 +63,12 @@ async def test_market_intelligence_stores_sources():
         ]
     }
     
-    # Patch the LLM helper and the DB session helper
+    # Mock the embedding function to return a fixed 384-dim vector
+    mock_embedding = [0.1] * 384
+    
+    # Patch the LLM helper, embedding function, and the DB session helper
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
+         patch("apps.agents.specialized.embed_text", return_value=mock_embedding), \
          patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
         
         mock_llm.return_value = mock_llm_response
@@ -70,6 +84,9 @@ async def test_market_intelligence_stores_sources():
             assert source is not None
             assert source.relevance_score == 0.95
             assert source.summary == "AI agents are transforming fintech payments."
+            # Verify embedding was stored (as JSON in SQLite test)
+            assert source.embedding is not None
+            assert len(source.embedding) == 384
 
 @pytest.mark.asyncio
 async def test_market_intelligence_deduplication():
@@ -87,7 +104,10 @@ async def test_market_intelligence_deduplication():
         "sources": [{"url": url, "title": "Title", "content": "Content"}]
     }
     
+    mock_embedding = [0.1] * 384
+    
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
+         patch("apps.agents.specialized.embed_text", return_value=mock_embedding), \
          patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
         
         mock_llm.return_value = mock_llm_response
@@ -116,7 +136,10 @@ async def test_market_intelligence_prompt_injection_sanitization():
         "sources": [{"url": "https://malicious.com", "title": "Attack", "content": malicious_content}]
     }
     
+    mock_embedding = [0.1] * 384
+    
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
+         patch("apps.agents.specialized.embed_text", return_value=mock_embedding), \
          patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
         
         mock_llm.return_value = {"summary": "Safe", "relevance_score": 0.1, "content_angle": "None"}

@@ -137,6 +137,34 @@
 - **Tests**: 8 new credential management tests (auth, RBAC, masking, audit event verification)
 - **Status**: ✅ Secure credential management implemented
 
+### 12. Semantic Search (RAG) Implementation
+- **Commit**: [current]
+- **Files**: `pyproject.toml`, `docker-compose*.yml`, `alembic/versions/20260805_add_vector_embedding_to_sources.py`, `apps/models/source.py`, `apps/core/embeddings.py`, `apps/agents/specialized.py`, `Dockerfile.dev`, `Dockerfile.prod`, `tests/test_embeddings.py`, `tests/test_market_intelligence.py`, `tests/test_content_strategy.py`, `.github/workflows/ci.yml`, documentation
+- **Features**:
+  - Added sentence-transformers and pgvector dependencies to pyproject.toml
+  - Updated all Docker compose files to use pgvector/pgvector:pg17 image
+  - Created Alembic migration to enable vector extension and add embedding column to sources table
+  - Updated SourceModel with Vector(384) column for embeddings
+  - Created embedding service with baked-in all-MiniLM-L6-v2 model
+  - Wired RAG into MarketIntelligenceAgent to compute embeddings when storing sources
+  - Wired RAG into ContentStrategyAgent to use semantic retrieval for source selection
+  - Baked embedding model into Docker images at build time (no runtime downloads)
+  - Added offline mode configuration (HF_HUB_OFFLINE=1, TRANSFORMERS_OFFLINE=1)
+  - Updated tests to mock embedding function for SQLite compatibility
+  - Added comprehensive embedding tests
+  - Updated CI to use pgvector image and set EMBEDDING_MODEL_DIR
+  - Updated documentation (DEPLOYMENT.md, KNOWN_LIMITATIONS.md, README.md)
+- **Performance Impact**:
+  - Docker image size increased by ~90MB (baked-in model)
+  - API memory increased from ~500MB to ~1GB (ML dependencies)
+  - PostgreSQL uses pgvector extension for vector operations
+  - HNSW/IVFFlat indexes for efficient cosine similarity search
+- **Graceful Degradation**:
+  - Fallback to relevance_score ordering when embeddings unavailable
+  - SQLite tests use JSON fallback for Vector column
+  - Embedding computation errors logged but don't block source storage
+- **Status**: ✅ Semantic search (RAG) implemented with offline-capable baked-in model
+
 ## What is verifiable live
 
 ### Staging Environment with SSL

@@ -99,6 +99,20 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Workaround**: Manual cache invalidation when needed
 **Resolution Path**: Implement systematic caching strategy
 
+### 22. Semantic Search Performance
+
+**Issue**: Embedding computation and vector similarity search add computational overhead
+**Impact**: 
+- Increased API memory usage (~1GB vs ~500MB previously)
+- Longer source storage time due to embedding computation
+- Potential database query slowdown for large datasets without proper indexing
+**Workaround**: 
+- Baked-in model avoids cold-start downloads but increases image size (~90MB)
+- HNSW/IVFFlat indexes optimize vector similarity search
+- Fallback to relevance_score ordering when embeddings unavailable
+**Resolution Path**: Monitor performance, consider async embedding computation for large batches
+**Status**: ✅ IMPLEMENTED - pgvector + sentence-transformers for semantic source retrieval
+
 ## Operational Limitations
 
 ### 10. Monitoring and Alerting
@@ -179,6 +193,20 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Impact**: Service disruption if blockchain networks have issues
 **Workaround**: Multiple RPC endpoints, network switching
 **Resolution Path**: Implement robust blockchain integration with failover
+
+### 23. Machine Learning Dependencies
+
+**Issue**: System now includes ML dependencies (sentence-transformers, torch, transformers)
+**Impact**: 
+- Increased Docker image size (~90MB for model + dependencies)
+- Longer build times due to model download and dependency installation
+- Requires additional CPU/RAM for embedding operations
+**Workaround**: 
+- Model is baked into Docker image to avoid runtime downloads
+- Offline operation enabled via HF_HUB_OFFLINE and TRANSFORMERS_OFFLINE
+- Fallback to relevance_score ordering if embedding fails
+**Resolution Path**: Monitor ML dependency updates, consider smaller models if needed
+**Status**: ✅ IMPLEMENTED - Offline-capable embedding service with baked-in model
 
 ## Documentation Gaps
 

@@ -32,13 +32,18 @@ This guide covers deploying the AiFinPay Autonomous OS to staging and production
 - Persistent volumes for PostgreSQL and Redis will grow over time
 
 **Resource Breakdown by Service:**
-- **API**: ~500MB RAM (Python + FastAPI + dependencies)
+- **API**: ~1GB RAM (Python + FastAPI + dependencies + embedding model)
 - **Worker**: ~500MB RAM (Python + Dramatiq + tasks)
 - **Dashboard**: ~1GB RAM during build, ~200MB runtime (nginx static serving)
-- **PostgreSQL**: ~1GB RAM (database + queries + connections)
+- **PostgreSQL**: ~1GB RAM (database + queries + connections + pgvector)
 - **Redis**: ~200MB RAM (caching + task queue)
 - **Nginx**: ~100MB RAM (reverse proxy + SSL)
-- **Build overhead**: ~1GB RAM (docker build operations)
+- **Build overhead**: ~1GB RAM (docker build operations + model download)
+
+**⚠️ Additional Memory Requirements:**
+- The embedding model (all-MiniLM-L6-v2) is baked into the Docker image (~90MB)
+- pgvector extension requires additional PostgreSQL memory for vector operations
+- Total memory requirement increased from 4GB to 4GB+ due to ML dependencies
 
 ## Pre-Deployment Checklist
 
@@ -115,8 +120,10 @@ POSTGRES_DB=aifp_prod  # or staging database name
   - `DEEPSEEK_REASONING_MODEL`: deepseek/deepseek-v4-pro
 
 - **Moltbook API**: Get from Moltbook developer portal
-  - `MOLTBOOK_AGENT_API_KEY`: Your agent API key
-  - `MOLTBOOK_APP_KEY`: Your app key
+  - `MOLTBOOK_API_KEY`: General Moltbook API key (if needed)
+  - `MOLTBOOK_AGENT_API_KEY`: Your agent API key for publishing
+  - `MOLTBOOK_APP_KEY`: Your app key for identity verification
+  - `MOLTBOOK_AUTOPUBLISH`: Set to `true` to enable real publishing (default: `false` for dry-run)
 
 - **X (Twitter) API**: Get from X developer portal
   - `X_API_KEY`: Consumer key
@@ -170,7 +177,7 @@ APP_ENV=production
 DOMAIN=your-domain.com
 LOG_LEVEL=INFO
 
-# Database
+# Database (PostgreSQL with pgvector)
 POSTGRES_USER=your_secure_username
 POSTGRES_PASSWORD=your_secure_password
 POSTGRES_DB=aifp_prod
@@ -185,6 +192,11 @@ DEEPSEEK_PRIMARY_MODEL=deepseek/deepseek-v4-flash
 DEEPSEEK_REASONING_MODEL=deepseek/deepseek-v4-pro
 DEEPSEEK_API_BASE=https://api.deepseek.com
 DAILY_LLM_BUDGET_USD=25.00
+
+# Embedding Model (baked into Docker image)
+EMBEDDING_MODEL_DIR=/opt/models/all-MiniLM-L6-v2
+HF_HUB_OFFLINE=1
+TRANSFORMERS_OFFLINE=1
 
 # Moltbook
 MOLTBOOK_BASE_URL=https://www.moltbook.com
@@ -224,10 +236,65 @@ PAYMENTS_KILL_SWITCH=false
 # AiFinPay Integration
 AIFP_BASE_URL=https://api.aifinpay.io
 AIFINPAY_AGENT_SECRET=your_base58_secret
-AIFINPAY_AGENT_PUBKEY=your_base58_public_key
+AIFINPAY_AGENT_PUBKEY=your_base58_public
 AIFINPAY_MAX_USD=0.10
 AIFINPAY_MCP_ENABLED=true
 ```
+
+### Enabling Real Moltbook Publishing
+
+**Important Security Note:**
+- By default, all Moltbook publishing runs in **dry-run mode** (`MOLTBOOK_AUTOPUBLISH=false`)
+- Real publishing requires explicit opt-in and valid API keys
+- Never commit real API keys to the repository
+
+**Steps to Enable Real Publishing:**
+
+1. **Obtain Moltbook API Keys:**
+   - Visit the Moltbook developer portal
+   - Create an agent account and obtain:
+     - `MOLTBOOK_AGENT_API_KEY`: Your agent-specific API key
+     - `MOLTBOOK_APP_KEY`: Your app key for identity verification
+     - `MOLTBOOK_API_KEY`: General API key (if required by your plan)
+
+2. **Configure Environment Variables:**
+   Add the following to your `.env` file (or production environment):
+   ```bash
+   # Moltbook Configuration
+   MOLTBOOK_BASE_URL=https://www.moltbook.com
+   MOLTBOOK_API_KEY=your_real_moltbook_api_key
+   MOLTBOOK_AGENT_API_KEY=your_real_agent_api_key
+   MOLTBOOK_APP_KEY=your_real_app_key
+   MOLTBOOK_AUTOPUBLISH=true  # ⚠️ Set to true to enable real publishing
+   MOLTBOOK_ALLOWED_SUBMOLTS=general,agents,introductions,aifintech
+   ```
+
+3. **Restart Services:**
+   ```bash
+   # Restart API and worker containers to pick up new environment variables
+   docker compose -f docker-compose.prod.yml restart api worker
+   ```
+
+4. **Verify Configuration:**
+   - Check logs for "MOLTBOOK_AUTOPUBLISH is true but keys are missing" warnings
+   - Test with a small content item first
+   - Verify the audit log shows `dry_run: false` for real publishes
+
+**Alternative: Admin Settings API:**
+- Keys can also be updated via the admin Settings credential PATCH endpoint
+- This allows dynamic key rotation without container restarts
+- Settings API changes are persisted to environment variables
+
+**Security Best Practices:**
+- Keep `MOLTBOOK_AUTOPUBLISH=false` until you're ready for live publishing
+- Use separate API keys for staging and production
+- Rotate API keys regularly via the Settings API
+- Monitor audit logs for real vs dry-run publishes
+
+**Audit Trail:**
+- All publishes are logged with `dry_run` flag in audit events
+- Dashboard displays `dry_run` status for each published item
+- Real publishes show actual `post_id` and `post_url` from Moltbook
 
 ### 4. VPS Preparation
 
@@ -328,10 +395,18 @@ The `cert-init` service will automatically generate self-signed SSL certificates
 
 ### Step 4: Run Database Migrations
 
+The database migrations include setting up the pgvector extension and adding the embedding column for semantic search:
+
 ```bash
-# Run migrations
+# Run migrations with pgvector support
 docker compose -f docker-compose.prod.yml --env-file .env.production exec api alembic upgrade head
 ```
+
+**Important Notes:**
+- The PostgreSQL image now uses `pgvector/pgvector:pg17` which includes the pgvector extension
+- The migration enables the `vector` extension and adds an `embedding` column to the `sources` table
+- Existing data is preserved (the embedding column is nullable)
+- HNSW/IVFFlat indexes are created for efficient cosine similarity search
 
 ### Step 5: Health Check
 

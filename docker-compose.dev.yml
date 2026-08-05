@@ -1,7 +1,7 @@
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:pg17
     container_name: aifp_postgres_dev
     restart: unless-stopped
     environment:
@@ -92,8 +92,9 @@ services:
       - ./apps/dashboard:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=${VITE_API_URL}
-      - VITE_DEV_API_PROXY=http://localhost:8000
+      - VITE_DEV_API_PROXY=http://host.docker.internal:8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - api
 

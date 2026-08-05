@@ -5,8 +5,18 @@ RUN pip install --no-cache-dir uv
 RUN apt-get update -y && apt-get install -y --fix-missing curl && rm -rf /var/lib/apt/lists/*
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --all-groups
+
+# Download and bake sentence-transformers model into the image
+RUN mkdir -p /opt/models && \
+    uv run python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2').save('/opt/models/all-MiniLM-L6-v2')" && \
+    chown -R 10001:10001 /opt/models && \
+    chmod -R 755 /opt/models
+
 COPY . .
 RUN useradd -m -u 10001 appuser && chown -R appuser:appuser /app
 USER appuser
 ENV UV_CACHE_DIR=/home/appuser/.cache/uv
+ENV EMBEDDING_MODEL_DIR=/opt/models/all-MiniLM-L6-v2
+ENV HF_HUB_OFFLINE=1
+ENV TRANSFORMERS_OFFLINE=1
 CMD ["uv", "run", "uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

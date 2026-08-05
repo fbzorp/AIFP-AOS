@@ -2,6 +2,14 @@ import uuid
 from sqlalchemy import Column, String, Text, Float, DateTime, func
 from .base import Base
 
+# Import Vector type for pgvector
+try:
+    from pgvector.sqlalchemy import Vector
+except ImportError:
+    # For SQLite compatibility in tests, use a fallback
+    from sqlalchemy import JSON
+    Vector = JSON  # type: ignore
+
 class SourceModel(Base):
     __tablename__ = "sources"
 
@@ -19,6 +27,8 @@ class SourceModel(Base):
     topic = Column(String)
     
     raw_content = Column(Text)
+    
+    embedding = Column(Vector(384), nullable=True)
     
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
