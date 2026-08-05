@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, AsyncMock
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Column, JSON
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
@@ -32,15 +32,26 @@ def mock_get_sync_session():
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    # Create tables without the Vector column for SQLite compatibility
+    from apps.models.source import SourceModel
+    # Temporarily patch Vector type for SQLite
+    original_vector = SourceModel.embedding
+    SourceModel.embedding = Column(JSON, nullable=True)
+    
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+    
+    # Restore original column definition
+    SourceModel.embedding = original_vector
 
 @pytest.mark.asyncio
 async def test_content_strategy_produces_linked_drafts():
     agent = ContentStrategyAgent()
     
-    # Pre-seed a source
+    # Pre-seed a source with embedding
+    mock_embedding = [0.1] * 384
+    
     with mock_get_sync_session() as session:
         source = SourceModel(
             id="source-123",
@@ -49,7 +60,8 @@ async def test_content_strategy_produces_linked_drafts():
             title="AiFinPay Growth",
             summary="Intelligence about growth.",
             relevance_score=0.9,
-            topic="Fintech"
+            topic="Fintech",
+            embedding=mock_embedding
         )
         session.add(source)
         session.commit()
@@ -69,7 +81,9 @@ async def test_content_strategy_produces_linked_drafts():
         ]
     }
     
+    # Mock the embedding function for semantic retrieval
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
+         patch("apps.agents.specialized.embed_text", return_value=mock_embedding), \
          patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
         
         mock_llm.return_value = mock_llm_response
@@ -86,3 +100,66 @@ async def test_content_strategy_produces_linked_drafts():
             assert item.source_id == "source-123"
             assert item.author_agent == "Content Strategy"
             assert item.objective == "Brand awareness"
+
+@pytest.mark.asyncio
+async def test_content_strategy_semantic_retrieval():
+    """Test that ContentStrategyAgent uses semantic retrieval when embeddings exist."""
+    agent = ContentStrategyAgent()
+    
+    # Pre-seed multiple sources with different embeddings
+    relevant_embedding = [0.9] * 384  # High similarity to "growth"
+    irrelevant_embedding = [0.1] * 384  # Low similarity
+    
+    with mock_get_sync_session() as session:
+        source1 = SourceModel(
+            id="source-relevant",
+            url="https://aifinpay.com/growth",
+            url_hash="hash1",
+            title="AiFinPay Growth Strategy",
+            summary="Detailed growth strategies for fintech platforms.",
+            relevance_score=0.8,
+            topic="Growth",
+            embedding=relevant_embedding
+        )
+        source2 = SourceModel(
+            id="source-irrelevant",
+            url="https://other.com/tech",
+            url_hash="hash2",
+            title="General Tech News",
+            summary="General technology news unrelated to fintech.",
+            relevance_score=0.9,  # High relevance_score but different topic
+            topic="General Tech",
+            embedding=irrelevant_embedding
+        )
+        session.add(source1)
+        session.add(source2)
+        session.commit()
+
+    mock_llm_response = {
+        "items": [
+            {
+                "title": "Growth-Focused Content",
+                "channel": "X",
+                "objective": "Brand awareness",
+                "target_audience": "Founders",
+                "format": "Thread",
+                "cta": "Sign up",
+                "kpi": "Engagement",
+                "source_id": "source-relevant"
+            }
+        ]
+    }
+    
+    query_embedding = [0.8] * 384  # Similar to relevant embedding
+    
+    with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
+         patch("apps.agents.specialized.embed_text", return_value=query_embedding), \
+         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
+        
+        mock_llm.return_value = mock_llm_response
+        
+        result = await agent.execute({"objective": "Grow brand"})
+        
+        assert len(result["items"]) == 1
+        # Should retrieve the semantically relevant source, not the one with higher relevance_score
+        assert result["items"][0] == "source-relevant"

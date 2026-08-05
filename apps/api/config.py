@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev-secret-key-change-in-production"
     HTTP_TIMEOUT_SECONDS: int = 20
     
+    # Embedding Model Settings
+    EMBEDDING_MODEL_DIR: str = "/opt/models/all-MiniLM-L6-v2"
+    
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://aifp:devpassword@localhost:5432/aifp_dev"
     

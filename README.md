@@ -7,6 +7,7 @@ A production-ready autonomous growth system with multi-agent orchestration, cont
 AIFP-AOS is a comprehensive content growth platform that combines:
 - **Multi-Agent System**: Specialized agents for content strategy, technical writing, brand compliance, and analytics
 - **AI Content Generation**: DeepSeek-powered content creation with verification and approval workflows
+- **Semantic Search**: pgvector-powered semantic retrieval over intelligence sources using sentence-transformers
 - **Payment Integration**: Secure blockchain payment processing with kill switches and safety controls
 - **Content Management**: Approval queues, content editing, and publishing workflows
 - **Analytics**: Moltbook integration for content performance tracking
@@ -17,9 +18,10 @@ AIFP-AOS is a comprehensive content growth platform that combines:
 ### Prerequisites
 - Docker and Docker Compose
 - Python 3.12+ (for local development)
-- PostgreSQL 17 (for local development)
+- PostgreSQL 17 with pgvector extension (for local development)
 - Redis 8 (for local development)
 - **Server Requirements**: Minimum 4GB RAM, 2 vCPU, 20-30GB storage for production deployment (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#server--vps-requirements) for detailed sizing)
+- **Note**: Additional memory (~1GB) required for embedding model and ML dependencies
 
 ### Local Development
 
@@ -141,6 +143,13 @@ Production environment requires:
 - `AIFINPAY_AGENT_PUBKEY`: Ed25519 public key
 - `AIFINPAY_MAX_USD`: Maximum USD per transaction
 - `AIFINPAY_MCP_ENABLED`: Enable MCP integration (true/false)
+
+### Embedding Model Configuration
+- `EMBEDDING_MODEL_DIR`: Path to baked-in sentence-transformers model (default: /opt/models/all-MiniLM-L6-v2)
+- `HF_HUB_OFFLINE`: Disable Hugging Face Hub downloads (default: 1 for offline operation)
+- `TRANSFORMERS_OFFLINE`: Disable transformers library downloads (default: 1 for offline operation)
+
+**Note**: The embedding model (all-MiniLM-L6-v2) is baked into the Docker image at build time for offline operation. No runtime downloads required.
 
 ## Database Migrations
 
