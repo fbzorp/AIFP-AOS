@@ -1,7 +1,7 @@
 """add_vector_embedding_to_sources
 
 Revision ID: f3a8b2c1d4e5
-Revises: e97c7449d888
+Revises: 20260729_add_payments
 Create Date: 2026-08-05 00:00:00.000000
 
 """
@@ -12,7 +12,7 @@ from pgvector.sqlalchemy import Vector
 
 # revision identifiers, used by Alembic.
 revision = 'f3a8b2c1d4e5'
-down_revision = 'e97c7449d888'
+down_revision = '20260729_add_payments'
 branch_labels = None
 depends_on = None
 
