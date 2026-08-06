@@ -2,16 +2,6 @@ import uuid
 from sqlalchemy import Column, String, Text, Float, DateTime, func
 from .base import Base
 
-# Import Vector type for pgvector
-try:
-    from pgvector.sqlalchemy import Vector
-    PGVECTOR_AVAILABLE = True
-except ImportError:
-    # For SQLite compatibility in tests, use a fallback
-    from sqlalchemy import JSON
-    Vector = JSON  # type: ignore
-    PGVECTOR_AVAILABLE = False
-
 class SourceModel(Base):
     __tablename__ = "sources"
 
@@ -30,10 +20,9 @@ class SourceModel(Base):
     
     raw_content = Column(Text)
     
-    # Embedding column - only defined when pgvector is available
-    # For SQLite tests, we skip this to avoid migration conflicts
-    if PGVECTOR_AVAILABLE:
-        embedding = Column(Vector(384), nullable=True)
+    # Note: embedding column is added by migration but not defined here
+    # to avoid SQLAlchemy conflicts. Access it via:
+    # source.embedding or Column('embedding') in queries
     
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

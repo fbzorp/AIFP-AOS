@@ -304,16 +304,22 @@ class ContentStrategyAgent(BaseAgent):
                 try:
                     # Import pgvector only if available
                     from pgvector.sqlalchemy import Vector
+                    from sqlalchemy import text
                     
                     # Embed the objective for semantic search
                     query_embedding = embed_text(objective)
                     
-                    # Use pgvector cosine distance for semantic retrieval
-                    sources = session.query(SourceModel).filter(
-                        SourceModel.embedding.isnot(None)
-                    ).order_by(
-                        SourceModel.embedding.cosine_distance(query_embedding)
-                    ).limit(5).all()
+                    # Use raw SQL with pgvector cosine distance for semantic retrieval
+                    # since embedding column is not defined in the model
+                    sources = session.execute(
+                        text("""
+                            SELECT * FROM sources 
+                            WHERE embedding IS NOT NULL 
+                            ORDER BY embedding <=> :query_embedding::vector
+                            LIMIT 5
+                        """),
+                        {"query_embedding": str(query_embedding.tolist())}
+                    ).scalars().all()
                     
                     # If we got results, use them
                     if sources:
