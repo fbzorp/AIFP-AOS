@@ -11,7 +11,10 @@ async def test_llm_complete_json_success():
     mock_response.choices[0].message.content = '{"status": "success", "data": "test"}'
     mock_response._response_ms = 100
     
-    with patch('apps.core.models.llm.acompletion', new_callable=AsyncMock) as mock_acompletion:
+    with patch('apps.core.models.llm.acompletion', new_callable=AsyncMock) as mock_acompletion, \
+         patch('apps.core.models.llm.settings') as mock_settings:
+        mock_settings.DEEPSEEK_API_KEY = "test-key"
+        mock_settings.DAILY_LLM_BUDGET_USD = 25.0
         mock_acompletion.return_value = mock_response
         
         result = await complete_json(
@@ -32,7 +35,10 @@ async def test_llm_complete_json_with_schema_hint():
     mock_response.choices[0].message.content = '{"result": "valid_json"}'
     mock_response._response_ms = 50
     
-    with patch('apps.core.models.llm.acompletion', new_callable=AsyncMock) as mock_acompletion:
+    with patch('apps.core.models.llm.acompletion', new_callable=AsyncMock) as mock_acompletion, \
+         patch('apps.core.models.llm.settings') as mock_settings:
+        mock_settings.DEEPSEEK_API_KEY = "test-key"
+        mock_settings.DAILY_LLM_BUDGET_USD = 25.0
         mock_acompletion.return_value = mock_response
         
         result = await complete_json(
@@ -140,7 +146,10 @@ async def test_llm_session_spend_tracking():
     mock_response.choices[0].message.content = '{"status": "success"}'
     mock_response._response_ms = 1000  # 1 second
     
-    with patch('apps.core.models.llm.acompletion', new_callable=AsyncMock) as mock_acompletion:
+    with patch('apps.core.models.llm.acompletion', new_callable=AsyncMock) as mock_acompletion, \
+         patch('apps.core.models.llm.settings') as mock_settings:
+        mock_settings.DEEPSEEK_API_KEY = "test-key"
+        mock_settings.DAILY_LLM_BUDGET_USD = 25.0
         mock_acompletion.return_value = mock_response
         
         await complete_json(
