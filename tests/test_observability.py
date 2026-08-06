@@ -1,12 +1,13 @@
 import pytest
 import json
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from apps.api.main import app
 
 @pytest.mark.asyncio
 async def test_request_id_header():
     """Test that every response carries an X-Request-ID header."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         # Test without providing request ID
         response = await client.get("/health")
         assert response.status_code == 200
@@ -46,6 +47,7 @@ async def test_structured_logging():
         lineno=1,
         msg="HTTP request completed",
         args=(),
+        exc_info=None,
     )
     
     # Add custom data that the middleware uses
