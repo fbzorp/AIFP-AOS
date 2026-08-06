@@ -7,8 +7,6 @@ Create Date: 2026-08-05 00:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
-from pgvector.sqlalchemy import Vector
-
 
 # revision identifiers, used by Alembic.
 revision = 'f3a8b2c1d4e5'
@@ -24,7 +22,11 @@ def upgrade():
     # Add embedding column to sources table using pgvector Vector type
     # Use IF NOT EXISTS to avoid conflicts
     try:
+        from pgvector.sqlalchemy import Vector
         op.add_column('sources', sa.Column('embedding', Vector(384), nullable=True))
+    except ImportError:
+        # If pgvector not available, add as JSON for compatibility
+        op.add_column('sources', sa.Column('embedding', sa.JSON(), nullable=True))
     except Exception:
         # Column might already exist, continue
         pass

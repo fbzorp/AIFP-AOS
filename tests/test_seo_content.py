@@ -73,8 +73,11 @@ async def test_seo_content_agent_generates_seo_content():
     }
     
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
-         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
+         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session), \
+         patch("apps.core.models.llm.settings") as mock_settings:
         
+        mock_settings.DEEPSEEK_API_KEY = "test-key"
+        mock_settings.DAILY_LLM_BUDGET_USD = 25.0
         mock_llm.return_value = mock_llm_response
         
         result = await agent.execute({"content_item_id": "content-seo-123"})
