@@ -34,16 +34,12 @@ def mock_get_sync_session():
 def setup_db():
     # Create tables without the Vector column for SQLite compatibility
     from apps.models.source import SourceModel
-    # Temporarily patch Vector type for SQLite
-    original_vector = SourceModel.embedding
-    SourceModel.embedding = Column(JSON, nullable=True)
+    # Since embedding column is not in model, we don't need to patch it
+    # The migration will add it for Postgres, but SQLite tests don't need it
     
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
-    
-    # Restore original column definition
-    SourceModel.embedding = original_vector
 
 @pytest.mark.asyncio
 async def test_content_strategy_produces_linked_drafts():
