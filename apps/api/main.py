@@ -9,8 +9,10 @@ from apps.api.config import settings
 from apps.models.base import get_db
 from apps.api.routers import system, approvals, payments, settings
 from apps.api.auth import create_access_token, create_test_token
+from apps.core.observability import setup_logging, RequestIDMiddleware, init_tracing
 
-logging.basicConfig(level=logging.INFO)
+# Configure structured logging
+setup_logging(settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
@@ -51,6 +53,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize OpenTelemetry tracing with safe fallbacks
+init_tracing(app)
+
+# Add request ID middleware for tracing
+app.add_middleware(RequestIDMiddleware)
 
 app.include_router(system.router, prefix="/api/v1", tags=["System"])
 app.include_router(approvals.router, prefix="/api/v1", tags=["Approvals"])

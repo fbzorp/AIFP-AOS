@@ -121,7 +121,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Impact**: Delayed detection of production issues
 **Workaround**: Manual log monitoring and health check endpoints
 **Resolution Path**: Implemented in docs/DEPLOYMENT.md with Prometheus/Grafana integration guide
-**Status**: ✅ Monitoring integration documented as accepted technical debt - infrastructure ready but not deployed
+**Status**: ✅ MONITORING IMPLEMENTED - Structured JSON logging, request-id correlation, and OpenTelemetry tracing (OTLP-optional) now implemented. External Prometheus/Grafana deployment remains as documented technical debt.
 
 ### 11. Dashboard Production Build
 

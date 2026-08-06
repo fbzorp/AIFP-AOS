@@ -241,42 +241,51 @@ AIFINPAY_MAX_USD=0.10
 AIFINPAY_MCP_ENABLED=true
 ```
 
+### Observability Configuration
+
+**Structured Logging:**
+- The API uses structured JSON logging for better log parsing and analysis
+- Logs include timestamp, level, logger name, message, and request_id when available
+- Log level can be configured via `LOG_LEVEL` environment variable (default: INFO)
+- Access logs include method, path, status code, and latency_ms for each request
+
+**Request Correlation:**
+- Every HTTP request includes an `X-Request-ID` header for request tracing
+- If no request ID is provided, a UUID is automatically generated
+- The request ID is included in all log messages for that request
+- Response headers echo back the request ID for client-side correlation
+
+**OpenTelemetry Tracing:**
+- OpenTelemetry tracing is available with safe fallbacks for CI/local development
+- Tracing is only enabled when `OTEL_EXPORTER_OTLP_ENDPOINT` is set
+- Without the endpoint, tracing uses a no-op console exporter (no runtime dependency)
+- Manual span creation is used to avoid additional instrumentation dependencies
+
+**Environment Variables:**
+```bash
+# Logging
+LOG_LEVEL=INFO  # Options: DEBUG, INFO, WARNING, ERROR
+
+# Tracing (optional)
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317  # OTLP collector endpoint
+```
+
+**Log Example:**
+```json
+{
+  "timestamp": "2026-08-06T12:00:00.000Z",
+  "level": "INFO",
+  "logger": "access",
+  "message": "HTTP request completed",
+  "method": "GET",
+  "path": "/health",
+  "status_code": 200,
+  "latency_ms": 42.5,
+  "request_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
 ### Enabling Real Moltbook Publishing
-
-**Important Security Note:**
-- By default, all Moltbook publishing runs in **dry-run mode** (`MOLTBOOK_AUTOPUBLISH=false`)
-- Real publishing requires explicit opt-in and valid API keys
-- Never commit real API keys to the repository
-
-**Steps to Enable Real Publishing:**
-
-1. **Obtain Moltbook API Keys:**
-   - Visit the Moltbook developer portal
-   - Create an agent account and obtain:
-     - `MOLTBOOK_AGENT_API_KEY`: Your agent-specific API key
-     - `MOLTBOOK_APP_KEY`: Your app key for identity verification
-     - `MOLTBOOK_API_KEY`: General API key (if required by your plan)
-
-2. **Configure Environment Variables:**
-   Add the following to your `.env` file (or production environment):
-   ```bash
-   # Moltbook Configuration
-   MOLTBOOK_BASE_URL=https://www.moltbook.com
-   MOLTBOOK_API_KEY=your_real_moltbook_api_key
-   MOLTBOOK_AGENT_API_KEY=your_real_agent_api_key
-   MOLTBOOK_APP_KEY=your_real_app_key
-   MOLTBOOK_AUTOPUBLISH=true  # ⚠️ Set to true to enable real publishing
-   MOLTBOOK_ALLOWED_SUBMOLTS=general,agents,introductions,aifintech
-   ```
-
-3. **Restart Services:**
-   ```bash
-   # Restart API and worker containers to pick up new environment variables
-   docker compose -f docker-compose.prod.yml restart api worker
-   ```
-
-4. **Verify Configuration:**
-   - Check logs for "MOLTBOOK_AUTOPUBLISH is true but keys are missing" warnings
    - Test with a small content item first
    - Verify the audit log shows `dry_run: false` for real publishes
 
