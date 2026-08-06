@@ -22,19 +22,24 @@ def upgrade():
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     
     # Add embedding column to sources table using pgvector Vector type
-    op.add_column('sources', sa.Column('embedding', Vector(384), nullable=True))
+    # Use IF NOT EXISTS to avoid conflicts
+    try:
+        op.add_column('sources', sa.Column('embedding', Vector(384), nullable=True))
+    except Exception:
+        # Column might already exist, continue
+        pass
     
     # Create HNSW index for cosine distance (guarded in case HNSW is not available)
     try:
         op.execute("""
-            CREATE INDEX ix_sources_embedding_hnsw 
+            CREATE INDEX IF NOT EXISTS ix_sources_embedding_hnsw 
             ON sources USING hnsw (embedding vector_cosine_ops)
         """)
     except Exception:
         # Fallback to IVFFlat if HNSW is not available
         try:
             op.execute("""
-                CREATE INDEX ix_sources_embedding_ivfflat 
+                CREATE INDEX IF NOT EXISTS ix_sources_embedding_ivfflat 
                 ON sources USING ivfflat (embedding vector_cosine_ops)
             """)
         except Exception:
