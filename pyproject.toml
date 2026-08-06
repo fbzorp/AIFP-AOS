@@ -29,6 +29,7 @@ dependencies = [
     "ecdsa>=0.19.1",
     "sentence-transformers>=2.2.0",
     "pgvector>=0.2.0",
+    "torch>=2.2.0",
 ]
 
 [dependency-groups]
@@ -56,3 +57,11 @@ filterwarnings = [
 markers = [
     "integration: marks tests as integration tests requiring real credentials (deselect with '-m \"not integration\"')",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
