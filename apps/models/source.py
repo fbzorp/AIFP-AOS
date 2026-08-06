@@ -30,13 +30,10 @@ class SourceModel(Base):
     
     raw_content = Column(Text)
     
-    # Embedding column - always defined but type varies based on pgvector availability
-    # For SQLite tests: JSON column (for compatibility)
-    # For Postgres: Vector(384) column (for semantic search)
+    # Embedding column - only defined when pgvector is available
+    # For SQLite tests, we skip this to avoid migration conflicts
     if PGVECTOR_AVAILABLE:
         embedding = Column(Vector(384), nullable=True)
-    else:
-        embedding = Column(JSON, nullable=True)
     
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
