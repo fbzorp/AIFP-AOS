@@ -5,10 +5,12 @@ from .base import Base
 # Import Vector type for pgvector
 try:
     from pgvector.sqlalchemy import Vector
+    VECTOR_AVAILABLE = True
 except ImportError:
     # For SQLite compatibility in tests, use a fallback
     from sqlalchemy import JSON
     Vector = JSON  # type: ignore
+    VECTOR_AVAILABLE = False
 
 class SourceModel(Base):
     __tablename__ = "sources"
@@ -28,6 +30,7 @@ class SourceModel(Base):
     
     raw_content = Column(Text)
     
+    # Always add embedding column, but type depends on pgvector availability
     embedding = Column(Vector(384), nullable=True)
     
     created_at = Column(DateTime, server_default=func.now())
