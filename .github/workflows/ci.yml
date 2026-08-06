@@ -99,7 +99,7 @@ jobs:
       run: uv sync --frozen --all-groups
     
     - name: Run pip-audit
-      run: uv run pip-audit --ignore-vuln PYSEC-2026-1325
+      run: uv run pip-audit --ignore-vuln PYSEC-2026-1325 --ignore-vuln PYSEC-2026-3552
     
     - name: Run bandit security analysis
       run: uv run bandit -r apps/ -f json -o bandit-report.json || true

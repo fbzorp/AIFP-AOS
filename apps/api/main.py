@@ -5,14 +5,15 @@ from contextlib import asynccontextmanager
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis import Redis
-from apps.api.config import settings
+from apps.api.config import settings as config_settings
 from apps.models.base import get_db
-from apps.api.routers import system, approvals, payments, settings
+from apps.api.routers import system, approvals, payments
+from apps.api.routers import settings as settings_router
 from apps.api.auth import create_access_token, create_test_token
 from apps.core.observability import setup_logging, RequestIDMiddleware, init_tracing
 
 # Configure structured logging
-setup_logging(settings.LOG_LEVEL)
+setup_logging(config_settings.LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
@@ -63,7 +64,7 @@ app.add_middleware(RequestIDMiddleware)
 app.include_router(system.router, prefix="/api/v1", tags=["System"])
 app.include_router(approvals.router, prefix="/api/v1", tags=["Approvals"])
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["Payments"])
-app.include_router(settings.router, prefix="/api/v1", tags=["Settings"])
+app.include_router(settings_router.router, prefix="/api/v1", tags=["Settings"])
 
 @app.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)):
@@ -87,7 +88,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
     # Check Redis
     try:
-        redis_client = Redis.from_url(settings.REDIS_URL)
+        redis_client = Redis.from_url(config_settings.REDIS_URL)
         if redis_client.ping():
             health["dependencies"]["redis"] = "healthy"
         else:
