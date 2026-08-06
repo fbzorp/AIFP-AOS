@@ -1,7 +1,7 @@
 """add compliance and variants
 
 Revision ID: 20260725_compliance
-Revises: 7ff8e3bbcdfd
+Revises: e97c7449d888
 Create Date: 2026-07-25 10:00:00.000000
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '20260725_compliance'
-down_revision = '20260724_enrich_approvals'
+down_revision = 'e97c7449d888'
 branch_labels = None
 depends_on = None
 
