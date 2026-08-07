@@ -1,3 +1,4 @@
+# Force Docker cache invalidate - v2
 from __future__ import annotations
 import logging
 import asyncio
@@ -255,11 +256,29 @@ class MarketIntelligenceAgent(BaseAgent):
                         relevance_score=analysis.get("relevance_score", 0.0),
                         content_angle=analysis.get("content_angle"),
                         topic=topic,
-                        raw_content=item.get("content"),
-                        embedding=embedding
+                        raw_content=item.get("content")
                     )
                     session.add(new_source)
                     session.flush()
+                    
+                    # Set embedding via raw SQL since it's not in the model definition
+                    # Only attempt this for Postgres (not SQLite tests)
+                    if embedding is not None:
+                        try:
+                            from sqlalchemy import text
+                            # Handle both numpy arrays and lists
+                            if hasattr(embedding, 'tolist'):
+                                embedding_str = str(embedding.tolist())
+                            else:
+                                embedding_str = str(embedding)
+                            session.execute(
+                                text("UPDATE sources SET embedding = :embedding WHERE id = :source_id"),
+                                {"embedding": embedding_str, "source_id": new_source.id}
+                            )
+                        except Exception as e:
+                            # SQLite tests don't have embedding column, ignore error
+                            logger.debug(f"Could not set embedding (column may not exist in SQLite): {e}")
+                    
                     record_event(session, self.name, "source_stored", f"Stored source: {url}", {"source_id": new_source.id})
                     session.commit()
                     return new_source.id
@@ -309,6 +328,12 @@ class ContentStrategyAgent(BaseAgent):
                     # Embed the objective for semantic search
                     query_embedding = embed_text(objective)
                     
+                    # Handle both numpy arrays and lists
+                    if hasattr(query_embedding, 'tolist'):
+                        embedding_str = str(query_embedding.tolist())
+                    else:
+                        embedding_str = str(query_embedding)
+                    
                     # Use raw SQL with pgvector cosine distance for semantic retrieval
                     # since embedding column is not defined in the model
                     sources = session.execute(
@@ -318,7 +343,7 @@ class ContentStrategyAgent(BaseAgent):
                             ORDER BY embedding <=> :query_embedding::vector
                             LIMIT 5
                         """),
-                        {"query_embedding": str(query_embedding.tolist())}
+                        {"query_embedding": embedding_str}
                     ).scalars().all()
                     
                     # If we got results, use them
@@ -327,7 +352,7 @@ class ContentStrategyAgent(BaseAgent):
                 except ImportError:
                     logger.warning("pgvector not available, falling back to relevance_score")
                 except Exception as e:
-                    logger.warning(f"Semantic retrieval failed, falling back to relevance_score: {e}")
+                    logger.warning(f"Semantic retrieval failed (embedding column may not exist in SQLite): {e}")
                 
                 # Fallback to relevance_score ordering (original behavior)
                 return session.query(SourceModel).order_by(desc(SourceModel.relevance_score)).limit(5).all()
