@@ -1,7 +1,7 @@
 import pytest
 import hashlib
 from unittest.mock import patch, AsyncMock, MagicMock
-from sqlalchemy import create_engine, Column, JSON
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
@@ -64,8 +64,11 @@ async def test_market_intelligence_stores_sources():
     # Patch the LLM helper, embedding function, and the DB session helper
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
          patch("apps.agents.specialized.embed_text", return_value=mock_embedding), \
-         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
+         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session), \
+         patch("apps.core.models.llm.settings") as mock_settings:
         
+        mock_settings.DEEPSEEK_API_KEY = "test-key"
+        mock_settings.DAILY_LLM_BUDGET_USD = 25.0
         mock_llm.return_value = mock_llm_response
         
         result = await agent.execute(input_data)
@@ -102,8 +105,11 @@ async def test_market_intelligence_deduplication():
     
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
          patch("apps.agents.specialized.embed_text", return_value=mock_embedding), \
-         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
+         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session), \
+         patch("apps.core.models.llm.settings") as mock_settings:
         
+        mock_settings.DEEPSEEK_API_KEY = "test-key"
+        mock_settings.DAILY_LLM_BUDGET_USD = 25.0
         mock_llm.return_value = mock_llm_response
         
         # First run: should store
@@ -134,8 +140,11 @@ async def test_market_intelligence_prompt_injection_sanitization():
     
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
          patch("apps.agents.specialized.embed_text", return_value=mock_embedding), \
-         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
+         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session), \
+         patch("apps.core.models.llm.settings") as mock_settings:
         
+        mock_settings.DEEPSEEK_API_KEY = "test-key"
+        mock_settings.DAILY_LLM_BUDGET_USD = 25.0
         mock_llm.return_value = {"summary": "Safe", "relevance_score": 0.1, "content_angle": "None"}
         
         await agent.execute(input_data)
