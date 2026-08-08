@@ -31,20 +31,13 @@ def postgres_engine():
     engine = create_engine(database_url)
     Base.metadata.create_all(bind=engine)
     
-    # Ensure pgvector extension is enabled and add embedding column
+    # Ensure pgvector extension is enabled
     with engine.connect() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        # Add embedding column if it doesn't exist (mimicking the Alembic migration)
-        try:
-            conn.execute(text("ALTER TABLE sources ADD COLUMN IF NOT EXISTS embedding vector(384)"))
-        except Exception:
-            # Column might already exist, that's fine
-            pass
         conn.commit()
     
     yield engine
     
-    # Clean up by dropping tables
     Base.metadata.drop_all(bind=engine)
 
 
@@ -58,21 +51,6 @@ def db_session(postgres_engine):
         session.rollback()
     finally:
         session.close()
-
-
-@pytest.fixture(autouse=True)
-def clean_db(db_session):
-    """Clean database before each test."""
-    try:
-        # Clean sources table
-        db_session.execute(text("DELETE FROM sources"))
-        # Clean content_items table if it exists
-        db_session.execute(text("DELETE FROM content_items"))
-        db_session.commit()
-    except Exception:
-        # Tables might not exist, that's fine
-        db_session.rollback()
-    yield
 
 
 @pytest.mark.asyncio
@@ -148,6 +126,7 @@ async def test_content_strategy_semantic_retrieval_postgres(db_session):
         assert len(result["items"]) == 1
         
         # Verify persistence and linking - the content item should be linked to the semantically-retrieved source
+        # result["items"][0] is the content item ID (UUID), not the source ID
         item = db_session.query(ContentItemModel).filter_by(id=result["items"][0]).first()
         assert item is not None
         assert item.status == "draft"
