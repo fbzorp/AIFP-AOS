@@ -13,7 +13,7 @@
   - Python 3.12 + uv setup
   - PostgreSQL and Redis service containers
   - Database migrations with Alembic
-  - Pytest with coverage reporting (76% threshold)
+  - Pytest with coverage reporting (76.10% threshold)
   - Codecov integration for coverage tracking
 - **Security Job**:
   - `pip-audit` for dependency vulnerability scanning (non-blocking)
@@ -121,9 +121,9 @@
   - All tests use in-memory SQLite to avoid PostgreSQL connection issues
 
 ### Overall Test Results
-- **Total Tests**: 179
-- **Result**: **171/179 tests passed (Green)**
-- **Coverage**: 76% overall coverage (2391 lines of code)
+- **Total Tests**: 180
+- **Result**: **149 passed, 31 skipped (Green)**
+- **Coverage**: 76.10% overall coverage (2391 lines of code)
 - **Warnings**: 4 deprecation warnings (3 Pydantic, 1 passlib, non-blocking)
 
 ### Coverage Breakdown
