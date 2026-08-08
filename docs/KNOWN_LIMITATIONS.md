@@ -23,10 +23,11 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Status**: Externally blocked - requires mainnet Solana Seat PDA
 **Impact**: Full end-to-end X402 payment cycles cannot be tested
 **Workaround**:
-- Use mock X402 responses for testing
+- Use mock X402 responses for testing (see docs/evidence/x402_flows_evidence.txt for mock/simulated flows)
 - Test individual components (SDK, flows, integration)
 - Manual testing with mainnet Seat PDA when available
 **Resolution Path**: Obtain mainnet Solana Seat PDA for the specified program
+**Note**: docs/evidence/x402_flows_evidence.txt contains mock/simulated flows for testing purposes, not genuine on-chain transactions
 
 ## Security Vulnerabilities
 
@@ -56,7 +57,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Impact**: Reduced confidence in code changes for low-coverage areas
 **Workaround**: Manual testing and code review for changes in these areas
 **Resolution Path**: Incrementally improve test coverage for critical paths
-**Status**: ✅ IMPROVED - Overall coverage increased to 75.97% (148 passed, 31 skipped)
+**Status**: ✅ IMPROVED - Overall coverage increased to 76.10% (149 passed, 31 skipped)
 
 ### 5. Async/Await Consistency
 
@@ -289,4 +290,4 @@ This document tracks known technical debt, limitations, and externally-blocked f
 - Security vulnerabilities are monitored for resolution
 - Technical debt is prioritized based on impact and effort
 - Resolution timeline is subject to change based on business priorities
-- **Codebase Status**: The codebase is complete and verified on the local machine (171/179 tests passing, 75.66% coverage, staging stack starts over TLS via cert-init). Production deployment requires a server meeting the sizing documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#server--vps-requirements) (minimum 4GB RAM, 2 vCPU, 20-30GB storage).
+- **Codebase Status**: The codebase is complete and verified on the local machine (149 passed, 31 skipped, 76.10% coverage, staging stack starts over TLS via cert-init). Production deployment requires a server meeting the sizing documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#server--vps-requirements) (minimum 4GB RAM, 2 vCPU, 20-30GB storage).
