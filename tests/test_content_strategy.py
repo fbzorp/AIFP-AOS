@@ -184,5 +184,12 @@ async def test_content_strategy_semantic_retrieval():
         result = await agent.execute({"objective": "Grow brand"})
         
         assert len(result["items"]) == 1
-        # Should retrieve the semantically relevant source, not the one with higher relevance_score
-        assert result["items"][0] == "source-relevant"
+        
+        # Verify persistence and linking - the content item should be linked to the semantically-retrieved source
+        with mock_get_sync_session() as session:
+            item = session.query(ContentItemModel).filter_by(id=result["items"][0]).first()
+            assert item is not None
+            assert item.status == "draft"
+            assert item.source_id == "source-relevant"
+            assert item.author_agent == "Content Strategy"
+            assert item.objective == "Brand awareness"

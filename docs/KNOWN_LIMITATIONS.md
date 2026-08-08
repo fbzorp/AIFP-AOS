@@ -57,7 +57,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Impact**: Reduced confidence in code changes for low-coverage areas
 **Workaround**: Manual testing and code review for changes in these areas
 **Resolution Path**: Incrementally improve test coverage for critical paths
-**Status**: ✅ IMPROVED - Overall coverage increased to 76% (171/179 tests, 8 skipped)
+**Status**: ✅ IMPROVED - Overall coverage increased to 75.66% (171/179 tests, 8 skipped)
 
 ### 5. Async/Await Consistency
 
@@ -290,4 +290,4 @@ This document tracks known technical debt, limitations, and externally-blocked f
 - Security vulnerabilities are monitored for resolution
 - Technical debt is prioritized based on impact and effort
 - Resolution timeline is subject to change based on business priorities
-- **Codebase Status**: The codebase is complete and verified on the local machine (171/179 tests passing, 76% coverage, staging stack starts over TLS via cert-init). Production deployment requires a server meeting the sizing documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#server--vps-requirements) (minimum 4GB RAM, 2 vCPU, 20-30GB storage).
+- **Codebase Status**: The codebase is complete and verified on the local machine (171/179 tests passing, 75.66% coverage, staging stack starts over TLS via cert-init). Production deployment requires a server meeting the sizing documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#server--vps-requirements) (minimum 4GB RAM, 2 vCPU, 20-30GB storage).
