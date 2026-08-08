@@ -57,7 +57,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Impact**: Reduced confidence in code changes for low-coverage areas
 **Workaround**: Manual testing and code review for changes in these areas
 **Resolution Path**: Incrementally improve test coverage for critical paths
-**Status**: ✅ IMPROVED - Overall coverage increased to 74% (143/150 tests, 7 skipped)
+**Status**: ✅ IMPROVED - Overall coverage increased to 76% (171/179 tests, 8 skipped)
 
 ### 5. Async/Await Consistency
 
@@ -99,7 +99,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Workaround**: Manual cache invalidation when needed
 **Resolution Path**: Implement systematic caching strategy
 
-### 22. Semantic Search Performance
+### 10. Semantic Search Performance
 
 **Issue**: Embedding computation and vector similarity search add computational overhead
 **Impact**: 
@@ -115,7 +115,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Operational Limitations
 
-### 10. Monitoring and Alerting
+### 11. Monitoring and Alerting
 
 **Issue**: Limited monitoring and alerting infrastructure
 **Impact**: Delayed detection of production issues
@@ -123,7 +123,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Resolution Path**: Implemented in docs/DEPLOYMENT.md with Prometheus/Grafana integration guide
 **Status**: ✅ MONITORING IMPLEMENTED - Structured JSON logging, request-id correlation, and OpenTelemetry tracing (OTLP-optional) now implemented. External Prometheus/Grafana deployment remains as documented technical debt.
 
-### 11. Dashboard Production Build
+### 12. Dashboard Production Build
 
 **Issue**: Dashboard production build uses Vite dev server instead of optimized static build
 **Impact**: Production uses development build instead of production-optimized static files
@@ -131,7 +131,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Resolution Path**: TypeScript compilation errors fixed (added vite-env.d.ts, removed unused imports), production Dockerfile created and built successfully
 **Status**: ✅ RESOLVED - Production Dockerfile created with nginx static serving, build successful
 
-### 12. API/Worker Production Dockerfile
+### 13. API/Worker Production Dockerfile
 
 **Issue**: API and worker services use Dockerfile.dev in production docker-compose.prod.yml
 **Impact**: Production uses development Dockerfile with --reload flag instead of optimized worker configuration
@@ -139,14 +139,14 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Resolution Path**: Created Dockerfile.prod with --workers flag and no reload, implemented in docker-compose.prod.yml
 **Status**: ✅ RESOLVED - Production Dockerfile created and applied to docker-compose.prod.yml
 
-### 13. Backup Automation
+### 14. Backup Automation
 
 **Issue**: Backup scripts exist but scheduling not automated
 **Impact**: Manual backup process, risk of missed backups
 **Workaround**: Manual backup execution
 **Resolution Path**: Set up cron/systemd for automated backup execution
 
-### 14. SSL Certificate Renewal
+### 15. SSL Certificate Renewal
 
 **Issue**: SSL certificate renewal process not automated
 **Impact**: Potential service disruption if certificates expire
@@ -155,14 +155,14 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Feature Limitations
 
-### 15. Multi-tenancy
+### 16. Multi-tenancy
 
 **Issue**: No organization-level access control
 **Impact**: System designed for single organization use
 **Workaround**: N/A
 **Resolution Path**: Extend RBAC for organization-level access control
 
-### 16. RBAC Role Granularity
+### 17. RBAC Role Granularity
 
 **Issue**: Current 4-role RBAC system may not cover all organizational needs
 **Affected Areas**: Role definitions in `apps/api/auth.py`
@@ -171,7 +171,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Resolution Path**: Implement dynamic role configuration or RBAC admin interface
 **Status**: ✅ IMPLEMENTED - 4-role system (founder_admin, smm_manager, viewer, service_agent) with permission-based access control
 
-### 17. Advanced Analytics
+### 18. Advanced Analytics
 
 **Issue**: Limited analytics and reporting capabilities
 **Impact**: Reduced visibility into system performance and user behavior
@@ -180,21 +180,21 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Dependency Limitations
 
-### 18. Third-Party API Dependencies
+### 19. Third-Party API Dependencies
 
 **Issue**: System depends on third-party APIs (DeepSeek, Moltbook, AiFinPay)
 **Impact**: Service disruption if third-party APIs are unavailable
 **Workaround**: Fallback mechanisms and graceful degradation
 **Resolution Path**: Implement comprehensive error handling and fallback strategies
 
-### 19. Blockchain Network Dependencies
+### 20. Blockchain Network Dependencies
 
 **Issue**: System depends on blockchain networks (Solana, Base)
 **Impact**: Service disruption if blockchain networks have issues
 **Workaround**: Multiple RPC endpoints, network switching
 **Resolution Path**: Implement robust blockchain integration with failover
 
-### 23. Machine Learning Dependencies
+### 21. Machine Learning Dependencies
 
 **Issue**: System now includes ML dependencies (sentence-transformers, torch, transformers)
 **Impact**: 
@@ -210,14 +210,14 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Documentation Gaps
 
-### 20. API Documentation
+### 22. API Documentation
 
 **Issue**: Some API endpoints lack comprehensive documentation
 **Impact**: Reduced developer experience for API consumers
 **Workaround**: OpenAPI spec available but not complete
 **Resolution Path**: Complete API documentation for all endpoints
 
-### 21. Architecture Documentation
+### 23. Architecture Documentation
 
 **Issue**: Some architectural decisions not fully documented
 **Impact**: Increased onboarding time for new developers
@@ -226,7 +226,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 ## Test Suite Issues
 
-### 22. Database Connection in Tests
+### 24. Database Connection in Tests
 
 **Issue**: Some tests in `test_payment_integration.py`, `test_payment_scenarios.py`, and `test_real_publishing.py` use `get_sync_session()` directly instead of mocked session
 **Impact**: These tests fail when PostgreSQL database is not running locally (trying to connect to `postgres:5432`)
@@ -290,4 +290,4 @@ This document tracks known technical debt, limitations, and externally-blocked f
 - Security vulnerabilities are monitored for resolution
 - Technical debt is prioritized based on impact and effort
 - Resolution timeline is subject to change based on business priorities
-- **Codebase Status**: The codebase is complete and verified on the local machine (80/80 tests passing, 73% coverage, staging stack starts over TLS via cert-init). Production deployment requires a server meeting the sizing documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#server--vps-requirements) (minimum 4GB RAM, 2 vCPU, 20-30GB storage).
+- **Codebase Status**: The codebase is complete and verified on the local machine (171/179 tests passing, 76% coverage, staging stack starts over TLS via cert-init). Production deployment requires a server meeting the sizing documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#server--vps-requirements) (minimum 4GB RAM, 2 vCPU, 20-30GB storage).

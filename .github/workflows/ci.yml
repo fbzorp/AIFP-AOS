@@ -65,7 +65,7 @@ jobs:
     
     - name: Run tests with coverage
       run: |
-        uv run pytest tests/ -v --cov=apps --cov-report=xml --cov-report=term --cov-fail-under=70
+        uv run pytest tests/ -v --cov=apps --cov-report=xml --cov-report=term --cov-fail-under=75.66
       env:
         DATABASE_URL: postgresql+asyncpg://aifp:devpassword@localhost:5432/aifp_dev
         REDIS_URL: redis://localhost:6379/0
@@ -73,6 +73,7 @@ jobs:
         SOLANA_RPC_URL: https://api.devnet.solana.com
         PAYMENTS_NETWORK: devnet
         EMBEDDING_MODEL_DIR: /tmp/test_model
+        DEEPSEEK_API_KEY: test-key-for-ci-tests
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
