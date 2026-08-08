@@ -336,23 +336,25 @@ class ContentStrategyAgent(BaseAgent):
                     
                     # Use raw SQL with pgvector cosine distance for semantic retrieval
                     # since embedding column is not defined in the model
-                    sources = session.execute(
+                    source_ids = session.execute(
                         text("""
-                            SELECT * FROM sources 
+                            SELECT id FROM sources 
                             WHERE embedding IS NOT NULL 
-                            ORDER BY embedding <=> :query_embedding::vector
+                            ORDER BY embedding <=> cast(:query_embedding as vector)
                             LIMIT 5
                         """),
                         {"query_embedding": embedding_str}
                     ).scalars().all()
                     
-                    # If we got results, use them
-                    if sources:
+                    # Convert IDs to SourceModel objects
+                    if source_ids:
+                        sources = session.query(SourceModel).filter(SourceModel.id.in_(source_ids)).all()
                         return sources
                 except ImportError:
                     logger.warning("pgvector not available, falling back to relevance_score")
                 except Exception as e:
                     logger.warning(f"Semantic retrieval failed (embedding column may not exist in SQLite): {e}")
+                    session.rollback()  # Rollback failed transaction before fallback
                 
                 # Fallback to relevance_score ordering (original behavior)
                 return session.query(SourceModel).order_by(desc(SourceModel.relevance_score)).limit(5).all()

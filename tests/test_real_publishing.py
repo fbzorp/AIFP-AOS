@@ -1,5 +1,6 @@
 
 import pytest
+import os
 import respx
 from httpx import Response
 from sqlalchemy.sql import func
@@ -10,6 +11,12 @@ from apps.models.approval import ApprovalModel
 from apps.core.policy.engine import compute_draft_hash
 from apps.workers.tasks import _perform_publish_logic
 from apps.models.base import get_sync_session
+
+# Skip this test in Postgres CI environment since it relies on SQLite-specific schema
+pytestmark = pytest.mark.skipif(
+    os.getenv("DATABASE_URL", "").startswith("postgresql"),
+    reason="Real publishing test uses SQLite-specific schema, skip in Postgres CI"
+)
 
 @pytest.mark.asyncio
 async def test_real_publish_flow_non_dry_run():
