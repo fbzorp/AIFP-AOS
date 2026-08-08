@@ -10,10 +10,12 @@ from apps.models.source import SourceModel
 from apps.models.content_item import ContentItemModel
 from apps.agents.specialized import ContentStrategyAgent
 
-# Only run these tests if we have a real Postgres connection
+# Only run these tests if we have a real Postgres connection AND explicitly enabled
+# The embedding column requires proper Alembic migrations which may not be available in all environments
 pytestmark = pytest.mark.skipif(
-    not os.getenv("DATABASE_URL", "").startswith("postgresql"),
-    reason="Postgres-backed integration test requires DATABASE_URL with postgresql://"
+    not os.getenv("DATABASE_URL", "").startswith("postgresql") or
+    os.getenv("SKIP_POSTGRES_INTEGRATION_TESTS", "false").lower() == "true",
+    reason="Postgres-backed integration test requires DATABASE_URL with postgresql:// and embedding column (skip with SKIP_POSTGRES_INTEGRATION_TESTS=true)"
 )
 
 
@@ -31,9 +33,15 @@ def postgres_engine():
     engine = create_engine(database_url)
     Base.metadata.create_all(bind=engine)
     
-    # Ensure pgvector extension is enabled
+    # Ensure pgvector extension is enabled and add embedding column
     with engine.connect() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        # Add embedding column if it doesn't exist (mimicking the Alembic migration)
+        try:
+            conn.execute(text("ALTER TABLE sources ADD COLUMN IF NOT EXISTS embedding vector(384)"))
+        except Exception:
+            # Column might already exist, that's fine
+            pass
         conn.commit()
     
     yield engine

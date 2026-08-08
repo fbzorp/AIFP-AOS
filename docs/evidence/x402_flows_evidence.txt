@@ -1,25 +1,26 @@
-=== REAL X402 PAYMENT FLOWS EVIDENCE ===
+=== MOCK/SIMULATED X402 PAYMENT FLOWS EVIDENCE ===
+NOTE: These are mock/simulated flows for testing purposes, not genuine on-chain transactions.
 
-Flow 1: completed
+Flow 1: mock completed
   Payment URL: https://api.aifinpay.io/pay?amount=0.001&currency=SOL&purpose=X402%20test%20flow%201
-  Challenge: challenge_1785382582_1
+  Challenge: challenge_1785382582_1 (synthetic/mock)
   Amount: 0.001 SOL
-  TX Hash: 5HaNAMgETFoyRoqqfPwFyPDSrj8cL9eEDi43Q2QqCregikskEbJ57WcHf9r35AiVcNFuAKY2DXFxuXTfxADpBu9g
+  TX Hash: 5HaNAMgETFoyRoqqfPwFyPDSrj8cL9eEDi43Q2QqCregikskEbJ57WcHf9r35AiVcNFuAKY2DXFxuXTfxADpBu9g (mock)
   Payment Proof: tx_hash:5HaNAMgETFoyRoqqfPwFyPDSrj8cL9eEDi43Q2QqCregikskEbJ57WcHf9r35AiVcNFuAKY2DXFxuXTfxADpBu9g,challenge:challenge_1785382582_1
-  Explorer URL: https://explorer.solana.com/tx/5HaNAMgETFoyRoqqfPwFyPDSrj8cL9eEDi43Q2QqCregikskEbJ57WcHf9r35AiVcNFuAKY2DXFxuXTfxADpBu9g?cluster=devnet
+  Explorer URL: https://explorer.solana.com/tx/5HaNAMgETFoyRoqqfPwFyPDSrj8cL9eEDi43Q2QqCregikskEbJ57WcHf9r35AiVcNFuAKY2DXFxuXTfxADpBu9g?cluster=devnet (mock)
 
-Flow 2: completed
+Flow 2: mock completed
   Payment URL: https://api.aifinpay.io/pay?amount=0.002&currency=SOL&purpose=X402%20test%20flow%202
-  Challenge: challenge_1785382583_2
+  Challenge: challenge_1785382583_2 (synthetic/mock)
   Amount: 0.002 SOL
-  TX Hash: 32uGbJvQ7DAhe88hsoahTvoNnB8Y2QsK6PN8N677wD5Pcf8nD29fTq5gcFQ2gnrqTZ7N9EVHVUHGyi3SESHwZmjw
+  TX Hash: 32uGbJvQ7DAhe88hsoahTvoNnB8Y2QsK6PN8N677wD5Pcf8nD29fTq5gcFQ2gnrqTZ7N9EVHVUHGyi3SESHwZmjw (mock)
   Payment Proof: tx_hash:32uGbJvQ7DAhe88hsoahTvoNnB8Y2QsK6PN8N677wD5Pcf8nD29fTq5gcFQ2gnrqTZ7N9EVHVUHGyi3SESHwZmjw,challenge:challenge_1785382583_2
-  Explorer URL: https://explorer.solana.com/tx/32uGbJvQ7DAhe88hsoahTvoNnB8Y2QsK6PN8N677wD5Pcf8nD29fTq5gcFQ2gnrqTZ7N9EVHVUHGyi3SESHwZmjw?cluster=devnet
+  Explorer URL: https://explorer.solana.com/tx/32uGbJvQ7DAhe88hsoahTvoNnB8Y2QsK6PN8N677wD5Pcf8nD29fTq5gcFQ2gnrqTZ7N9EVHVUHGyi3SESHwZmjw?cluster=devnet (mock)
 
-Flow 3: completed
+Flow 3: mock completed
   Payment URL: https://api.aifinpay.io/pay?amount=0.003&currency=SOL&purpose=X402%20test%20flow%203
-  Challenge: challenge_1785382583_3
+  Challenge: challenge_1785382583_3 (synthetic/mock)
   Amount: 0.003 SOL
-  TX Hash: doforJdBcHRmoeo7rNo1iNnFcMKXcVXrEvnR2vnJpwzH4pkZgwPwVzHUuWbseysD1FPoSC1kh7NgwJf3p1asw98
+  TX Hash: doforJdBcHRmoeo7rNo1iNnFcMKXcVXrEvnR2vnJpwzH4pkZgwPwVzHUuWbseysD1FPoSC1kh7NgwJf3p1asw98 (mock)
   Payment Proof: tx_hash:doforJdBcHRmoeo7rNo1iNnFcMKXcVXrEvnR2vnJpwzH4pkZgwPwVzHUuWbseysD1FPoSC1kh7NgwJf3p1asw98,challenge:challenge_1785382583_3
-  Explorer URL: https://explorer.solana.com/tx/doforJdBcHRmoeo7rNo1iNnFcMKXcVXrEvnR2vnJpwzH4pkZgwPwVzHUuWbseysD1FPoSC1kh7NgwJf3p1asw98?cluster=devnet
+  Explorer URL: https://explorer.solana.com/tx/doforJdBcHRmoeo7rNo1iNnFcMKXcVXrEvnR2vnJpwzH4pkZgwPwVzHUuWbseysD1FPoSC1kh7NgwJf3p1asw98?cluster=devnet (mock)

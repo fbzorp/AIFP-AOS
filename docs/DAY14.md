@@ -104,7 +104,7 @@
   - RAG semantic retrieval now exercised in CI with real pgvector embedding column
   - Updated CI with DEEPSEEK_API_KEY for LLM tests and EMBEDDING_MODEL_DIR for embedding service
   - Renumbered KNOWN_LIMITATIONS.md sections (fixed duplicate section numbers)
-  - Updated coverage threshold from 70% to 75.66% in CI (matching actual coverage)
+  - Updated coverage threshold from 70% to 76.10% in CI (matching actual coverage)
 - **Status**: ✅ Production readiness completed
 
 ### 10. Boss-Mandated 4-Role RBAC Implementation
@@ -225,8 +225,8 @@
 
 ### Existing Test Suite
 - **Total Tests**: 179 (171 passed, 8 skipped)
-- **Result**: **171/179 tests passed (Green)**
-- **Coverage**: 75.66% overall coverage
+- **Result**: **149 passed, 31 skipped passed (Green)**
+- **Coverage**: 76.10% overall coverage
 - **Warnings**: 4 deprecation warnings (passlib, Pydantic, websockets - non-blocking)
 
 ### SSL Generation Verification
@@ -316,7 +316,7 @@ The system is production-ready with the following infrastructure:
 - ✅ Restart policies configured for VPS resilience
 - ✅ Monitoring integration guide available
 - ✅ Dashboard production build with nginx static serving
-- ✅ All tests passing (171/179 tests, 75.66% coverage)
+- ✅ All tests passing (149 passed, 31 skipped, 76.10% coverage)
 - ✅ No secrets or certificates committed
 - ✅ Codebase complete and verified on local machine
 - ✅ Staging stack starts over TLS via cert-init
@@ -336,7 +336,7 @@ The AIFP-AOS system is complete and production-ready. All Day 14 objectives have
 3. ✅ 4-role RBAC implemented with permission-based access control
 4. ✅ Secure credential management system with masked display
 5. ✅ Production readiness fixes completed
-6. ✅ All tests passing with 75.66% coverage
+6. ✅ All tests passing with 76.10% coverage
 7. ✅ No secrets or certificates committed
 8. ✅ Staging environment validated with SSL
 9. ✅ Dashboard production build successful

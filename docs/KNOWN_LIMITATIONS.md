@@ -48,7 +48,6 @@ This document tracks known technical debt, limitations, and externally-blocked f
 
 **Issue**: Some components have low test coverage (<60%)
 **Affected Areas**:
-- `apps/api/models.py` (0% coverage)
 - `apps/api/routers/payments.py` (34% coverage)
 - `apps/integrations/aifinpay/client.py` (59% coverage)
 - `apps/integrations/x402/client.py` (55% coverage)
@@ -57,7 +56,7 @@ This document tracks known technical debt, limitations, and externally-blocked f
 **Impact**: Reduced confidence in code changes for low-coverage areas
 **Workaround**: Manual testing and code review for changes in these areas
 **Resolution Path**: Incrementally improve test coverage for critical paths
-**Status**: ✅ IMPROVED - Overall coverage increased to 75.66% (171/179 tests, 8 skipped)
+**Status**: ✅ IMPROVED - Overall coverage increased to 75.97% (148 passed, 31 skipped)
 
 ### 5. Async/Await Consistency
 

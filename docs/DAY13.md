@@ -144,7 +144,6 @@
   - apps/api/main.py (59%)
   - apps/workers/tasks.py (81%)
 - **Low Coverage (<60%)**:
-  - apps/api/models.py (0%)
   - apps/api/routers/payments.py (25%)
   - apps/integrations/aifinpay/client.py (33%)
   - apps/integrations/x402/client.py (29%)
