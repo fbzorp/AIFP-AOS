@@ -130,14 +130,14 @@ async def _perform_publish_logic(session, content_id: str, approval_id: str, dra
         record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: content not found", {"content_id": content_id})
         raise ValueError("Content not found")
 
-    if content.status != "approved":
-        record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: status is {content.status}", {"content_id": content_id})
-        raise ValueError(f"Content status is {content.status}, must be approved")
-
-    # Idempotency check
+    # Idempotency check - already published content should be handled gracefully
     if content.status == "published" or content.post_id:
         record_event(session, "System", "publish_skipped_idempotent", f"Publish skipped for {content_id}: already published", {"content_id": content_id, "existing_post_id": content.post_id})
         return {"status": "already_published", "content_id": content_id, "post_id": content.post_id}
+
+    if content.status != "approved":
+        record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: status is {content.status}", {"content_id": content_id})
+        raise ValueError(f"Content status is {content.status}, must be approved")
 
     engine = PolicyEngine()
     if not engine.validate_approval(session, approval_id, draft_hash):

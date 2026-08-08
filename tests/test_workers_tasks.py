@@ -205,6 +205,7 @@ class TestContentRoutingStrategy:
         # Create content item with SEO channel
         item = ContentItemModel(
             id="item-1",
+            title="SEO Article",
             channel="google",  # SEO keyword
             format="article",
             objective="increase visibility"
@@ -250,6 +251,7 @@ class TestContentRoutingStrategy:
         # Create content item with SEO format
         item = ContentItemModel(
             id="item-1",
+            title="SEO Blog Post",
             channel="twitter",
             format="blog",  # SEO keyword
             objective="share updates"
@@ -291,6 +293,7 @@ class TestContentRoutingStrategy:
         # Create content item with technical format
         item = ContentItemModel(
             id="item-1",
+            title="Technical Tutorial",
             channel="discord",
             format="tutorial",  # Technical keyword
             objective="educate developers"
@@ -332,6 +335,7 @@ class TestContentRoutingStrategy:
         # Create content item with SDK keyword in objective
         item = ContentItemModel(
             id="item-1",
+            title="SDK Guide",
             channel="twitter",
             format="post",
             objective="SDK integration guide"  # Technical keyword
@@ -373,6 +377,7 @@ class TestContentRoutingStrategy:
         # Create generic content item
         item = ContentItemModel(
             id="item-1",
+            title="Weekly Newsletter",
             channel="newsletter",
             format="email",
             objective="weekly update"
