@@ -49,7 +49,11 @@ class Settings(BaseSettings):
     X_API_SECRET: Optional[str] = None
     X_ACCESS_TOKEN: Optional[str] = None
     X_ACCESS_TOKEN_SECRET: Optional[str] = None
+    X_AUTOPUBLISH: bool = False
     TELEGRAM_BOT_TOKEN: Optional[str] = None
+    TELEGRAM_AUTOPUBLISH: bool = False
+    TELEGRAM_CHAT_ID: Optional[str] = None
+    TELEGRAM_DEFAULT_CHANNEL: Optional[str] = None
     
     # Blockchain
     SOLANA_RPC_URL: str = "https://api.devnet.solana.com"

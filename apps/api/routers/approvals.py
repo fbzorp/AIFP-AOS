@@ -13,7 +13,7 @@ from apps.models.engagement_proposal import EngagementProposalModel
 from apps.core.policy.engine import compute_draft_hash
 from apps.core.audit.service import record_event
 from apps.workers.tasks import publish_content
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 
 router = APIRouter()
 
@@ -246,14 +246,17 @@ async def reject_proposal(proposal_id: str, db: AsyncSession = Depends(get_db), 
 
 @router.get("/calendar")
 async def get_calendar(db: AsyncSession = Depends(get_db), user: dict = Depends(require_viewer)):
-    """Returns content items that are scheduled or published."""
+    """Returns content items that are scheduled or published. Excludes dry-run items."""
     result = await db.execute(
         select(ContentItemModel)
         .filter(
             or_(
                 ContentItemModel.scheduled_at.isnot(None),
-                ContentItemModel.published_at.isnot(None),
-                ContentItemModel.status == "published"
+                and_(
+                    ContentItemModel.status != "dry_run",
+                    ContentItemModel.post_id != "dry-run-id",
+                    ~ContentItemModel.post_id.like("dry-run%")
+                )
             )
         )
         .order_by(ContentItemModel.published_at.desc(), ContentItemModel.scheduled_at.desc())

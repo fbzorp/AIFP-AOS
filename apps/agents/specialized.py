@@ -659,9 +659,14 @@ class AnalyticsAgent(BaseAgent):
                 logger.error(f"MCP calls failed: {e}")
         
         # Count persisted, verifiable publication and MCP audit records.
+        # Exclude dry-run status and fake post IDs from published count
         def _get_published_count():
             with get_sync_session() as session:
-                published_count = session.query(ContentItemModel).filter(ContentItemModel.status == "published").count()
+                published_count = session.query(ContentItemModel).filter(
+                    ContentItemModel.status == "published",
+                    ContentItemModel.post_id != "dry-run-id",
+                    ~ContentItemModel.post_id.like("dry-run%")
+                ).count()
                 return published_count
         
         published_count = await asyncio.to_thread(_get_published_count)

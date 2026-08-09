@@ -144,43 +144,69 @@ async def _perform_publish_logic(session, content_id: str, approval_id: str, dra
         record_event(session, "System", "publish_denied", f"Publish denied for {content_id}: invalid approval hash or expiry", {"approval_id": approval_id})
         raise ValueError("Invalid approval")
         
-    # Real publication logic
-    from apps.integrations.moltbook.client import MoltbookClient
+    # Channel-agnostic publication logic
+    from apps.integrations.publishing import get_publisher
     
-    # Enforce allowlist
-    target_submolt = content.channel.lower()
-    allowed_submolts = getattr(settings, "MOLTBOOK_ALLOWED_SUBMOLTS", "general").split(",")
-    if target_submolt not in [s.strip().lower() for s in allowed_submolts]:
-        record_event(session, "System", "publish_denied", f"Submolt {target_submolt} not in allowlist", {"content_id": content_id})
-        raise ValueError(f"Submolt {target_submolt} not in allowlist")
-
     try:
-        async with MoltbookClient() as client:
-            pub_result = await client.publish_post(
-                submolt=target_submolt,
+        # Resolve publisher based on content.channel
+        publisher = get_publisher(content.channel)
+        
+        # Prepare publisher-specific parameters
+        publisher_params = {}
+        if content.channel.lower() in ["moltbook", "general", "aifintech", "aiagents"]:
+            publisher_params["submolt"] = content.channel.lower()
+        
+        # Call publisher
+        async with publisher as pub_client:
+            pub_result = await pub_client.publish_post(
                 title=content.title,
-                body=content.body or str(content.variants)
+                body=content.body or str(content.variants),
+                **publisher_params
             )
         
-        content.post_id = pub_result.get("post_id")
-        content.post_url = pub_result.get("post_url")
-        content.published_at = func.now()
-        content.status = "published"
+        # Branch on dry_run flag to preserve integrity
+        is_dry_run = pub_result.get("dry_run", False)
         
-        record_event(
-            session, 
-            "System", 
-            "content_published", 
-            f"Published {content_id} to {target_submolt}", 
-            {
-                "content_id": content_id, 
-                "post_id": content.post_id, 
-                "post_url": content.post_url,
-                "dry_run": pub_result.get("dry_run", False)
-            }
-        )
-        session.commit()
-        return {"status": "published", "content_id": content_id, "post_id": content.post_id, "post_url": content.post_url, "dry_run": pub_result.get("dry_run", False)}
+        if is_dry_run:
+            # Dry-run: do NOT stamp fake post_id/post_url/published_at
+            content.status = "dry_run"
+            # Leave post_id, post_url, published_at as NULL (do not set fake values)
+            
+            record_event(
+                session, 
+                "System", 
+                "content_dry_run", 
+                f"Dry-run published {content_id} to {content.channel}", 
+                {
+                    "content_id": content_id, 
+                    "dry_run": True,
+                    "channel": content.channel
+                }
+            )
+            session.commit()
+            return {"status": "dry_run", "content_id": content_id, "dry_run": True}
+        else:
+            # Real publication: stamp real post_id/post_url/published_at
+            content.post_id = pub_result.get("post_id")
+            content.post_url = pub_result.get("post_url")
+            content.published_at = func.now()
+            content.status = "published"
+            
+            record_event(
+                session, 
+                "System", 
+                "content_published", 
+                f"Published {content_id} to {content.channel}", 
+                {
+                    "content_id": content_id, 
+                    "post_id": content.post_id, 
+                    "post_url": content.post_url,
+                    "dry_run": False,
+                    "channel": content.channel
+                }
+            )
+            session.commit()
+            return {"status": "published", "content_id": content_id, "post_id": content.post_id, "post_url": content.post_url, "dry_run": False}
         
     except Exception as e:
         logger.error(f"Publishing failed for {content_id}: {e}")

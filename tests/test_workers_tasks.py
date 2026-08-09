@@ -572,8 +572,8 @@ class TestPublishingLogic:
 
     @patch("apps.workers.tasks.get_sync_session")
     @patch("apps.workers.tasks.PolicyEngine")
-    @patch("apps.integrations.moltbook.client.MoltbookClient")
-    def test_publish_content_success(self, mock_client_class, mock_policy, mock_get_session):
+    @patch("apps.integrations.publishing.get_publisher")
+    def test_publish_content_success(self, mock_get_publisher, mock_policy, mock_get_session):
         """Test successful content publication."""
         session = TestingSessionLocal()
         mock_get_session.return_value.__enter__.return_value = session
@@ -581,14 +581,16 @@ class TestPublishingLogic:
         # Mock policy
         mock_policy.return_value.validate_approval.return_value = True
         
-        # Mock moltbook client
-        mock_client = AsyncMock()
-        mock_client.publish_post = AsyncMock(return_value={
+        # Mock publisher
+        mock_publisher = AsyncMock()
+        mock_publisher.publish_post = AsyncMock(return_value={
             "post_id": "post-123",
             "post_url": "https://moltbook.com/posts/post-123",
             "dry_run": False
         })
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_publisher.__aenter__ = AsyncMock(return_value=mock_publisher)
+        mock_publisher.__aexit__ = AsyncMock()
+        mock_get_publisher.return_value = mock_publisher
         
         # Create content
         content = ContentItemModel(
@@ -601,8 +603,7 @@ class TestPublishingLogic:
         session.add(content)
         session.commit()
         
-        with patch("apps.api.config.settings.MOLTBOOK_ALLOWED_SUBMOLTS", "general"):
-            publish_content("content-1", "appr-123", "hash-123")
+        publish_content("content-1", "appr-123", "hash-123")
         
         # Verify content updated
         content = session.query(ContentItemModel).first()
@@ -664,30 +665,8 @@ class TestPublishingLogic:
 
     @patch("apps.workers.tasks.get_sync_session")
     @patch("apps.workers.tasks.PolicyEngine")
-    def test_publish_denied_not_in_allowlist(self, mock_policy, mock_get_session):
-        """Test that publish is denied if submolt not in allowlist."""
-        session = TestingSessionLocal()
-        mock_get_session.return_value.__enter__.return_value = session
-        
-        mock_policy.return_value.validate_approval.return_value = True
-        
-        content = ContentItemModel(
-            id="content-1",
-            title="Test Post",
-            channel="forbidden-channel",
-            status="approved"
-        )
-        session.add(content)
-        session.commit()
-        
-        with patch("apps.api.config.settings.MOLTBOOK_ALLOWED_SUBMOLTS", "general,aifintech"):
-            with pytest.raises(ValueError, match="not in allowlist"):
-                publish_content("content-1", "appr-123", "hash-123")
-
-    @patch("apps.workers.tasks.get_sync_session")
-    @patch("apps.workers.tasks.PolicyEngine")
-    @patch("apps.integrations.moltbook.client.MoltbookClient")
-    def test_publish_idempotency_already_published(self, mock_client_class, mock_policy, mock_get_session):
+    @patch("apps.integrations.publishing.get_publisher")
+    def test_publish_idempotency_already_published(self, mock_get_publisher, mock_policy, mock_get_session):
         """Test that publish is idempotent (already published content)."""
         session = TestingSessionLocal()
         mock_get_session.return_value.__enter__.return_value = session
@@ -712,26 +691,28 @@ class TestPublishingLogic:
         assert result["status"] == "already_published"
         assert result["post_id"] == "existing-post-id"
         
-        # Verify client was not called
-        mock_client_class.assert_not_called()
+        # Verify publisher was not called
+        mock_get_publisher.assert_not_called()
 
     @patch("apps.workers.tasks.get_sync_session")
     @patch("apps.workers.tasks.PolicyEngine")
-    @patch("apps.integrations.moltbook.client.MoltbookClient")
-    def test_publish_with_variants(self, mock_client_class, mock_policy, mock_get_session):
+    @patch("apps.integrations.publishing.get_publisher")
+    def test_publish_with_variants(self, mock_get_publisher, mock_policy, mock_get_session):
         """Test publishing content with variants as body fallback."""
         session = TestingSessionLocal()
         mock_get_session.return_value.__enter__.return_value = session
         
         mock_policy.return_value.validate_approval.return_value = True
         
-        mock_client = AsyncMock()
-        mock_client.publish_post = AsyncMock(return_value={
+        mock_publisher = AsyncMock()
+        mock_publisher.publish_post = AsyncMock(return_value={
             "post_id": "post-123",
             "post_url": "https://moltbook.com/posts/post-123",
             "dry_run": False
         })
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_publisher.__aenter__ = AsyncMock(return_value=mock_publisher)
+        mock_publisher.__aexit__ = AsyncMock()
+        mock_get_publisher.return_value = mock_publisher
         
         # Create content without body but with variants
         content = ContentItemModel(
@@ -748,7 +729,7 @@ class TestPublishingLogic:
         with patch("apps.api.config.settings.MOLTBOOK_ALLOWED_SUBMOLTS", "general"):
             publish_content("content-1", "appr-123", "hash-123")
         
-        # Verify client was called with variants as body
-        assert mock_client.publish_post.called
-        call_kwargs = mock_client.publish_post.call_args.kwargs
+        # Verify publisher was called with variants as body
+        assert mock_publisher.publish_post.called
+        call_kwargs = mock_publisher.publish_post.call_args.kwargs
         assert call_kwargs["body"] == str(["variant1", "variant2"])

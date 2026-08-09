@@ -144,6 +144,8 @@ async def test_analytics_agent_counts_real_published_content_and_successful_mcp_
                 title="Published",
                 channel="Moltbook",
                 status="published",
+                post_id="real-post-123",  # Add real post_id to count as real publication
+                post_url="https://moltbook.com/posts/real-post-123"
             ),
             ContentItemModel(
                 id="draft-content",
