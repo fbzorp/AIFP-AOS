@@ -4,9 +4,12 @@ Maps content.channel to the appropriate publishing client.
 """
 
 import logging
-from typing import Dict, Type, Optional
+from typing import Dict, Type, Optional, Any
 from abc import ABC, abstractmethod
 from apps.api.config import settings
+from apps.integrations.moltbook.client import MoltbookClient
+from apps.integrations.x.client import XClient
+from apps.integrations.telegram.client import TelegramClient
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +45,8 @@ class PublisherBase(ABC):
 class MoltbookPublisher(PublisherBase):
     """Moltbook publishing client wrapper."""
     
-    def __init__(self):
-        from apps.integrations.moltbook.client import MoltbookClient
+    def __init__(self, agent_name: Optional[str] = None):
+        self._agent_name = agent_name
         self._client = MoltbookClient()
     
     async def publish_post(self, title: str, body: str, **kwargs) -> Dict:
@@ -76,12 +79,45 @@ class MoltbookPublisher(PublisherBase):
 class XPublisher(PublisherBase):
     """X/Twitter publishing client."""
     
-    def __init__(self):
-        from apps.integrations.x.client import XClient
-        self._client = XClient()
+    def __init__(self, agent_name: Optional[str] = None):
+        from apps.core.credential import CredentialService
+        
+        self._agent_name = agent_name
+        self._client = None
+        self._initialized = False
+    
+    def _ensure_initialized(self):
+        """Lazy initialization with sync credential lookup."""
+        if self._initialized:
+            return
+        
+        from apps.core.credential import CredentialService
+        
+        # Get agent-specific credentials (sync for dramatiq workers)
+        if self._agent_name:
+            creds = CredentialService.get_x_credentials_sync(self._agent_name)
+        else:
+            # Fallback to global settings
+            creds = {
+                "api_key": settings.X_API_KEY,
+                "api_secret": settings.X_API_SECRET,
+                "access_token": settings.X_ACCESS_TOKEN,
+                "access_token_secret": settings.X_ACCESS_TOKEN_SECRET,
+                "autopublish": getattr(settings, "X_AUTOPUBLISH", False)
+            }
+        
+        self._client = XClient(
+            api_key=creds.get("api_key"),
+            api_secret=creds.get("api_secret"),
+            access_token=creds.get("access_token"),
+            access_token_secret=creds.get("access_token_secret"),
+            autopublish=creds.get("autopublish")
+        )
+        self._initialized = True
     
     async def publish_post(self, title: str, body: str, **kwargs) -> Dict:
         """Publish to X/Twitter."""
+        self._ensure_initialized()
         result = await self._client.publish_post(
             text=body,  # X uses text, not title/body
             **kwargs
@@ -95,18 +131,49 @@ class XPublisher(PublisherBase):
         }
     
     async def close(self):
-        await self._client.close()
+        if self._client:
+            await self._client.close()
 
 
 class TelegramPublisher(PublisherBase):
     """Telegram publishing client."""
     
-    def __init__(self):
-        from apps.integrations.telegram.client import TelegramClient
-        self._client = TelegramClient()
+    def __init__(self, agent_name: Optional[str] = None):
+        from apps.core.credential import CredentialService
+        
+        self._agent_name = agent_name
+        self._client = None
+        self._initialized = False
+    
+    def _ensure_initialized(self):
+        """Lazy initialization with sync credential lookup."""
+        if self._initialized:
+            return
+        
+        from apps.core.credential import CredentialService
+        
+        # Get agent-specific credentials (sync for dramatiq workers)
+        if self._agent_name:
+            creds = CredentialService.get_telegram_credentials_sync(self._agent_name)
+        else:
+            # Fallback to global settings
+            creds = {
+                "bot_token": settings.TELEGRAM_BOT_TOKEN,
+                "chat_id": getattr(settings, "TELEGRAM_CHAT_ID", None),
+                "default_channel": getattr(settings, "TELEGRAM_DEFAULT_CHANNEL", None),
+                "autopublish": getattr(settings, "TELEGRAM_AUTOPUBLISH", False)
+            }
+        
+        self._client = TelegramClient(
+            bot_token=creds.get("bot_token"),
+            chat_id=creds.get("chat_id"),
+            autopublish=creds.get("autopublish")
+        )
+        self._initialized = True
     
     async def publish_post(self, title: str, body: str, **kwargs) -> Dict:
         """Publish to Telegram."""
+        self._ensure_initialized()
         # Combine title and body for Telegram
         text = f"{title}\n\n{body}" if title else body
         
@@ -123,7 +190,8 @@ class TelegramPublisher(PublisherBase):
         }
     
     async def close(self):
-        await self._client.close()
+        if self._client:
+            await self._client.close()
 
 
 # Channel to publisher mapping
@@ -138,12 +206,13 @@ _CHANNEL_PUBLISHERS: Dict[str, Type[PublisherBase]] = {
 }
 
 
-def get_publisher(channel: str) -> PublisherBase:
+def get_publisher(channel: str, agent_name: Optional[str] = None) -> PublisherBase:
     """
-    Get the appropriate publisher client for a given channel.
+    Get the appropriate publisher client for a given channel and agent.
     
     Args:
         channel: The content channel (e.g., "moltbook", "x", "telegram")
+        agent_name: The agent name for credential lookup (e.g., "Founder Content")
     
     Returns:
         PublisherBase instance for the channel
@@ -157,5 +226,5 @@ def get_publisher(channel: str) -> PublisherBase:
     if not publisher_class:
         raise ValueError(f"Unsupported channel: {channel}. Supported channels: {list(_CHANNEL_PUBLISHERS.keys())}")
     
-    logger.info(f"Resolved publisher for channel '{channel}' to {publisher_class.__name__}")
-    return publisher_class()
+    logger.info(f"Resolved publisher for channel '{channel}' and agent '{agent_name}' to {publisher_class.__name__}")
+    return publisher_class(agent_name=agent_name)

@@ -64,7 +64,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: aifp_worker_dev
     restart: unless-stopped
-    command: ["uv", "run", "dramatiq", "apps.workers.tasks"]
+    command: ["uv", "run", "periodiq", "apps.workers.worker_bootstrap", "--verbose"]
     env_file:
       - .env
     volumes:

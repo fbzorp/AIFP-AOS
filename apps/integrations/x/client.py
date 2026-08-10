@@ -1,10 +1,15 @@
 """
-X/Twitter publishing client structure (simplified for code path validation).
-Full OAuth1.0a implementation to be added when live credentials are provided.
+X/Twitter publishing client using OAuth1.0a and API v2.
+Real implementation for publishing tweets.
 """
 
 import httpx
 import logging
+import base64
+import hashlib
+import hmac
+import urllib.parse
+import time
 from typing import Any, Dict, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 from apps.api.config import settings
@@ -23,7 +28,7 @@ def is_transient_error(exception: Exception) -> bool:
 
 
 class XClient:
-    """X/Twitter API v2 client structure for publishing tweets."""
+    """X/Twitter API v2 client for publishing tweets using OAuth1.0a."""
     
     def __init__(
         self,
@@ -31,14 +36,73 @@ class XClient:
         api_secret: Optional[str] = None,
         access_token: Optional[str] = None,
         access_token_secret: Optional[str] = None,
+        autopublish: Optional[bool] = None,
         timeout: float = 20
     ):
         self._api_key = api_key
         self._api_secret = api_secret
         self._access_token = access_token
         self._access_token_secret = access_token_secret
+        self._autopublish = autopublish
         self._timeout = timeout
         self.http = httpx.AsyncClient(timeout=timeout)
+        self.base_url = "https://api.twitter.com/2"
+    
+    def _generate_oauth_signature(self, method: str, url: str, params: Dict[str, str]) -> str:
+        """Generate OAuth1.0a signature for X API requests."""
+        # Encode parameters
+        encoded_params = {
+            urllib.parse.quote(str(k), safe=''): urllib.parse.quote(str(v), safe='')
+            for k, v in params.items()
+        }
+        
+        # Create parameter string
+        param_string = '&'.join(f"{k}={v}" for k, v in sorted(encoded_params.items()))
+        
+        # Create signature base string
+        encoded_url = urllib.parse.quote(url, safe='')
+        signature_base_string = f"{method.upper()}&{encoded_url}&{urllib.parse.quote(param_string, safe='')}"
+        
+        # Create signing key
+        signing_key = f"{urllib.parse.quote(self.api_secret, safe='')}&{urllib.parse.quote(self.access_token_secret, safe='')}"
+        
+        # Generate signature
+        signature = base64.b64encode(
+            hmac.new(
+                signing_key.encode('utf-8'),
+                signature_base_string.encode('utf-8'),
+                hashlib.sha256
+            ).digest()
+        ).decode('utf-8')
+        
+        return urllib.parse.quote(signature, safe='')
+    
+    def _generate_oauth_headers(self, method: str, url: str, params: Dict[str, str]) -> Dict[str, str]:
+        """Generate OAuth1.0a headers for X API requests."""
+        timestamp = str(int(time.time()))
+        nonce = hashlib.md5(timestamp.encode()).hexdigest()
+        
+        oauth_params = {
+            'oauth_consumer_key': self.api_key,
+            'oauth_token': self.access_token,
+            'oauth_signature_method': 'HMAC-SHA256',
+            'oauth_timestamp': timestamp,
+            'oauth_nonce': nonce,
+            'oauth_version': '1.0'
+        }
+        
+        # Combine all params for signature
+        all_params = {**oauth_params, **params}
+        signature = self._generate_oauth_signature(method, url, all_params)
+        oauth_params['oauth_signature'] = signature
+        
+        # Create OAuth header
+        oauth_header = 'OAuth ' + ', '.join(
+            f'{urllib.parse.quote(k, safe="")}="{urllib.parse.quote(v, safe="")}"'
+            for k, v in sorted(oauth_params.items())
+        )
+        
+        return {'Authorization': oauth_header}
     
     @property
     def api_key(self) -> str:
@@ -58,6 +122,8 @@ class XClient:
     
     @property
     def autopublish_enabled(self) -> bool:
+        if self._autopublish is not None:
+            return self._autopublish
         return getattr(settings, "X_AUTOPUBLISH", False)
     
     @retry(retry=retry_if_exception(is_transient_error), stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
@@ -110,15 +176,55 @@ class XClient:
                 "post_url": None
             }
         
-        # Placeholder for actual X API implementation
-        # This will be implemented when live credentials are provided
-        logger.info("X API implementation placeholder - credentials present but full OAuth not yet implemented")
-        return {
-            "success": True,
-            "dry_run": True,
-            "post_id": None,
-            "post_url": None
-        }
+        # Real X API v2 implementation
+        url = f"{self.base_url}/tweets"
+        
+        # Prepare request body
+        body = {"text": text}
+        
+        # Generate OAuth headers
+        headers = self._generate_oauth_headers("POST", url, body)
+        headers["Content-Type"] = "application/json"
+        
+        try:
+            response = await self.http.post(url, json=body, headers=headers)
+            
+            # Handle rate limiting
+            if response.status_code == 429:
+                rate_limit_reset = response.headers.get("x-rate-limit-reset")
+                logger.warning(f"X API rate limit hit. Reset at: {rate_limit_reset}")
+                raise httpx.HTTPStatusError(
+                    "Rate limit exceeded",
+                    request=response.request,
+                    response=response
+                )
+            
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Extract tweet ID and construct URL
+            tweet_id = data.get("data", {}).get("id")
+            if not tweet_id:
+                raise ValueError("X API response missing tweet ID")
+            
+            post_url = f"https://x.com/i/status/{tweet_id}"
+            
+            logger.info(f"Successfully published to X: {post_url}")
+            
+            return {
+                "success": True,
+                "dry_run": False,
+                "post_id": tweet_id,
+                "post_url": post_url
+            }
+            
+        except httpx.HTTPStatusError as e:
+            logger.error(f"X API request failed: {e.response.status_code} - {e.response.text}")
+            raise
+        except Exception as e:
+            logger.error(f"X client error: {e}")
+            raise
     
     async def close(self):
         await self.http.aclose()

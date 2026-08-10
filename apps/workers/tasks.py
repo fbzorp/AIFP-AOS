@@ -17,6 +17,10 @@ from apps.agents.registry import get_agent
 broker = RedisBroker(url=settings.REDIS_URL)
 dramatiq.set_broker(broker)
 
+# Add periodiq middleware for cron scheduling
+from periodiq import PeriodiqMiddleware
+broker.add_middleware(PeriodiqMiddleware(skip_delay=30))
+
 logger = logging.getLogger(__name__)
 
 @dramatiq.actor(max_retries=3, min_backoff=1000, max_backoff=30000)
@@ -148,8 +152,8 @@ async def _perform_publish_logic(session, content_id: str, approval_id: str, dra
     from apps.integrations.publishing import get_publisher
     
     try:
-        # Resolve publisher based on content.channel
-        publisher = get_publisher(content.channel)
+        # Resolve publisher based on content.channel and content.author_agent
+        publisher = get_publisher(content.channel, agent_name=content.author_agent)
         
         # Prepare publisher-specific parameters
         publisher_params = {}

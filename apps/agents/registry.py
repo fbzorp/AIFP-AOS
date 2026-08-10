@@ -33,6 +33,8 @@ class AgentRegistry:
             AnalyticsAgent, 
             ComplianceBrandAgent
         )
+        from .telegram_republisher import TelegramRepublisherAgent
+        
         for cls in [
             GrowthOrchestratorAgent, 
             MarketIntelligenceAgent, 
@@ -43,7 +45,8 @@ class AgentRegistry:
             SocialPublishingAgent, 
             CommunityEngagementAgent, 
             AnalyticsAgent, 
-            ComplianceBrandAgent
+            ComplianceBrandAgent,
+            TelegramRepublisherAgent
         ]:
             self.register(cls)
         self._initialized = True

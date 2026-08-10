@@ -1,6 +1,6 @@
 """
-Telegram Bot API client structure (simplified for code path validation).
-Full implementation to be added when live credentials are provided.
+Telegram Bot API client for publishing messages to channels.
+Real implementation using Telegram Bot API.
 """
 
 import httpx
@@ -29,10 +29,12 @@ class TelegramClient:
         self,
         bot_token: Optional[str] = None,
         chat_id: Optional[str] = None,
+        autopublish: Optional[bool] = None,
         timeout: float = 20
     ):
         self._bot_token = bot_token
         self._chat_id = chat_id
+        self._autopublish = autopublish
         self._timeout = timeout
         self.http = httpx.AsyncClient(timeout=timeout)
     
@@ -45,7 +47,13 @@ class TelegramClient:
         return self._chat_id or getattr(settings, "TELEGRAM_CHAT_ID", "") or getattr(settings, "TELEGRAM_DEFAULT_CHANNEL", "")
     
     @property
+    def default_channel(self) -> str:
+        return getattr(settings, "TELEGRAM_DEFAULT_CHANNEL", "")
+    
+    @property
     def autopublish_enabled(self) -> bool:
+        if self._autopublish is not None:
+            return self._autopublish
         return getattr(settings, "TELEGRAM_AUTOPUBLISH", False)
     
     @retry(retry=retry_if_exception(is_transient_error), stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
@@ -105,15 +113,56 @@ class TelegramClient:
                 "post_url": None
             }
         
-        # Placeholder for actual Telegram Bot API implementation
-        # This will be implemented when live credentials are provided
-        logger.info("Telegram Bot API implementation placeholder - credentials present but full implementation not yet added")
-        return {
-            "success": True,
-            "dry_run": True,
-            "post_id": None,
-            "post_url": None
+        # Telegram Bot API sendMessage endpoint
+        url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+        
+        payload = {
+            "chat_id": self.chat_id,
+            "text": text,
+            "parse_mode": kwargs.get("parse_mode", "HTML")
         }
+        
+        try:
+            response = await self.http.post(url, json=payload)
+            
+            # Handle rate limiting
+            if response.status_code == 429:
+                retry_after = response.headers.get("retry-after")
+                logger.warning(f"Telegram API rate limit hit. Retry-after: {retry_after}")
+                raise httpx.HTTPStatusError(
+                    "Rate limit exceeded",
+                    request=response.request,
+                    response=response
+                )
+            
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            # Extract message ID and construct URL
+            message_id = data.get("result", {}).get("message_id")
+            if not message_id:
+                raise ValueError("Telegram API response missing message_id")
+            
+            # Construct public URL if channel is public
+            channel = self.default_channel or self.chat_id
+            post_url = f"https://t.me/{channel}/{message_id}" if channel.startswith("@") else f"https://t.me/c/{channel}/{message_id}"
+            
+            logger.info(f"Successfully published to Telegram: {post_url}")
+            
+            return {
+                "success": True,
+                "dry_run": False,
+                "post_id": str(message_id),
+                "post_url": post_url
+            }
+            
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Telegram API request failed: {e.response.status_code} - {e.response.text}")
+            raise
+        except Exception as e:
+            logger.error(f"Telegram client error: {e}")
+            raise
     
     async def close(self):
         await self.http.aclose()
