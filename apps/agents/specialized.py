@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import asyncio
 import hashlib
+from datetime import datetime
 from typing import Any, Dict, List
 from sqlalchemy import select, desc
 from .base import BaseAgent
@@ -191,14 +192,32 @@ class MarketIntelligenceAgent(BaseAgent):
 
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         topic = input_data.get('topic', 'AI agents, agentic commerce, MCP, stablecoin payments')
-        raw_sources = input_data.get('sources', [
-            {"url": "https://aifinpay.com/blog/agentic-commerce", "title": "The Future of Agentic Commerce", "content": "AiFinPay is leading the way in AI-driven payments..."},
-            {"url": "https://techcrunch.com/2026/ai-fintech", "title": "AI Infrastructure in Fintech", "content": "New trends in AI infrastructure are shaping the fintech landscape..."}
-        ])
+        
+        # Priority: use externally-supplied sources, then fetch real sources
+        raw_sources = input_data.get('sources')
+        
+        if not raw_sources:
+            # Fetch real sources from available APIs
+            from apps.core.news_fetcher import news_fetcher
+            
+            logger.info(f"No sources provided, fetching real sources for topic: {topic}")
+            raw_sources = await news_fetcher.fetch_real_sources(topic)
+            
+            if not raw_sources:
+                logger.warning(f"No real sources could be retrieved for topic: {topic}")
+                return {
+                    "agent": self.name,
+                    "outcome": "no_verified_sources_available",
+                    "sources_stored": 0,
+                    "duplicates_skipped": 0,
+                    "top_sources": [],
+                    "message": "No verified sources available. Please configure NEWS_API_KEY or SERPER_API_KEY in .env, or provide sources manually."
+                }
         
         stored_count = 0
         skipped_count = 0
         top_sources = []
+        from datetime import datetime
 
         for item in raw_sources:
             url = item.get("url")
@@ -252,6 +271,10 @@ class MarketIntelligenceAgent(BaseAgent):
                         url=url,
                         url_hash=url_hash,
                         title=item.get("title"),
+                        author=item.get("author"),
+                        publisher=item.get("source"),  # Publisher from news API
+                        published_date=item.get("published_date"),
+                        retrieval_date=datetime.utcnow(),
                         summary=analysis.get("summary"),
                         relevance_score=analysis.get("relevance_score", 0.0),
                         content_angle=analysis.get("content_angle"),
@@ -452,17 +475,48 @@ class TechnicalContentAgent(BaseAgent):
             schema_hint=schema_hint
         )
 
+        # Verify technical claims against known-good specifications
+        from apps.core.technical_specs import verify_technical_content
+        verification_result = verify_technical_content(generation.get("body", ""))
+        
         def _update_item():
             with get_sync_session() as session:
                 db_item = session.query(ContentItemModel).filter(ContentItemModel.id == content_item_id).first()
                 db_item.body = generation.get("body")
                 db_item.author_agent = self.name
-                db_item.status = "draft"
-                record_event(session, self.name, "content_generated", f"Generated technical content for {content_item_id}", {"item_id": content_item_id})
+                
+                # Set verification status based on results
+                if verification_result["status"] == "failed":
+                    db_item.technical_verification_status = "flagged"
+                    db_item.status = "draft"  # Keep as draft for human review
+                    record_event(session, self.name, "technical_verification_failed", 
+                                f"Technical content flagged for unverifiable claims: {content_item_id}", 
+                                {"item_id": content_item_id, "failed_claims": verification_result["failed_claims"]})
+                elif verification_result["status"] == "verified":
+                    db_item.technical_verification_status = "verified"
+                    db_item.status = "draft"
+                    record_event(session, self.name, "technical_verification_passed", 
+                                f"Technical content verified: {content_item_id}", 
+                                {"item_id": content_item_id, "verified_claims": verification_result["verified_claims"]})
+                else:  # pending
+                    db_item.technical_verification_status = "pending"
+                    db_item.status = "draft"
+                    record_event(session, self.name, "technical_verification_pending", 
+                                f"No technical claims found for verification: {content_item_id}", 
+                                {"item_id": content_item_id})
+                
+                db_item.technical_verification_details = verification_result["details"]
                 session.commit()
 
         await asyncio.to_thread(_update_item)
-        return {"agent": self.name, "outcome": "tutorial_generated", "item_id": content_item_id}
+        
+        return {
+            "agent": self.name, 
+            "outcome": "tutorial_generated", 
+            "item_id": content_item_id,
+            "verification_status": verification_result["status"],
+            "verification_details": verification_result["details"]
+        }
 
     def get_capabilities(self) -> Dict[str, Any]:
         return {"purpose": "Creates technical posts, tutorials, SDK examples...", "tools": ["code_verification"], "inputs": ["topic"], "outputs": ["draft"], "policies": ["no_invented_endpoints"], "kpis": ["technical_accuracy"]}
@@ -634,8 +688,25 @@ class AnalyticsAgent(BaseAgent):
             description="Collects and reports real metrics, providing recommendations.",
             model=deepseek_fast()
         )
+        
+        # Define metric data sources and their availability
+        self.metric_data_sources = {
+            "publications": {"source": "content_items", "available": True, "integration": "database"},
+            "impressions": {"source": "analytics_platform", "available": False, "integration": "google_analytics"},
+            "clicks": {"source": "analytics_platform", "available": False, "integration": "google_analytics"},
+            "engagement": {"source": "analytics_platform", "available": False, "integration": "google_analytics"},
+            "website_visits": {"source": "analytics_platform", "available": False, "integration": "google_analytics"},
+            "registrations": {"source": "user_platform", "available": False, "integration": "auth_service"},
+            "sdk_installs": {"source": "package_registry", "available": False, "integration": "pypi/npm"},
+            "mcp_activations": {"source": "mcp_sidecar", "available": True, "integration": "mcp_audit_events"},
+            "github_activity": {"source": "github_api", "available": False, "integration": "github"},
+            "conversions": {"source": "payment_platform", "available": False, "integration": "aifinpay_payments"},
+            "mcp_calls": {"source": "audit_events", "available": True, "integration": "database"}
+        }
 
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        timeframe = input_data.get('timeframe', 'daily')  # daily or weekly
+        
         # Generate real MCP calls when enabled
         if mcp_client.enabled:
             try:
@@ -658,38 +729,106 @@ class AnalyticsAgent(BaseAgent):
             except Exception as e:
                 logger.error(f"MCP calls failed: {e}")
         
-        # Count persisted, verifiable publication and MCP audit records.
-        # Exclude dry-run status and fake post IDs from published count
-        def _get_published_count():
+        # Collect metrics from available data sources
+        metrics_report = {}
+        
+        for metric_name, metric_config in self.metric_data_sources.items():
+            if metric_config["available"]:
+                # Collect real data for available metrics
+                if metric_name == "publications":
+                    metrics_report[metric_name] = await self._get_publications_count()
+                elif metric_name == "mcp_calls":
+                    metrics_report[metric_name] = await self._get_mcp_calls_count()
+                elif metric_name == "mcp_activations":
+                    metrics_report[metric_name] = await self._get_mcp_activations_count()
+                else:
+                    # For other available metrics, implement specific data collection
+                    metrics_report[metric_name] = f"Data from {metric_config['source']}"
+                
+                # Add data source info
+                metrics_report[f"{metric_name}_data_source"] = metric_config["integration"]
+            else:
+                # Return unavailable status for unconfigured metrics
+                metrics_report[metric_name] = "unavailable/not configured"
+                metrics_report[f"{metric_name}_data_source"] = metric_config["integration"]
+        
+        # Generate recommendations based on available data
+        recommendations = self._generate_recommendations(metrics_report, timeframe)
+        
+        report = {
+            "timeframe": timeframe,
+            "metrics": metrics_report,
+            "recommendations": recommendations,
+            "data_source_summary": {
+                "available_metrics": [m for m, c in self.metric_data_sources.items() if c["available"]],
+                "unavailable_metrics": [m for m, c in self.metric_data_sources.items() if not c["available"]]
+            }
+        }
+
+        with get_sync_session() as session:
+            record_event(session, self.name, "metrics_reported", f"Generated {timeframe} metrics report", report)
+            session.commit()
+
+        return {"agent": self.name, "outcome": "metrics_generated", "report": report}
+    
+    async def _get_publications_count(self) -> int:
+        """Count real published content items (excludes dry-run and fake post IDs)."""
+        def _count():
             with get_sync_session() as session:
-                published_count = session.query(ContentItemModel).filter(
+                return session.query(ContentItemModel).filter(
                     ContentItemModel.status == "published",
                     ContentItemModel.post_id != "dry-run-id",
                     ~ContentItemModel.post_id.like("dry-run%")
                 ).count()
-                return published_count
         
-        published_count = await asyncio.to_thread(_get_published_count)
-
-        # Count successful MCP calls from persisted audit events.
-        def _get_mcp_calls_count():
+        return await asyncio.to_thread(_count)
+    
+    async def _get_mcp_calls_count(self) -> int:
+        """Count successful MCP calls from audit events."""
+        def _count():
             with get_sync_session() as session:
-                mcp_calls_count = session.query(AuditEventModel).filter(AuditEventModel.event_type == "mcp_call_succeeded").count()
-                return mcp_calls_count
+                return session.query(AuditEventModel).filter(
+                    AuditEventModel.event_type == "mcp_call_succeeded"
+                ).count()
         
-        mcp_calls_count = await asyncio.to_thread(_get_mcp_calls_count)
-
-        report = {
-            "publications": published_count,
-            "mcp_calls": mcp_calls_count,
-            "recommendations": "Based on current data, focus on increasing content publication frequency and diversifying channels."
-        }
-
-        with get_sync_session() as session:
-            record_event(session, self.name, "metrics_reported", "Generated daily metrics report", report)
-            session.commit()
-
-        return {"agent": self.name, "outcome": "metrics_generated", "report": report}
+        return await asyncio.to_thread(_count)
+    
+    async def _get_mcp_activations_count(self) -> int:
+        """Count MCP activations (distinct agents that made successful calls)."""
+        def _count():
+            with get_sync_session() as session:
+                from sqlalchemy import func
+                return session.query(AuditEventModel.agent_name).filter(
+                    AuditEventModel.event_type == "mcp_call_succeeded"
+                ).distinct().count()
+        
+        return await asyncio.to_thread(_count)
+    
+    def _generate_recommendations(self, metrics: dict, timeframe: str) -> str:
+        """Generate recommendations based on available metrics."""
+        recommendations = []
+        
+        if metrics.get("publications") != "unavailable/not configured":
+            pubs = metrics["publications"]
+            if isinstance(pubs, int) and pubs < 5:
+                recommendations.append("Increase content publication frequency to improve market presence.")
+            elif isinstance(pubs, int) and pubs > 20:
+                recommendations.append("Content publication rate is strong. Focus on quality and engagement optimization.")
+        
+        if metrics.get("mcp_calls") != "unavailable/not configured":
+            mcp_calls = metrics["mcp_calls"]
+            if isinstance(mcp_calls, int) and mcp_calls < 10:
+                recommendations.append("Increase MCP integration testing to ensure protocol reliability.")
+        
+        # Add recommendations for unavailable metrics
+        unavailable = [m for m, v in metrics.items() if v == "unavailable/not configured" and not m.endswith("_data_source")]
+        if unavailable:
+            recommendations.append(f"Configure integrations for unavailable metrics to enable comprehensive analytics: {', '.join(unavailable[:3])}")
+        
+        if not recommendations:
+            recommendations.append("Current metrics indicate stable performance. Continue monitoring for optimization opportunities.")
+        
+        return " ".join(recommendations)
 
     def get_capabilities(self) -> Dict[str, Any]:
         return {
@@ -697,8 +836,9 @@ class AnalyticsAgent(BaseAgent):
             "tools": ["data_collection", "report_generation", "recommendation_engine"],
             "inputs": ["timeframe", "metrics_to_track"],
             "outputs": ["daily_report", "weekly_report", "recommendations"],
-            "policies": ["real_metrics_only", "data_source_linking"],
-            "kpis": ["report_accuracy", "recommendation_effectiveness"]
+            "policies": ["real_metrics_only", "data_source_linking", "no_fabrication"],
+            "kpis": ["report_accuracy", "recommendation_effectiveness"],
+            "data_sources": self.metric_data_sources
         }
 
 class CommunityEngagementAgent(BaseAgent):

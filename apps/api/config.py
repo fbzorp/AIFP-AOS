@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     TELEGRAM_CHAT_ID: Optional[str] = None
     TELEGRAM_DEFAULT_CHANNEL: Optional[str] = None
     
+    # News/Search APIs for Market Intelligence
+    NEWS_API_KEY: Optional[str] = None
+    SERPER_API_KEY: Optional[str] = None
+    
     # Agent-Specific Credentials (Single Source of Truth)
     # Founder Content Agent
     FOUNDER_CONTENT_X_API_KEY: Optional[str] = None

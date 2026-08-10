@@ -5,6 +5,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
+from datetime import datetime
 
 from apps.models.base import Base
 from apps.models.source import SourceModel
@@ -157,3 +158,75 @@ async def test_market_intelligence_prompt_injection_sanitization():
         assert "<script>" not in user_content
         assert "[STRIPPED_INSTRUCTION]" in user_content
         assert "DEEPSEEK_API_KEY" in user_content
+
+@pytest.mark.asyncio
+async def test_market_intelligence_no_sources_available():
+    """Test that agent returns appropriate outcome when no sources are available."""
+    agent = MarketIntelligenceAgent()
+    
+    input_data = {
+        "topic": "AI agents",
+        "sources": []  # No sources provided
+    }
+    
+    # Mock news fetcher to return empty results
+    with patch("apps.core.news_fetcher.news_fetcher") as mock_fetcher, \
+         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
+        
+        mock_fetcher.fetch_real_sources = AsyncMock(return_value=[])
+        
+        result = await agent.execute(input_data)
+        
+        assert result["outcome"] == "no_verified_sources_available"
+        assert result["sources_stored"] == 0
+        assert result["duplicates_skipped"] == 0
+        assert "no verified sources available" in result["message"].lower()
+
+@pytest.mark.asyncio
+async def test_market_intelligence_source_metadata_persistence():
+    """Test that source metadata (publisher, retrieval_date) is properly persisted."""
+    agent = MarketIntelligenceAgent()
+    
+    mock_llm_response = {
+        "summary": "Test summary",
+        "relevance_score": 0.8,
+        "content_angle": "Test angle"
+    }
+    
+    input_data = {
+        "topic": "Test",
+        "sources": [
+            {
+                "url": "https://example.com/test",
+                "title": "Test Article",
+                "content": "Test content",
+                "author": "Test Author",
+                "source": "TechCrunch",
+                "published_date": "2026-08-10T00:00:00Z"
+            }
+        ]
+    }
+    
+    mock_embedding = [0.1] * 384
+    
+    with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
+         patch("apps.agents.specialized.embed_text", return_value=mock_embedding), \
+         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session), \
+         patch("apps.core.models.llm.settings") as mock_settings:
+        
+        mock_settings.DEEPSEEK_API_KEY = "test-key"
+        mock_settings.DAILY_LLM_BUDGET_USD = 25.0
+        mock_llm.return_value = mock_llm_response
+        
+        result = await agent.execute(input_data)
+        
+        assert result["sources_stored"] == 1
+        
+        # Verify metadata persistence
+        with mock_get_sync_session() as session:
+            source = session.query(SourceModel).filter_by(url="https://example.com/test").first()
+            assert source is not None
+            assert source.author == "Test Author"
+            assert source.publisher == "TechCrunch"
+            assert source.retrieval_date is not None
+            assert isinstance(source.retrieval_date, datetime)

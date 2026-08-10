@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, JSON
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, JSON, Boolean
 from sqlalchemy.sql import func
 from uuid import uuid4
 from .base import Base
@@ -16,6 +16,10 @@ class ContentItemModel(Base):
     # Compliance
     compliance_status = Column(String, nullable=True)
     compliance_reason = Column(Text, nullable=True)
+    
+    # Technical Verification
+    technical_verification_status = Column(String, nullable=True)  # 'verified', 'failed', 'pending', 'flagged'
+    technical_verification_details = Column(Text, nullable=True)  # Details of verification check
     
     # Strategy & Attribution
     objective = Column(Text)

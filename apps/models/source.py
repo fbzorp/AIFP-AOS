@@ -11,7 +11,9 @@ class SourceModel(Base):
     
     title = Column(String)
     author = Column(String)
+    publisher = Column(String)  # News source/publication name
     published_date = Column(DateTime)
+    retrieval_date = Column(DateTime)  # When this source was fetched
     
     summary = Column(Text)
     relevance_score = Column(Float, default=0.0)
