@@ -47,10 +47,38 @@ class MoltbookPublisher(PublisherBase):
     
     def __init__(self, agent_name: Optional[str] = None):
         self._agent_name = agent_name
-        self._client = MoltbookClient()
+        self._client = None
+        self._initialized = False
+    
+    def _ensure_initialized(self):
+        """Lazy initialization with agent-specific credential lookup."""
+        if self._initialized:
+            return
+        
+        from apps.core.credential import CredentialService
+        
+        # Get agent-specific credentials (sync for dramatiq workers)
+        if self._agent_name:
+            creds = CredentialService.get_moltbook_credentials_sync(self._agent_name)
+        else:
+            # Fallback to global settings
+            creds = {
+                "agent_api_key": settings.MOLTBOOK_AGENT_API_KEY,
+                "app_key": settings.MOLTBOOK_APP_KEY,
+                "autopublish": getattr(settings, "MOLTBOOK_AUTOPUBLISH", False)
+            }
+        
+        self._client = MoltbookClient(
+            agent_api_key=creds.get("agent_api_key"),
+            app_key=creds.get("app_key"),
+            autopublish=creds.get("autopublish")
+        )
+        self._initialized = True
     
     async def publish_post(self, title: str, body: str, **kwargs) -> Dict:
         """Publish to Moltbook with channel-specific submolt."""
+        self._ensure_initialized()
+        
         submolt = kwargs.get("submolt", "general")
         
         # Enforce allowlist
@@ -73,7 +101,8 @@ class MoltbookPublisher(PublisherBase):
         }
     
     async def close(self):
-        await self._client.close()
+        if self._client:
+            await self._client.close()
 
 
 class XPublisher(PublisherBase):

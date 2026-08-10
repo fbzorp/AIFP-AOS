@@ -55,6 +55,49 @@ class Settings(BaseSettings):
     TELEGRAM_CHAT_ID: Optional[str] = None
     TELEGRAM_DEFAULT_CHANNEL: Optional[str] = None
     
+    # Agent-Specific Credentials (Single Source of Truth)
+    # Founder Content Agent
+    FOUNDER_CONTENT_X_API_KEY: Optional[str] = None
+    FOUNDER_CONTENT_X_API_SECRET: Optional[str] = None
+    FOUNDER_CONTENT_X_ACCESS_TOKEN: Optional[str] = None
+    FOUNDER_CONTENT_X_ACCESS_TOKEN_SECRET: Optional[str] = None
+    FOUNDER_CONTENT_X_AUTOPUBLISH: bool = False
+    FOUNDER_CONTENT_TELEGRAM_BOT_TOKEN: Optional[str] = None
+    FOUNDER_CONTENT_TELEGRAM_CHAT_ID: Optional[str] = None
+    FOUNDER_CONTENT_TELEGRAM_AUTOPUBLISH: bool = False
+    FOUNDER_CONTENT_TELEGRAM_DEFAULT_CHANNEL: Optional[str] = None
+    FOUNDER_CONTENT_MOLTBOOK_AGENT_API_KEY: Optional[str] = None
+    FOUNDER_CONTENT_MOLTBOOK_APP_KEY: Optional[str] = None
+    FOUNDER_CONTENT_MOLTBOOK_AUTOPUBLISH: bool = False
+    
+    # Technical Content Agent
+    TECHNICAL_CONTENT_X_API_KEY: Optional[str] = None
+    TECHNICAL_CONTENT_X_API_SECRET: Optional[str] = None
+    TECHNICAL_CONTENT_X_ACCESS_TOKEN: Optional[str] = None
+    TECHNICAL_CONTENT_X_ACCESS_TOKEN_SECRET: Optional[str] = None
+    TECHNICAL_CONTENT_X_AUTOPUBLISH: bool = False
+    TECHNICAL_CONTENT_TELEGRAM_BOT_TOKEN: Optional[str] = None
+    TECHNICAL_CONTENT_TELEGRAM_CHAT_ID: Optional[str] = None
+    TECHNICAL_CONTENT_TELEGRAM_AUTOPUBLISH: bool = False
+    TECHNICAL_CONTENT_TELEGRAM_DEFAULT_CHANNEL: Optional[str] = None
+    TECHNICAL_CONTENT_MOLTBOOK_AGENT_API_KEY: Optional[str] = None
+    TECHNICAL_CONTENT_MOLTBOOK_APP_KEY: Optional[str] = None
+    TECHNICAL_CONTENT_MOLTBOOK_AUTOPUBLISH: bool = False
+    
+    # SEO Content Agent
+    SEO_CONTENT_X_API_KEY: Optional[str] = None
+    SEO_CONTENT_X_API_SECRET: Optional[str] = None
+    SEO_CONTENT_X_ACCESS_TOKEN: Optional[str] = None
+    SEO_CONTENT_X_ACCESS_TOKEN_SECRET: Optional[str] = None
+    SEO_CONTENT_X_AUTOPUBLISH: bool = False
+    SEO_CONTENT_TELEGRAM_BOT_TOKEN: Optional[str] = None
+    SEO_CONTENT_TELEGRAM_CHAT_ID: Optional[str] = None
+    SEO_CONTENT_TELEGRAM_AUTOPUBLISH: bool = False
+    SEO_CONTENT_TELEGRAM_DEFAULT_CHANNEL: Optional[str] = None
+    SEO_CONTENT_MOLTBOOK_AGENT_API_KEY: Optional[str] = None
+    SEO_CONTENT_MOLTBOOK_APP_KEY: Optional[str] = None
+    SEO_CONTENT_MOLTBOOK_AUTOPUBLISH: bool = False
+    
     # Blockchain
     SOLANA_RPC_URL: str = "https://api.devnet.solana.com"
     SOLANA_PRIVATE_KEY: Optional[str] = None
