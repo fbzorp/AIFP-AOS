@@ -1,7 +1,7 @@
 """add_source_publisher_retrieval_date_and_content_verification_fields
 
 Revision ID: c88ffa46ccd1
-Revises: 03b5e8316628
+Revises: 7ff8e3bbcdfd
 Create Date: 2026-08-10 17:15:33.818328
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'c88ffa46ccd1'
-down_revision = '03b5e8316628'
+down_revision = '7ff8e3bbcdfd'
 branch_labels = None
 depends_on = None
 

@@ -105,6 +105,7 @@ docker compose -f docker-compose.dev.yml exec -T api uv run python scripts/test_
 ## Migration Notes
 
 - Database credential table is no longer used
-- Legacy scripts (`setup_agent_credentials.sh`, `manage_credentials.py`) are deprecated
+- Legacy scripts (`setup_agent_credentials.sh`, `manage_credentials.py`) have been removed
+- CredentialModel and database credential storage have been eliminated
 - All credential management now happens in `.env`
 - Global credentials are kept as fallbacks for backward compatibility
