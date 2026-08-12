@@ -158,15 +158,18 @@ async def test_analytics_agent_counts_real_published_content_and_successful_mcp_
                 agent_name="Payments",
                 event_type="mcp_call_succeeded",
                 message="MCP call completed",
+                metadata_json={"function": "agent_quote"}
             ),
             AuditEventModel(
                 id="mcp-failed",
                 agent_name="Payments",
                 event_type="mcp_call_failed",
                 message="MCP call failed",
+                metadata_json={"function": "agent_quote"}
             ),
         ]
     )
+    session.flush()  # Flush to ensure hash computation
     session.commit()
 
     result = await AnalyticsAgent().execute({})

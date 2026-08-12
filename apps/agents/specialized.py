@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import asyncio
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 from sqlalchemy import select, desc
 from .base import BaseAgent
@@ -274,7 +274,7 @@ class MarketIntelligenceAgent(BaseAgent):
                         author=item.get("author"),
                         publisher=item.get("source"),  # Publisher from news API
                         published_date=item.get("published_date"),
-                        retrieval_date=datetime.utcnow(),
+                        retrieval_date=datetime.now(timezone.utc),
                         summary=analysis.get("summary"),
                         relevance_score=analysis.get("relevance_score", 0.0),
                         content_angle=analysis.get("content_angle"),

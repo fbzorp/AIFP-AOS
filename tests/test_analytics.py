@@ -138,10 +138,11 @@ async def test_analytics_available_metrics():
         audit_event = AuditEventModel(
             agent_name="TestAgent",
             event_type="mcp_call_succeeded",
-            details={"function": "agent_quote"}
+            message="MCP call succeeded",
+            metadata_json={"function": "agent_quote"}
         )
         session.add(audit_event)
-        session.commit()
+        session.flush()  # Flush to ensure hash is computed
     
     with patch("apps.agents.specialized.mcp_client") as mock_mcp, \
          patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
