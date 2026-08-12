@@ -172,12 +172,17 @@ async def test_analytics_agent_counts_real_published_content_and_successful_mcp_
     session.flush()  # Flush to ensure hash computation
     session.commit()
 
-    result = await AnalyticsAgent().execute({})
+    # Patch mcp_client to disable it
+    with patch("apps.agents.specialized.mcp_client") as mock_mcp:
+        mock_mcp.enabled = False
+        mock_mcp.get_successful_calls.return_value = []
+        
+        result = await AnalyticsAgent().execute({})
 
     assert result["agent"] == "Analytics Agent"
     assert result["outcome"] == "metrics_generated"
-    assert result["report"]["publications"] == 1
-    assert result["report"]["mcp_calls"] == 1
+    assert result["report"]["metrics"]["publications"] == 1
+    assert result["report"]["metrics"]["mcp_calls"] == 1
     assert session.query(AuditEventModel).filter(
         AuditEventModel.event_type == "metrics_reported"
     ).count() == 1

@@ -267,14 +267,22 @@ class MarketIntelligenceAgent(BaseAgent):
                         logger.warning(f"Failed to compute embedding for source {url}: {e}")
                         embedding = None
                     
+                    # Parse published_date if it's a string
+                    published_date = item.get("published_date")
+                    if isinstance(published_date, str):
+                        try:
+                            published_date = datetime.fromisoformat(published_date.replace('Z', '+00:00')).replace(tzinfo=None)
+                        except (ValueError, AttributeError):
+                            published_date = None
+                    
                     new_source = SourceModel(
                         url=url,
                         url_hash=url_hash,
                         title=item.get("title"),
                         author=item.get("author"),
                         publisher=item.get("source"),  # Publisher from news API
-                        published_date=item.get("published_date"),
-                        retrieval_date=datetime.now(timezone.utc),
+                        published_date=published_date,
+                        retrieval_date=datetime.now(timezone.utc).replace(tzinfo=None),
                         summary=analysis.get("summary"),
                         relevance_score=analysis.get("relevance_score", 0.0),
                         content_angle=analysis.get("content_angle"),
