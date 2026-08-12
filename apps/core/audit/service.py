@@ -2,7 +2,8 @@ import logging
 import asyncio
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timezone
+from uuid import uuid4
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
@@ -64,8 +65,9 @@ def record_event(session, agent_name: str, event_type: str, message: str, metada
     Hash Chain Logic:
     1. Look up the most recent existing audit row's record_hash (ordered by created_at, then id)
     2. Set it as prev_hash (NULL for genesis row)
-    3. Compute record_hash using SHA256(prev_hash + id + agent_name + event_type + message + canonical_json(metadata) + created_at_iso)
-    4. Persist the record
+    3. Set created_at explicitly in Python (not DB default) to enable pre-INSERT hash computation
+    4. Compute record_hash using SHA256(prev_hash + id + agent_name + event_type + message + canonical_json(metadata) + created_at_iso)
+    5. Persist the record in a single INSERT (no UPDATE to avoid append-only trigger)
     
     Concurrent Insert Handling:
     - This function assumes a single-writer model (sequential insert ordering)
@@ -73,78 +75,61 @@ def record_event(session, agent_name: str, event_type: str, message: str, metada
     - In concurrent scenarios, the race condition could cause chain breaks
     - Document assumption: Audit writes are serialized in production
     
-    Handles both sync and async sessions by checking if flush() needs to be awaited.
+    Uses sync session for database operations.
     """
+    # Get the most recent audit event's record_hash for chaining
+    # Order by created_at, then id for deterministic ordering
+    prev_hash = None
     try:
-        # Get the most recent audit event's record_hash for chaining
-        # Order by created_at, then id for deterministic ordering
-        prev_hash = None
-        try:
-            if isinstance(session, AsyncSession):
-                # For async sessions, we need to handle this differently
-                # This is a limitation - async sessions should use record_event_async instead
-                # But for backward compatibility, we'll try to get prev_hash synchronously
-                # This won't work in production async contexts
-                pass
-            else:
-                # Sync session - can execute query directly
-                result = session.execute(
-                    select(AuditEventModel.record_hash)
-                    .order_by(desc(AuditEventModel.created_at), desc(AuditEventModel.id))
-                    .limit(1)
-                )
-                row = result.scalar_one_or_none()
-                if row:
-                    prev_hash = row
-        except Exception as e:
-            # Handle gracefully if table doesn't exist (e.g., in test environments)
-            # This allows tests to use mock sessions without breaking
-            # Only log as debug to avoid noise in normal operation
-            pass  # Continue without prev_hash (will be genesis row or broken chain)
-        
-        # Create the audit event
-        event = AuditEventModel(
-            agent_name=agent_name,
-            event_type=event_type,
-            message=message,
-            metadata_json=metadata,
-            prev_hash=prev_hash
+        result = session.execute(
+            select(AuditEventModel.record_hash)
+            .order_by(desc(AuditEventModel.created_at), desc(AuditEventModel.id))
+            .limit(1)
         )
-        session.add(event)
-        
-        # Flush to get the ID and created_at for hash computation
-        if isinstance(session, AsyncSession):
-            # For async sessions, we can't await here
-            # Callers should use record_event_async instead
-            # Just add to session, hash will be incomplete (caller's responsibility)
-            pass
-        else:
-            try:
-                session.flush()
-                
-                # Compute the record hash now that we have all fields
-                event.record_hash = _compute_record_hash(
-                    prev_hash=event.prev_hash,
-                    id=event.id,
-                    agent_name=event.agent_name,
-                    event_type=event.event_type,
-                    message=event.message,
-                    metadata_json=event.metadata_json,
-                    created_at=event.created_at
-                )
-                
-                # Flush again to persist the hash
-                session.flush()
-            except Exception as e:
-                # Handle gracefully if table doesn't exist or other DB issues
-                # Continue without hash - better to record the event than fail completely
-                pass
-            
-        logger.info(f"Audit: [{agent_name}] {event_type} - {message}")
-        return event
+        row = result.scalar_one_or_none()
+        if row:
+            prev_hash = row
     except Exception as e:
-        logger.error(f"Failed to record audit event: {e}")
-        return None
+        # If table doesn't exist or other DB error, log and continue
+        # This allows graceful degradation in test environments
+        logger.warning(f"Could not fetch prev_hash for audit chain: {e}")
+        # Continue without prev_hash (will be genesis row or broken chain)
+    
+    # Set created_at explicitly in Python to enable pre-INSERT hash computation
+    created_at = datetime.now(timezone.utc)
+    
+    # Generate ID explicitly to have all fields before INSERT
+    event_id = "audit-" + str(uuid4())
+    
+    # Compute record_hash BEFORE INSERT to avoid UPDATE (which triggers append-only protection)
+    record_hash = _compute_record_hash(
+        prev_hash=prev_hash,
+        id=event_id,
+        agent_name=agent_name,
+        event_type=event_type,
+        message=message,
+        metadata_json=metadata,
+        created_at=created_at
+    )
+    
+    # Create the audit event with all fields populated
+    event = AuditEventModel(
+        id=event_id,
+        agent_name=agent_name,
+        event_type=event_type,
+        message=message,
+        metadata_json=metadata,
+        prev_hash=prev_hash,
+        record_hash=record_hash,
+        created_at=created_at
+    )
+    
+    # Single INSERT with all fields (no UPDATE needed)
+    session.add(event)
+    session.flush()
+    
+    logger.info(f"Audit: [{agent_name}] {event_type} - {message}")
+    return event
 
 
 async def record_event_async(session: AsyncSession, agent_name: str, event_type: str, 
@@ -153,46 +138,59 @@ async def record_event_async(session: AsyncSession, agent_name: str, event_type:
     Async version of record_event for use with AsyncSession.
     
     Ensures proper hash chaining with async database operations.
+    Computes hash before INSERT to avoid UPDATE (which triggers append-only protection).
     """
+    # Get the most recent audit event's record_hash for chaining
+    prev_hash = None
     try:
-        # Get the most recent audit event's record_hash for chaining
         result = await session.execute(
             select(AuditEventModel.record_hash)
             .order_by(desc(AuditEventModel.created_at), desc(AuditEventModel.id))
             .limit(1)
         )
-        prev_hash = result.scalar_one_or_none()
-        
-        # Create the audit event
-        event = AuditEventModel(
-            agent_name=agent_name,
-            event_type=event_type,
-            message=message,
-            metadata_json=metadata,
-            prev_hash=prev_hash
-        )
-        session.add(event)
-        
-        # Flush to get the ID and created_at for hash computation
-        await session.flush()
-        
-        # Compute the record hash now that we have all fields
-        event.record_hash = _compute_record_hash(
-            prev_hash=event.prev_hash,
-            id=event.id,
-            agent_name=event.agent_name,
-            event_type=event.event_type,
-            message=event.message,
-            metadata_json=event.metadata_json,
-            created_at=event.created_at
-        )
-        
-        # Flush again to persist the hash
-        await session.flush()
-        
-        logger.info(f"Audit: [{agent_name}] {event_type} - {message}")
+        row = result.scalar_one_or_none()
+        if row:
+            prev_hash = row
     except Exception as e:
-        logger.error(f"Failed to record audit event: {e}")
+        # If table doesn't exist or other DB error, log and continue
+        logger.warning(f"Could not fetch prev_hash for audit chain: {e}")
+        # Continue without prev_hash (will be genesis row or broken chain)
+    
+    # Set created_at explicitly in Python to enable pre-INSERT hash computation
+    created_at = datetime.now(timezone.utc)
+    
+    # Generate ID explicitly to have all fields before INSERT
+    event_id = "audit-" + str(uuid4())
+    
+    # Compute record_hash BEFORE INSERT to avoid UPDATE (which triggers append-only protection)
+    record_hash = _compute_record_hash(
+        prev_hash=prev_hash,
+        id=event_id,
+        agent_name=agent_name,
+        event_type=event_type,
+        message=message,
+        metadata_json=metadata,
+        created_at=created_at
+    )
+    
+    # Create the audit event with all fields populated
+    event = AuditEventModel(
+        id=event_id,
+        agent_name=agent_name,
+        event_type=event_type,
+        message=message,
+        metadata_json=metadata,
+        prev_hash=prev_hash,
+        record_hash=record_hash,
+        created_at=created_at
+    )
+    
+    # Single INSERT with all fields (no UPDATE needed)
+    session.add(event)
+    await session.flush()
+    
+    logger.info(f"Audit: [{agent_name}] {event_type} - {message}")
+    return event
 
 
 def verify_audit_chain(session) -> dict:
