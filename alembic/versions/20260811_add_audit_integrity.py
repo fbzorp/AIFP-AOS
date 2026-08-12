@@ -14,7 +14,7 @@ from datetime import datetime
 
 # revision identifiers, used by Alembic.
 revision = '20260811_add_audit_integrity'
-down_revision = '47c43b9c29dc'
+down_revision = 'f3a8b2c1d4e5'
 branch_labels = None
 depends_on = None
 

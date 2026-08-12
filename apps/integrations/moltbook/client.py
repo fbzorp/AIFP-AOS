@@ -42,6 +42,10 @@ class MoltbookClient:
     def app_key(self) -> str:
         return self._app_key or settings.MOLTBOOK_APP_KEY or ""
 
+    @property
+    def autopublish_enabled(self) -> bool:
+        return getattr(settings, "MOLTBOOK_AUTOPUBLISH", False)
+
 
     @retry(retry=retry_if_exception(is_transient_error), stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
     async def create_identity_token(self) -> Dict[str, Any]:
@@ -175,15 +179,28 @@ class MoltbookClient:
         Confirmed endpoint from live skill.md: POST /api/v1/posts
         Authorization: Bearer <AGENT_KEY> (per skill.md)
         Fields: submolt_name (or submolt), title, content
+        
+        Returns:
+            Dict with keys: success, dry_run, post_id, post_url
         """
         # Enforce dry-run if autopublish is disabled
-        if not getattr(settings, "MOLTBOOK_AUTOPUBLISH", False):
+        if not self.autopublish_enabled:
             logger.info(f"[DRY-RUN] Publishing to {submolt}: {title}")
             return {
                 "success": True,
                 "dry_run": True,
-                "post_id": "dry-run-id",
-                "post_url": f"{self.base_url}/posts/dry-run-id"
+                "post_id": None,
+                "post_url": None
+            }
+
+        # Check if credentials are configured
+        if not self.agent_key:
+            logger.warning("Moltbook agent key not configured, falling back to dry-run")
+            return {
+                "success": True,
+                "dry_run": True,
+                "post_id": None,
+                "post_url": None
             }
 
         payload = {
@@ -196,70 +213,107 @@ class MoltbookClient:
         # Dev-guide also notes identity token is for target backends, not Moltbook itself.
         headers = {"Authorization": f"Bearer {self.agent_key}"}
         
-        r = await self.http.post(
-            f"{self.base_url}/api/v1/posts",
-            headers=headers,
-            json=payload
-        )
-        
         try:
+            r = await self.http.post(
+                f"{self.base_url}/api/v1/posts",
+                headers=headers,
+                json=payload
+            )
+            
             r.raise_for_status()
+            data = r.json()
+            
+            # Handle verification if required
+            if data.get("verification_required") or (isinstance(data.get("post"), dict) and data["post"].get("verification")):
+                post_data = data.get("post") or {}
+                verification = post_data.get("verification") or {}
+                code = verification.get("verification_code")
+                challenge = verification.get("challenge_text")
+                
+                if code and challenge:
+                    logger.info(f"Verification required for post. Challenge: {challenge}")
+                    # We need an LLM to solve the obfuscated math problem
+
+                    if not settings.DEEPSEEK_API_KEY:
+                        logger.error("DEEPSEEK_API_KEY not found - cannot solve challenge")
+                        return {
+                            "success": False,
+                            "dry_run": False,
+                            "post_id": None,
+                            "post_url": None,
+                            "error": "DEEPSEEK_API_KEY not found for verification"
+                        }
+
+                    prompt = f"Solve this Moltbook AI verification challenge. It is an obfuscated math problem. Extract the two numbers and the operation, compute the result, and respond with ONLY the number (e.g., '15.00').\n\nChallenge: {challenge}"
+                    
+                    try:
+                        llm_response = await litellm.acompletion(
+                            model=settings.DEEPSEEK_PRIMARY_MODEL,
+                            api_key=settings.DEEPSEEK_API_KEY,
+                            api_base=settings.DEEPSEEK_API_BASE,
+                            messages=[
+                                {"role": "user", "content": prompt}
+                            ],
+                            timeout=30
+                        )
+                        answer = llm_response.choices[0].message.content.strip()
+                    except Exception as e:
+                        logger.error(f"LiteLLM completion failed for verification challenge: {e}")
+                        return {
+                            "success": False,
+                            "dry_run": False,
+                            "post_id": None,
+                            "post_url": None,
+                            "error": f"LLM verification failed: {str(e)}"
+                        }
+
+                    
+                    logger.info(f"Submitting verification answer: {answer}")
+                    verify_result = await self.verify_challenge(code, answer)
+                    if verify_result.get("success"):
+                        logger.info("Verification successful!")
+                        # Merge verification success into original response
+                        post_id = post_data.get("id")
+                        post_url = f"{self.base_url}/posts/{post_id}"
+                        return {
+                            "success": True,
+                            "dry_run": False,
+                            "post_id": post_id,
+                            "post_url": post_url
+                        }
+                    else:
+                        raise ValueError(f"Verification failed: {verify_result.get('error')}")
+            else:
+                # Normal success path
+                post_data = data.get("post") or data.get("agent") or {}
+                post_id = data.get("post_id") or post_data.get("id")
+                post_url = data.get("post_url") or f"{self.base_url}/posts/{post_id}"
+                
+                return {
+                    "success": True,
+                    "dry_run": False,
+                    "post_id": post_id,
+                    "post_url": post_url
+                }
+                
         except httpx.HTTPStatusError as e:
             logger.error(f"Moltbook publish_post failed: {e.response.status_code} - {e.response.text}")
-            raise
-
-        data = r.json()
-        
-        # Handle verification if required
-        if data.get("verification_required") or (isinstance(data.get("post"), dict) and data["post"].get("verification")):
-            post_data = data.get("post") or {}
-            verification = post_data.get("verification") or {}
-            code = verification.get("verification_code")
-            challenge = verification.get("challenge_text")
-            
-            if code and challenge:
-                logger.info(f"Verification required for post. Challenge: {challenge}")
-                # We need an LLM to solve the obfuscated math problem
-
-                if not settings.DEEPSEEK_API_KEY:
-                    logger.error("DEEPSEEK_API_KEY not found - cannot solve challenge")
-                    return data
-
-                prompt = f"Solve this Moltbook AI verification challenge. It is an obfuscated math problem. Extract the two numbers and the operation, compute the result, and respond with ONLY the number (e.g., '15.00').\n\nChallenge: {challenge}"
-                
-                try:
-                    llm_response = await litellm.acompletion(
-                        model=settings.DEEPSEEK_PRIMARY_MODEL,
-                        api_key=settings.DEEPSEEK_API_KEY,
-                        api_base=settings.DEEPSEEK_API_BASE,
-                        messages=[
-                            {"role": "user", "content": prompt}
-                        ],
-                        timeout=30
-                    )
-                    answer = llm_response.choices[0].message.content.strip()
-                except Exception as e:
-                    logger.error(f"LiteLLM completion failed for verification challenge: {e}")
-                    return data
-
-                
-                logger.info(f"Submitting verification answer: {answer}")
-                verify_result = await self.verify_challenge(code, answer)
-                if verify_result.get("success"):
-                    logger.info("Verification successful!")
-                    # Merge verification success into original response
-                    data["post_id"] = post_data.get("id")
-                    data["post_url"] = f"{self.base_url}/posts/{data['post_id']}"
-                    data["success"] = True
-                else:
-                    raise ValueError(f"Verification failed: {verify_result.get('error')}")
-        else:
-            # Normal success path
-            post_data = data.get("post") or data.get("agent") or {}
-            data["post_id"] = data.get("post_id") or post_data.get("id")
-            data["post_url"] = data.get("post_url") or f"{self.base_url}/posts/{data['post_id']}"
-            
-        return data
+            return {
+                "success": False,
+                "dry_run": False,
+                "post_id": None,
+                "post_url": None,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}"
+            }
+        except Exception as e:
+            logger.error(f"Moltbook client error: {e}")
+            return {
+                "success": False,
+                "dry_run": False,
+                "post_id": None,
+                "post_url": None,
+                "error": str(e)
+            }
 
     async def close(self):
         await self.http.aclose()

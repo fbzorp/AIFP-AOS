@@ -74,6 +74,7 @@ require_admin = require_role(["admin"])
 
 # Backward-compatible aliases for existing imports
 require_operator = require_writer  # Maps old operator to write permission
+require_reader = require_viewer  # Alias for consistency
 
 def create_test_token(role: str = "founder_admin") -> str:
     """Create a test JWT token for testing purposes."""

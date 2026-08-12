@@ -115,8 +115,15 @@ async def test_publish_post_with_verification_failure():
             mock_acompletion.return_value.choices = [AsyncMock()]
             mock_acompletion.return_value.choices[0].message.content = "9" # Incorrect answer
 
-            with pytest.raises(ValueError, match="Verification failed: Incorrect answer"):
-                await client.publish_post("test-submolt", "Test Title", "Test Body")
+            # With our new implementation, verification failure returns an error structure
+            result = await client.publish_post("test-submolt", "Test Title", "Test Body")
+            
+            # Should return error structure instead of raising ValueError
+            assert result["success"] is False
+            assert result["dry_run"] is False
+            assert result["post_id"] is None
+            assert result["post_url"] is None
+            assert "Verification failed" in result["error"]
 
             mock_acompletion.assert_called_once()
 
@@ -156,7 +163,12 @@ async def test_publish_post_with_missing_deepseek_api_key():
         # No litellm.acompletion mock needed as it should not be called
         result = await client.publish_post("test-submolt", "Test Title", "Test Body")
 
-        assert result["verification_required"] is True # Should return data early
+        # With our new implementation, it returns an error structure when DEEPSEEK_API_KEY is missing
+        assert result["success"] is False
+        assert result["dry_run"] is False
+        assert result["post_id"] is None
+        assert result["post_url"] is None
+        assert "DEEPSEEK_API_KEY not found" in result["error"]
         assert settings.DEEPSEEK_API_KEY is None # Ensure API key remains None
 
     # Restore original settings

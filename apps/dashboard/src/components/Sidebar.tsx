@@ -13,7 +13,8 @@ import {
   Activity,
   Users,
   Target,
-  X
+  X,
+  Globe
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -75,6 +76,7 @@ export default function Sidebar({ onToggle, mobileMenuOpen = false, onMobileMenu
     { icon: Target, label: 'Campaigns', path: '/campaigns' },
     { icon: Users, label: 'Agents', path: '/agents' },
     { icon: FileText, label: 'Content Queue', path: '/content-queue' },
+    { icon: Globe, label: 'Marketing Activity', path: '/marketing-activity' },
     { icon: CreditCard, label: 'Payments', path: '/payments' },
     { icon: Calendar, label: 'Calendar', path: '/calendar' },
     { icon: Settings, label: 'Settings', path: '/settings' },

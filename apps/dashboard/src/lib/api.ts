@@ -344,3 +344,63 @@ export const updateCredential = async (name: string, value: string): Promise<Cre
     throw error;
   }
 };
+
+export interface MarketingActivityItem {
+  id: string;
+  title: string;
+  agent: string;
+  objective?: string;
+  target_audience?: string;
+  source_id?: string;
+  format?: string;
+  channel?: string;
+  status: string;
+  created_at?: string;
+  scheduled_at?: string;
+  approved_at?: string;
+  approver?: string;
+  published_at?: string;
+  post_url?: string;
+  post_id?: string;
+  publish_error?: string;
+  live_url?: string;
+  is_real_publish: boolean;
+}
+
+export interface MarketingActivityResponse {
+  items: MarketingActivityItem[];
+  total_count: number;
+  real_publish_count: number;
+  dry_run_count: number;
+}
+
+export const fetchMarketingActivity = async (params?: {
+  start_date?: string;
+  end_date?: string;
+  channel?: string;
+  status?: string;
+  only_real?: boolean;
+}): Promise<MarketingActivityResponse> => {
+  try {
+    const { data } = await api.get('/marketing/activity', { params });
+    return data;
+  } catch (error) {
+    console.error('Failed to fetch marketing activity:', error);
+    return {
+      items: [],
+      total_count: 0,
+      real_publish_count: 0,
+      dry_run_count: 0
+    };
+  }
+};
+
+export const fetchMarketingActivityDetail = async (contentId: string) => {
+  try {
+    const { data } = await api.get(`/marketing/activity/${contentId}`);
+    return data;
+  } catch (error) {
+    console.error('Failed to fetch marketing activity detail:', error);
+    throw error;
+  }
+};

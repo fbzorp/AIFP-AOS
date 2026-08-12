@@ -9,6 +9,7 @@ import ContentQueue from './pages/ContentQueue'
 import AgentDetails from './pages/AgentDetails'
 import Agents from './pages/Agents'
 import Campaigns from './pages/Campaigns'
+import MarketingActivity from './pages/MarketingActivity'
 import Sidebar from './components/Sidebar'
 
 function App() {
@@ -81,6 +82,7 @@ function App() {
             <Route path="/content-queue" element={<ContentQueue />} />
             <Route path="/agents" element={<Agents />} />
             <Route path="/campaigns" element={<Campaigns />} />
+            <Route path="/marketing-activity" element={<MarketingActivity />} />
             <Route path="/agent/:agentName" element={<AgentDetails />} />
           </Routes>
         </main>

@@ -9,6 +9,7 @@ from apps.api.config import settings as config_settings
 from apps.models.base import get_db
 from apps.api.routers import system, approvals, payments
 from apps.api.routers import settings as settings_router
+from apps.api.routers.marketing import router as marketing_router
 from apps.api.auth import create_access_token, create_test_token
 from apps.core.observability import setup_logging, RequestIDMiddleware, init_tracing
 
@@ -43,6 +44,10 @@ app = FastAPI(
         {
             "name": "Settings",
             "description": "System settings and credential management (admin only)"
+        },
+        {
+            "name": "Marketing",
+            "description": "Marketing activity and evidence registry"
         }
     ]
 )
@@ -65,6 +70,7 @@ app.include_router(system.router, prefix="/api/v1", tags=["System"])
 app.include_router(approvals.router, prefix="/api/v1", tags=["Approvals"])
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["Payments"])
 app.include_router(settings_router.router, prefix="/api/v1", tags=["Settings"])
+app.include_router(marketing_router, prefix="/api/v1", tags=["Marketing"])
 
 @app.get("/health")
 async def health_check(db: AsyncSession = Depends(get_db)):

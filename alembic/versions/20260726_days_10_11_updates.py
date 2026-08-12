@@ -35,12 +35,28 @@ def upgrade():
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=True),
         sa.PrimaryKeyConstraint('id')
     )
+    
+    # 3. Add publisher and retrieval_date columns to sources table
+    op.add_column('sources', sa.Column('publisher', sa.String(), nullable=True))
+    op.add_column('sources', sa.Column('retrieval_date', sa.DateTime(timezone=True), nullable=True))
+    
+    # 4. Add technical verification fields to content_items table
+    op.add_column('content_items', sa.Column('technical_verification_status', sa.String(), nullable=True))
+    op.add_column('content_items', sa.Column('technical_verification_details', sa.Text(), nullable=True))
 
 def downgrade():
-    # 1. Drop engagement_proposals table
+    # 4. Remove technical verification fields from content_items table
+    op.drop_column('content_items', 'technical_verification_details')
+    op.drop_column('content_items', 'technical_verification_status')
+    
+    # 3. Remove publisher and retrieval_date columns from sources table
+    op.drop_column('sources', 'retrieval_date')
+    op.drop_column('sources', 'publisher')
+    
+    # 2. Drop engagement_proposals table
     op.drop_table('engagement_proposals')
 
-    # 2. Remove publication and scheduling columns from content_items
+    # 1. Remove publication and scheduling columns from content_items
     op.drop_column('content_items', 'publish_error')
     op.drop_column('content_items', 'post_id')
     op.drop_column('content_items', 'post_url')
