@@ -12,6 +12,7 @@ from apps.workers.scheduler import (
     scheduled_publisher_agent_task_technical,
     scheduled_publisher_agent_task_seo,
     scheduled_telegram_republisher,
+    scheduled_telegram_digest,
     scheduled_seo_content_generator,
     setup_scheduled_tasks
 )

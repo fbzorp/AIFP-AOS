@@ -1,6 +1,6 @@
 """
 Telegram Republisher Agent
-Monitors for successful SEO content from all agents and republishes to the "zorpresearch" channel.
+Monitors for successful content from all agents and republishes to the "zorpresearch" channel.
 Uses DeepSeek reasoning model for execution decisions.
 """
 
@@ -36,27 +36,30 @@ class TelegramRepublisherAgent(BaseAgent):
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute Telegram republishing workflow.
-        
+
         Args:
-            input_data: May contain specific content_id to republish, or empty for auto-discovery
-        
+            input_data: May contain specific content_id to republish, or empty for auto-discovery/digest
+
         Returns:
             Dict with execution results
         """
         try:
-            if input_data.get("content_id"):
+            if input_data.get("mode") == "digest":
+                # Build and post 6-hour digest of all posts
+                result = await self._build_all_posts_digest()
+            elif input_data.get("content_id"):
                 # Republish specific content
                 result = await self._republish_specific_content(input_data["content_id"])
             else:
                 # Auto-discover and republish recent SEO content
                 result = await self._auto_discover_and_republish()
-            
+
             return {
                 "agent": self.name,
-                "outcome": "republishing_completed",
+                "outcome": result.get("outcome", "completed"),
                 "report": result
             }
-            
+
         except Exception as e:
             logger.error(f"Telegram republishing failed: {e}")
             return {
@@ -218,5 +221,70 @@ Original: {content.post_url}
             "auto_discover_seo_content": True,
             "republish_to_telegram": True,
             "ai_content_evaluation": True,
-            "multi_agent_monitoring": True
+            "multi_agent_monitoring": True,
+            "all_posts_digest": True
         }
+
+    async def _build_all_posts_digest(self) -> Dict[str, Any]:
+        """
+        Build a digest of all published content from the last 6 hours across all agents/channels.
+        """
+        with get_sync_session() as session:
+            # Get all published content from the last 6 hours
+            cutoff = datetime.now() - timedelta(hours=6)
+
+            all_content = session.query(ContentItemModel).filter(
+                ContentItemModel.status == "published",
+                ContentItemModel.published_at >= cutoff,
+                ContentItemModel.post_url.isnot(None)
+            ).order_by(desc(ContentItemModel.published_at)).all()
+
+            if not all_content:
+                return {
+                    "outcome": "no_content",
+                    "message": "No published content found in the last 6 hours"
+                }
+
+            # Build digest message
+            digest_lines = [
+                f"📊 Content Digest - Last 6 Hours ({cutoff.strftime('%Y-%m-%d %H:%M')} to {datetime.now().strftime('%Y-%m-%d %H:%M')})",
+                f"Total posts: {len(all_content)}",
+                ""
+            ]
+
+            for content in all_content:
+                time_str = content.published_at.strftime('%Y-%m-%d %H:%M') if content.published_at else "Unknown"
+                digest_lines.append(
+                    f"📌 {content.title[:50]}{'...' if len(content.title) > 50 else ''}\n"
+                    f"   Agent: {content.author_agent}\n"
+                    f"   Channel: {content.channel}\n"
+                    f"   Published: {time_str}\n"
+                    f"   URL: {content.post_url}\n"
+                )
+
+            digest_message = "\n".join(digest_lines)
+
+            # Post digest to Telegram
+            try:
+                if not self.telegram_client:
+                    self.telegram_client = TelegramClient()
+
+                result = await self.telegram_client.publish_post(
+                    text=digest_message,
+                    post_id=f"digest-{int(datetime.now().timestamp())}"  # Unique ID for idempotency
+                )
+
+                return {
+                    "outcome": "digest_published",
+                    "message": "All posts digest published",
+                    "digest_url": result.get("post_url"),
+                    "post_count": len(all_content)
+                }
+
+            except Exception as e:
+                logger.error(f"Failed to publish digest: {e}")
+                return {
+                    "outcome": "digest_failed",
+                    "error": str(e),
+                    "post_count": len(all_content)
+                }

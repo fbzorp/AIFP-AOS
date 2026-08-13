@@ -100,6 +100,29 @@ def scheduled_telegram_republisher():
         raise
 
 
+@dramatiq.actor(periodic=cron("0 */6 * * *"))
+def scheduled_telegram_digest():
+    """
+    Scheduled task to post 6-hour digest of all published content to Telegram channel.
+    Runs every 6 hours to highlight all posts across all agents/channels.
+    """
+    logger.info("Running scheduled Telegram digest")
+
+    from apps.agents.registry import get_agent
+
+    agent = get_agent("Telegram Republisher")
+    if not agent:
+        logger.error("Telegram Republisher agent not found")
+        return
+
+    try:
+        result = asyncio.run(agent.execute({"mode": "digest"}))
+        logger.info(f"Telegram digest result: {result}")
+    except Exception as e:
+        logger.error(f"Telegram digest task failed: {e}")
+        raise
+
+
 @dramatiq.actor(periodic=cron("0 */12 * * *"))
 def scheduled_seo_content_generator():
     """
@@ -145,6 +168,7 @@ def setup_scheduled_tasks():
     logger.info("- Technical Content: Every 45 minutes (*/45 * * * *)")
     logger.info("- SEO Content: Every 60 minutes (*/60 * * * *)")
     logger.info("- Telegram Republisher: Every 6 hours (0 */6 * * *)")
+    logger.info("- Telegram Digest: Every 6 hours (0 */6 * * *)")
     logger.info("- SEO Content Generator: Every 12 hours (0 */12 * * *)")
 
     return

@@ -407,9 +407,19 @@ class ContentStrategyAgent(BaseAgent):
         def _persist_plan():
             with get_sync_session() as session:
                 for item in plan.get("items", []):
+                    # Normalize channel to supported values
+                    channel = item.get("channel", "X")
+                    # Normalize google/seo/blog to supported publishers
+                    if channel.lower() in ["google", "seo", "blog"]:
+                        channel = "google"
+                    elif channel.lower() == "twitter":
+                        channel = "x"
+                    elif channel.lower() not in ["x", "twitter", "moltbook", "general", "aifintech", "aiagents", "telegram"]:
+                        channel = "x"  # Default to X for unknown channels
+
                     new_item = ContentItemModel(
                         title=item.get("title", "Planned Content"),
-                        channel=item.get("channel", "X"),
+                        channel=channel,
                         status="draft",
                         objective=item.get("objective"),
                         target_audience=item.get("target_audience"),
@@ -422,7 +432,7 @@ class ContentStrategyAgent(BaseAgent):
                     session.add(new_item)
                     session.flush()
                     item_ids.append(new_item.id)
-                    record_event(session, self.name, "content_planned", f"Planned item for {item.get('channel')}", {"item_id": new_item.id})
+                    record_event(session, self.name, "content_planned", f"Planned item for {channel}", {"item_id": new_item.id})
                 session.commit()
         
         await asyncio.to_thread(_persist_plan)
@@ -628,6 +638,9 @@ class SEOContentAgent(BaseAgent):
             with get_sync_session() as session:
                 db_item = session.query(ContentItemModel).filter(ContentItemModel.id == content_item_id).first()
                 db_item.body = generation.get("body")
+                # Set channel to google/seo for proper publisher resolution
+                if not db_item.channel or db_item.channel == "X":
+                    db_item.channel = "google"
                 # Store SEO metadata in variants to preserve it
                 seo_metadata = {
                     "seo_title_tag": generation.get("seo_title_tag"),
