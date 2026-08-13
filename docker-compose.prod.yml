@@ -3,7 +3,7 @@ services:
     image: pgvector/pgvector:pg17
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-aifp}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-prod_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: ${POSTGRES_DB:-aifp_prod}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -39,9 +39,11 @@ services:
       - "8000"
     environment:
       APP_ENV: production
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-prod_password}@postgres:5432/${POSTGRES_DB:-aifp_prod}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aifp_prod}
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: INFO
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?DEEPSEEK_API_KEY is required}
       PAYMENTS_KILL_SWITCH: ${PAYMENTS_KILL_SWITCH:-false}
       PAYMENTS_NETWORK: ${PAYMENTS_NETWORK}
       SOLANA_RPC_URL: ${SOLANA_RPC_URL}
@@ -71,9 +73,11 @@ services:
     command: ["uv", "run", "dramatiq", "apps.workers.tasks"]
     environment:
       APP_ENV: production
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-prod_password}@postgres:5432/${POSTGRES_DB:-aifp_prod}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aifp_prod}
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: INFO
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?DEEPSEEK_API_KEY is required}
       SOLANA_RPC_URL: ${SOLANA_RPC_URL}
       EVM_RPC_URL: ${EVM_RPC_URL}
       AIFINPAY_AGENT_SECRET: ${AIFINPAY_AGENT_SECRET}

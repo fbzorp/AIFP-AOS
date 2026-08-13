@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from redis import Redis
 from apps.api.config import settings as config_settings
 from apps.models.base import get_db
@@ -12,6 +12,7 @@ from apps.api.routers import settings as settings_router
 from apps.api.routers.marketing import router as marketing_router
 from apps.api.auth import create_access_token, create_test_token
 from apps.core.observability import setup_logging, RequestIDMiddleware, init_tracing
+from apps.core.audit.service import record_event_async
 
 # Configure structured logging
 setup_logging(config_settings.LOG_LEVEL)
@@ -20,6 +21,31 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting AiFinPay AOS API...")
+
+    # Production configuration validation
+    if config_settings.APP_ENV == "production":
+        errors = config_settings.validate_production_startup()
+        if errors:
+            error_message = f"Production configuration validation failed:\n" + "\n".join(f"  - {e}" for e in errors)
+            logger.critical(error_message)
+            # Try to record audit event before failing
+            try:
+                engine = create_async_engine(config_settings.DATABASE_URL)
+                async_session = async_sessionmaker(engine, expire_on_commit=False)
+                async with async_session() as session:
+                    await record_event_async(
+                        session,
+                        agent_name="system",
+                        event_type="config_validation_failed",
+                        message=f"Production startup failed: {error_message}",
+                        metadata={"errors": errors, "env": "production"}
+                    )
+                    await session.commit()
+            except Exception as audit_error:
+                logger.error(f"Failed to record audit event for config validation failure: {audit_error}")
+            # Fail closed - do not start with invalid production config
+            raise ValueError(error_message)
+
     yield
     logger.info("Shutting down AiFinPay AOS API...")
 

@@ -4,6 +4,7 @@ import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from apps.api.config import Settings
 
 from apps.models.base import Base
 from apps.models.audit_event import AuditEventModel
@@ -153,7 +154,32 @@ class TestPostgresTriggerProtection:
     
     @pytest.fixture
     def postgres_session(self, postgres_engine):
-        """Create a database session for each test."""
+        """Create a database session for each test with append-only trigger applied."""
+        # Create the append-only trigger before yielding the session
+        with postgres_engine.connect() as conn:
+            conn.execute(text("""
+                CREATE OR REPLACE FUNCTION prevent_audit_modification()
+                RETURNS TRIGGER AS $$
+                BEGIN
+                    RAISE EXCEPTION 'Audit events are append-only. Modification (UPDATE/DELETE) is not allowed.';
+                    RETURN NULL;
+                END;
+                $$ LANGUAGE plpgsql;
+            """))
+            conn.execute(text("""
+                CREATE TRIGGER audit_events_prevent_update
+                BEFORE UPDATE ON audit_events
+                FOR EACH ROW
+                EXECUTE FUNCTION prevent_audit_modification();
+            """))
+            conn.execute(text("""
+                CREATE TRIGGER audit_events_prevent_delete
+                BEFORE DELETE ON audit_events
+                FOR EACH ROW
+                EXECUTE FUNCTION prevent_audit_modification();
+            """))
+            conn.commit()
+
         TestingSessionLocal = sessionmaker(bind=postgres_engine, expire_on_commit=False)
         session = TestingSessionLocal()
         try:
@@ -161,65 +187,61 @@ class TestPostgresTriggerProtection:
             session.rollback()
         finally:
             session.close()
+            # Clean up triggers
+            with postgres_engine.connect() as conn:
+                conn.execute(text("DROP TRIGGER IF EXISTS audit_events_prevent_update ON audit_events"))
+                conn.execute(text("DROP TRIGGER IF EXISTS audit_events_prevent_delete ON audit_events"))
+                conn.execute(text("DROP FUNCTION IF EXISTS prevent_audit_modification"))
+                conn.commit()
     
     def test_update_prevented_by_trigger(self, postgres_session):
         """Test that UPDATE on audit_events is prevented by PostgreSQL trigger."""
-        pytest.skip("PostgreSQL trigger tests require full migration on fresh database")
-        
         event = record_event(postgres_session, "TestAgent", "test", "Test message")
         postgres_session.commit()
-        
+
         event.message = "Modified message"
-        
+
         with pytest.raises(Exception) as exc_info:
             postgres_session.commit()
-        
+
         assert "append-only" in str(exc_info.value).lower() or "modification" in str(exc_info.value).lower()
     
     def test_delete_prevented_by_trigger(self, postgres_session):
         """Test that DELETE on audit_events is prevented by PostgreSQL trigger."""
-        pytest.skip("PostgreSQL trigger tests require full migration on fresh database")
-        
         event = record_event(postgres_session, "TestAgent", "test", "Test message")
         postgres_session.commit()
-        
+
         postgres_session.delete(event)
-        
+
         with pytest.raises(Exception) as exc_info:
             postgres_session.commit()
-        
+
         assert "append-only" in str(exc_info.value).lower() or "modification" in str(exc_info.value).lower()
     
     def test_insert_still_works(self, postgres_session):
         """Test that INSERT operations still work with the trigger."""
-        pytest.skip("PostgreSQL trigger tests require full migration on fresh database")
-        
-        event = AuditEventModel(
-            agent_name="TestAgent",
-            event_type="test",
-            message="Test message"
-        )
-        postgres_session.add(event)
+        event = record_event(postgres_session, "TestAgent", "test", "Test message")
         postgres_session.commit()
-        
+
         retrieved = postgres_session.query(AuditEventModel).first()
         assert retrieved is not None
         assert retrieved.message == "Test message"
-    
+        assert retrieved.record_hash is not None
+
     def test_record_event_with_populated_hash_succeeds(self, postgres_session):
         """Test that normal record_event call succeeds with populated record_hash under active trigger."""
         # This test proves the fix: record_event now computes hash before INSERT
         # avoiding the UPDATE that would trigger append-only protection
         event = record_event(postgres_session, "TestAgent", "event1", "Test event with hash")
         postgres_session.commit()
-        
+
         # Verify the event was inserted successfully
         assert event is not None
         assert event.agent_name == "TestAgent"
         assert event.message == "Test event with hash"
         assert event.record_hash is not None
         assert len(event.record_hash) == 64
-        
+
         # Verify the event can be retrieved
         retrieved = postgres_session.query(AuditEventModel).filter_by(id=event.id).first()
         assert retrieved is not None
@@ -263,3 +285,69 @@ class TestAsyncAuditRecording:
             assert event[2] is None
         
         await async_engine.dispose()
+
+
+class TestProductionValidation:
+    """Tests for production configuration validation."""
+
+    def test_production_validation_detects_default_secret_key(self):
+        """Test that production validation detects default SECRET_KEY."""
+        settings = Settings(
+            APP_ENV='production',
+            SECRET_KEY='dev-secret-key-change-in-production',
+            DEEPSEEK_API_KEY='test-key',
+            DATABASE_URL='postgresql+asyncpg://aifp:realpassword@localhost:5432/aifp_prod',
+            MOLTBOOK_AUTOPUBLISH=False
+        )
+        errors = settings.validate_production_startup()
+        assert len(errors) == 1
+        assert 'SECRET_KEY must be set to a non-default value in production' in errors[0]
+
+    def test_production_validation_detects_missing_deepseek_key(self):
+        """Test that production validation detects missing DEEPSEEK_API_KEY."""
+        settings = Settings(
+            APP_ENV='production',
+            SECRET_KEY='real-secret-key',
+            DEEPSEEK_API_KEY=None,
+            DATABASE_URL='postgresql+asyncpg://aifp:realpassword@localhost:5432/aifp_prod',
+            MOLTBOOK_AUTOPUBLISH=False
+        )
+        errors = settings.validate_production_startup()
+        assert len(errors) == 1
+        assert 'DEEPSEEK_API_KEY is required in production' in errors[0]
+
+    def test_production_validation_detects_default_database_password(self):
+        """Test that production validation detects default database password."""
+        settings = Settings(
+            APP_ENV='production',
+            SECRET_KEY='real-secret-key',
+            DEEPSEEK_API_KEY='test-key',
+            DATABASE_URL='postgresql+asyncpg://aifp:prod_password@localhost:5432/aifp_prod',
+            MOLTBOOK_AUTOPUBLISH=False
+        )
+        errors = settings.validate_production_startup()
+        assert len(errors) == 1
+        assert "Database password must not be the default 'prod_password' in production" in errors[0]
+
+    def test_production_validation_passes_with_valid_config(self):
+        """Test that production validation passes with valid configuration."""
+        settings = Settings(
+            APP_ENV='production',
+            SECRET_KEY='real-secret-key',
+            DEEPSEEK_API_KEY='test-key',
+            DATABASE_URL='postgresql+asyncpg://aifp:realpassword@localhost:5432/aifp_prod',
+            MOLTBOOK_AUTOPUBLISH=False
+        )
+        errors = settings.validate_production_startup()
+        assert len(errors) == 0
+
+    def test_development_environment_always_passes_validation(self):
+        """Test that development environment always passes validation."""
+        settings = Settings(
+            APP_ENV='development',
+            SECRET_KEY='dev-secret-key-change-in-production',
+            DEEPSEEK_API_KEY=None,
+            DATABASE_URL='postgresql+asyncpg://aifp:devpassword@localhost:5432/aifp_dev'
+        )
+        errors = settings.validate_production_startup()
+        assert len(errors) == 0

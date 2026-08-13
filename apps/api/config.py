@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
@@ -123,10 +124,84 @@ class Settings(BaseSettings):
     PAYMENTS_KILL_SWITCH: bool = False
     
     model_config = SettingsConfigDict(
-        env_file=".env", 
-        case_sensitive=True, 
+        env_file=".env",
+        case_sensitive=True,
         extra="ignore"
     )
+
+    @model_validator(mode="after")
+    def validate_production_config(self) -> "Settings":
+        """Validate that production environment has proper configuration."""
+        if self.APP_ENV == "production":
+            errors = []
+
+            # Critical security settings
+            if not self.SECRET_KEY or self.SECRET_KEY == "dev-secret-key-change-in-production":
+                errors.append("SECRET_KEY must be set to a non-default value in production")
+
+            # Critical LLM configuration
+            if not self.DEEPSEEK_API_KEY:
+                errors.append("DEEPSEEK_API_KEY is required in production")
+
+            # Database password check
+            if "prod_password" in self.DATABASE_URL:
+                errors.append("Database password must not be the default 'prod_password' in production")
+
+            # Conditional validation: only check credentials if autopublish is enabled
+            if self.MOLTBOOK_AUTOPUBLISH:
+                if not self.MOLTBOOK_API_KEY or not self.MOLTBOOK_AGENT_API_KEY or not self.MOLTBOOK_APP_KEY:
+                    errors.append("Moltbook credentials are required when MOLTBOOK_AUTOPUBLISH is enabled in production")
+
+            if self.X_AUTOPUBLISH:
+                if not all([self.X_API_KEY, self.X_API_SECRET, self.X_ACCESS_TOKEN, self.X_ACCESS_TOKEN_SECRET]):
+                    errors.append("X credentials are required when X_AUTOPUBLISH is enabled in production")
+
+            if self.TELEGRAM_AUTOPUBLISH:
+                if not self.TELEGRAM_BOT_TOKEN:
+                    errors.append("Telegram bot token is required when TELEGRAM_AUTOPUBLISH is enabled in production")
+
+            # Agent-specific autopublish validation
+            for agent_prefix in ["FOUNDER_CONTENT", "TECHNICAL_CONTENT", "SEO_CONTENT"]:
+                if getattr(self, f"{agent_prefix}_MOLTBOOK_AUTOPUBLISH", False):
+                    if not all([
+                        getattr(self, f"{agent_prefix}_MOLTBOOK_AGENT_API_KEY"),
+                        getattr(self, f"{agent_prefix}_MOLTBOOK_APP_KEY")
+                    ]):
+                        errors.append(f"{agent_prefix} Moltbook credentials are required when autopublish is enabled in production")
+
+                if getattr(self, f"{agent_prefix}_X_AUTOPUBLISH", False):
+                    if not all([
+                        getattr(self, f"{agent_prefix}_X_API_KEY"),
+                        getattr(self, f"{agent_prefix}_X_API_SECRET"),
+                        getattr(self, f"{agent_prefix}_X_ACCESS_TOKEN"),
+                        getattr(self, f"{agent_prefix}_X_ACCESS_TOKEN_SECRET")
+                    ]):
+                        errors.append(f"{agent_prefix} X credentials are required when autopublish is enabled in production")
+
+                if getattr(self, f"{agent_prefix}_TELEGRAM_AUTOPUBLISH", False):
+                    if not all([
+                        getattr(self, f"{agent_prefix}_TELEGRAM_BOT_TOKEN"),
+                        getattr(self, f"{agent_prefix}_TELEGRAM_CHAT_ID")
+                    ]):
+                        errors.append(f"{agent_prefix} Telegram credentials are required when autopublish is enabled in production")
+
+            if errors:
+                self._production_validation_errors = errors
+                # Don't raise here - let the lifespan handler decide
+        else:
+            self._production_validation_errors = None
+
+        return self
+
+    def validate_production_startup(self) -> list[str]:
+        """
+        Explicit validation method to be called at startup.
+        Returns list of errors if production config is invalid, empty list otherwise.
+        This allows audit event recording before raising the error.
+        """
+        if self.APP_ENV == "production":
+            return getattr(self, "_production_validation_errors", [])
+        return []
 
 
 settings = Settings()
