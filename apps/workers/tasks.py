@@ -3,13 +3,15 @@ import os
 import logging
 import asyncio
 import dramatiq
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.sql import func
 from dramatiq.brokers.redis import RedisBroker
 from apps.api.config import settings
 from apps.models.base import get_sync_session
 from apps.models.task import TaskModel
 from apps.models.content_item import ContentItemModel
-from apps.core.policy.engine import PolicyEngine
+from apps.models.approval import ApprovalModel
+from apps.core.policy.engine import PolicyEngine, compute_draft_hash
 from apps.core.audit.service import record_event
 from apps.agents.registry import get_agent
 
@@ -107,12 +109,60 @@ def run_agent_task(task_id: str):
                     )
                     session.add(new_task)
                     session.flush() # Ensure ID is generated
-                    
+
                     # Record audit event inside the transaction
                     record_event(session, "System", "task_enqueued", f"Enqueued Compliance & Brand for item {item_id}", {"task_id": new_task.id, "item_id": item_id})
-                    
+
                     # Collect ID for dispatch AFTER commit
                     follow_on_tasks.append(new_task.id)
+
+            elif task.task_type == "Compliance & Brand" and result.get("outcome") == "compliance_passed":
+                item_id = result.get("item_id")
+                if item_id:
+                    # Auto-approve SEO content for autonomous publishing
+                    content = session.query(ContentItemModel).filter(ContentItemModel.id == item_id).first()
+                    if content and content.author_agent == "SEO Content":
+                        from apps.core.policy.engine import compute_draft_hash
+                        from datetime import datetime, timedelta
+
+                        draft_hash = compute_draft_hash(content)
+                        now = datetime.now(timezone.utc)
+                        expires_at = now + timedelta(hours=24)
+
+                        approval = ApprovalModel(
+                            content_id=item_id,
+                            draft_hash=draft_hash,
+                            status="approved",
+                            approved_by="System (Auto-Approval for SEO)",
+                            expires_at=expires_at,
+                            decided_at=now
+                        )
+                        session.add(approval)
+                        session.flush()
+
+                        content.status = "approved"
+                        if not content.scheduled_at:
+                            content.scheduled_at = now + timedelta(days=1)
+
+                        record_event(
+                            session,
+                            agent_name="System",
+                            event_type="auto_approval_seo",
+                            message=f"Auto-approved SEO content: {content.title}",
+                            metadata={"content_id": item_id, "approval_id": approval.id, "draft_hash": draft_hash}
+                        )
+
+                        logger.info(f"Auto-approved SEO content {item_id}")
+                    else:
+                        # For non-SEO content, keep it at pending_review for human approval
+                        content.status = "pending_review"
+                        record_event(
+                            session,
+                            agent_name="System",
+                            event_type="compliance_pending_review",
+                            message=f"Compliance passed, pending human review: {content.title}",
+                            metadata={"content_id": item_id}
+                        )
 
         except Exception as e:
             logger.error(f"Task {task_id} failed: {e}")

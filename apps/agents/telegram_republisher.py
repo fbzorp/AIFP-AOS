@@ -104,20 +104,20 @@ class TelegramRepublisherAgent(BaseAgent):
         with get_sync_session() as session:
             # Get recently published SEO content from all agents (last 24 hours)
             cutoff = datetime.now() - timedelta(hours=24)
-            
+
             seo_content = session.query(ContentItemModel).filter(
                 ContentItemModel.status == "published",
                 ContentItemModel.published_at >= cutoff,
                 ContentItemModel.post_url.isnot(None),
-                ContentItemModel.format.ilike("seo%")
+                ContentItemModel.author_agent == "SEO Content"
             ).order_by(desc(ContentItemModel.published_at)).limit(10).all()
-            
+
             results = []
-            
+
             for content in seo_content:
                 # Use DeepSeek reasoning to evaluate
                 should_publish = await self._evaluate_content_for_republishing(content)
-                
+
                 if should_publish:
                     telegram_post = await self._publish_to_telegram(content)
                     results.append({
@@ -128,7 +128,7 @@ class TelegramRepublisherAgent(BaseAgent):
                         "agent": content.author_agent,
                         "title": content.title
                     })
-            
+
             return {
                 "total_seo_content": len(seo_content),
                 "republished_count": len(results),

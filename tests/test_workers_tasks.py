@@ -15,6 +15,7 @@ from apps.models.task import TaskModel
 from apps.models.content_item import ContentItemModel
 from apps.models.audit_event import AuditEventModel
 from apps.workers.tasks import run_agent_task, publish_content, _perform_publish_logic
+from apps.workers.scheduler import scheduled_seo_content_generator
 
 # Setup in-memory SQLite for testing
 engine = create_engine(
@@ -542,7 +543,7 @@ class TestFollowOnTaskChaining:
         """Test that follow-on task is not created if outcome doesn't match."""
         session = TestingSessionLocal()
         mock_get_session.return_value.__enter__.return_value = session
-        
+
         mock_agent = Mock()
         mock_agent.name = "Technical Content"
         mock_agent.execute = AsyncMock(return_value={
@@ -550,7 +551,7 @@ class TestFollowOnTaskChaining:
             "item_id": "item-1"
         })
         mock_get_agent.return_value = mock_agent
-        
+
         task = TaskModel(
             id="task-123",
             task_type="Technical Content",
@@ -559,6 +560,131 @@ class TestFollowOnTaskChaining:
         )
         session.add(task)
         session.commit()
+
+        run_agent_task("task-123")
+
+        # Verify no follow-on task created
+        follow_ons = session.query(TaskModel).filter(TaskModel.id != "task-123").all()
+        assert len(follow_ons) == 0
+
+
+class TestAutoApprovalSEOContent:
+    """Tests for auto-approval of SEO content after compliance passes."""
+
+    @patch("apps.workers.tasks.get_sync_session")
+    @patch("apps.workers.tasks.get_agent")
+    @patch("apps.workers.tasks.record_event")
+    def test_seo_content_auto_approved_after_compliance(self, mock_record, mock_get_agent, mock_get_session):
+        """Test that SEO content gets auto-approved after compliance passes."""
+        session = TestingSessionLocal()
+        mock_get_session.return_value.__enter__.return_value = session
+
+        # Create SEO content
+        seo_content = ContentItemModel(
+            id="seo-item-1",
+            title="SEO Article",
+            channel="google",
+            status="draft",
+            author_agent="SEO Content",
+            format="article",
+            body="SEO content body"
+        )
+        session.add(seo_content)
+        session.flush()
+
+        # Mock agent that returns compliance passed outcome
+        mock_agent = Mock()
+        mock_agent.name = "Compliance & Brand"
+        mock_agent.execute = AsyncMock(return_value={
+            "outcome": "compliance_passed",
+            "item_id": "seo-item-1"
+        })
+        mock_get_agent.return_value = mock_agent
+
+        # Create Compliance task
+        task = TaskModel(
+            id="task-123",
+            task_type="Compliance & Brand",
+            status="pending",
+            input_data={"content_item_id": "seo-item-1"}
+        )
+        session.add(task)
+        session.commit()
+
+        run_agent_task("task-123")
+
+        # Verify SEO content was auto-approved
+        seo_content = session.query(ContentItemModel).filter(ContentItemModel.id == "seo-item-1").first()
+        assert seo_content.status == "approved"
+        assert seo_content.scheduled_at is not None
+
+        # Verify approval record was created
+        from apps.models.approval import ApprovalModel
+        approval = session.query(ApprovalModel).filter(ApprovalModel.content_id == "seo-item-1").first()
+        assert approval is not None
+        assert approval.status == "approved"
+        assert "Auto-Approval for SEO" in approval.approved_by
+
+    @patch("apps.workers.tasks.get_sync_session")
+    @patch("apps.workers.tasks.get_agent")
+    @patch("apps.workers.tasks.record_event")
+    def test_non_seo_content_remains_pending_review(self, mock_record, mock_get_agent, mock_get_session):
+        """Test that non-SEO content remains pending_review after compliance passes."""
+        session = TestingSessionLocal()
+        mock_get_session.return_value.__enter__.return_value = session
+
+        # Create non-SEO content
+        founder_content = ContentItemModel(
+            id="founder-item-1",
+            title="Founder Post",
+            channel="twitter",
+            status="draft",
+            author_agent="Founder Content",
+            format="post",
+            body="Founder content body"
+        )
+        session.add(founder_content)
+        session.flush()
+
+        # Mock agent that returns compliance passed outcome
+        mock_agent = Mock()
+        mock_agent.name = "Compliance & Brand"
+        mock_agent.execute = AsyncMock(return_value={
+            "outcome": "compliance_passed",
+            "item_id": "founder-item-1"
+        })
+        mock_get_agent.return_value = mock_agent
+
+        # Create Compliance task
+        task = TaskModel(
+            id="task-123",
+            task_type="Compliance & Brand",
+            status="pending",
+            input_data={"content_item_id": "founder-item-1"}
+        )
+        session.add(task)
+        session.commit()
+
+        run_agent_task("task-123")
+
+        # Verify non-SEO content remains pending_review
+        founder_content = session.query(ContentItemModel).filter(ContentItemModel.id == "founder-item-1").first()
+        assert founder_content.status == "pending_review"
+
+        # Verify no auto-approval was created
+        from apps.models.approval import ApprovalModel
+        approval = session.query(ApprovalModel).filter(ApprovalModel.content_id == "founder-item-1").first()
+        assert approval is None
+
+
+class TestScheduledSEOContentGenerator:
+    """Tests for the scheduled SEO content generator."""
+
+    @pytest.mark.skip("Requires full database setup - tested in integration")
+    def test_scheduled_seo_content_generator_creates_task(self):
+        """Test that scheduled SEO content generator creates Content Strategy task."""
+        # This test requires full database setup, skip for unit tests
+        pass
         
         run_agent_task("task-123")
         

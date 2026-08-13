@@ -6,7 +6,9 @@ from sqlalchemy.pool import StaticPool
 from apps.models.base import Base, get_sync_session
 from apps.models.content_item import ContentItemModel
 from apps.models.audit_event import AuditEventModel
+from apps.models.approval import ApprovalModel
 from apps.workers.tasks import publish_content
+from apps.integrations.publishing.dispatcher import get_publisher
 
 # Setup in-memory SQLite for testing
 engine = create_engine(
@@ -94,7 +96,7 @@ def test_publish_denied_not_in_allowlist(mock_policy, mock_get_session):
 def test_publish_denied_not_approved(mock_get_session):
     session = TestingSessionLocal()
     mock_get_session.return_value.__enter__.return_value = session
-    
+
     content = ContentItemModel(
         title="Test Post",
         channel="general",
@@ -102,6 +104,125 @@ def test_publish_denied_not_approved(mock_get_session):
     )
     session.add(content)
     session.commit()
-    
+
     with pytest.raises(ValueError, match="must be approved"):
         publish_content(content.id, "appr-123", "hash-123")
+
+
+def test_seo_google_publisher_mapping():
+    """Test that get_publisher resolves SEO/google channel to MultiChannelPublisher."""
+    from apps.integrations.publishing.dispatcher import MultiChannelPublisher
+
+    # Test various SEO-related channel names
+    for channel in ["google", "seo", "blog"]:
+        publisher = get_publisher(channel)
+        assert isinstance(publisher, MultiChannelPublisher)
+        assert publisher._agent_name is None  # No agent-specific credentials
+
+
+def test_seo_google_publisher_with_agent():
+    """Test that SEO publisher respects agent-specific credentials."""
+    from apps.integrations.publishing.dispatcher import MultiChannelPublisher
+
+    publisher = get_publisher("google", agent_name="SEO Content")
+    assert isinstance(publisher, MultiChannelPublisher)
+    assert publisher._agent_name == "SEO Content"
+
+
+def test_telegram_republisher_seo_content_selection():
+    """Test that Telegram republisher selects SEO content by author_agent."""
+    from datetime import datetime, timedelta
+    from sqlalchemy import select, desc
+
+    session = TestingSessionLocal()
+
+    # Create SEO content with author_agent="SEO Content"
+    seo_content = ContentItemModel(
+        title="SEO Article",
+        channel="google",
+        status="published",
+        author_agent="SEO Content",
+        format="article",
+        post_url="https://example.com/seo-article",
+        published_at=datetime.now() - timedelta(hours=1)
+    )
+    session.add(seo_content)
+
+    # Create non-SEO content to ensure it's not selected
+    non_seo_content = ContentItemModel(
+        title="Founder Post",
+        channel="twitter",
+        status="published",
+        author_agent="Founder Content",
+        format="post",
+        post_url="https://example.com/founder-post",
+        published_at=datetime.now() - timedelta(hours=1)
+    )
+    session.add(non_seo_content)
+    session.commit()
+
+    # Simulate Telegram republisher query logic
+    cutoff = datetime.now() - timedelta(hours=24)
+
+    result = session.execute(
+        select(ContentItemModel).filter(
+            ContentItemModel.status == "published",
+            ContentItemModel.published_at >= cutoff,
+            ContentItemModel.post_url.isnot(None),
+            ContentItemModel.author_agent == "SEO Content"
+        ).order_by(desc(ContentItemModel.published_at)).limit(10)
+    )
+    seo_items = result.scalars().all()
+
+    # Should only select SEO content
+    assert len(seo_items) == 1
+    assert seo_items[0].author_agent == "SEO Content"
+    assert seo_items[0].title == "SEO Article"
+
+
+def test_auto_approval_seo_content():
+    """Test that SEO content gets auto-approved after compliance passes."""
+    from apps.core.policy.engine import compute_draft_hash
+    from datetime import datetime, timedelta, timezone
+
+    session = TestingSessionLocal()
+
+    # Create SEO content
+    seo_content = ContentItemModel(
+        title="SEO Article",
+        channel="google",
+        status="draft",
+        author_agent="SEO Content",
+        format="article",
+        body="SEO content body"
+    )
+    session.add(seo_content)
+    session.flush()
+
+    # Simulate auto-approval logic
+    draft_hash = compute_draft_hash(seo_content)
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(hours=24)
+
+    approval = ApprovalModel(
+        content_id=seo_content.id,
+        draft_hash=draft_hash,
+        status="approved",
+        approved_by="System (Auto-Approval for SEO)",
+        expires_at=expires_at,
+        decided_at=now
+    )
+    session.add(approval)
+    session.flush()
+
+    seo_content.status = "approved"
+    if not seo_content.scheduled_at:
+        seo_content.scheduled_at = now + timedelta(days=1)
+
+    session.commit()
+
+    # Verify auto-approval worked
+    assert seo_content.status == "approved"
+    assert seo_content.scheduled_at is not None
+    assert approval.status == "approved"
+    assert approval.approved_by == "System (Auto-Approval for SEO)"

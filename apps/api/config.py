@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     MOLTBOOK_APP_KEY: Optional[str] = None
     MOLTBOOK_AUTOPUBLISH: bool = False
     MOLTBOOK_ALLOWED_SUBMOLTS: str = "general,aifintech,aiagents"
-    
+
     # Other Social Media APIs
     X_API_KEY: Optional[str] = None
     X_API_SECRET: Optional[str] = None
@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     TELEGRAM_AUTOPUBLISH: bool = False
     TELEGRAM_CHAT_ID: Optional[str] = None
     TELEGRAM_DEFAULT_CHANNEL: Optional[str] = None
+
+    # SEO / Multi-channel publishing
+    SEO_MULTI_CHANNEL_AUTOPUBLISH: bool = False
     
     # News/Search APIs for Market Intelligence
     NEWS_API_KEY: Optional[str] = None
@@ -102,6 +105,7 @@ class Settings(BaseSettings):
     SEO_CONTENT_MOLTBOOK_AGENT_API_KEY: Optional[str] = None
     SEO_CONTENT_MOLTBOOK_APP_KEY: Optional[str] = None
     SEO_CONTENT_MOLTBOOK_AUTOPUBLISH: bool = False
+    SEO_CONTENT_MULTI_CHANNEL_AUTOPUBLISH: bool = False
     
     # Blockchain
     SOLANA_RPC_URL: str = "https://api.devnet.solana.com"
@@ -159,6 +163,11 @@ class Settings(BaseSettings):
             if self.TELEGRAM_AUTOPUBLISH:
                 if not self.TELEGRAM_BOT_TOKEN:
                     errors.append("Telegram bot token is required when TELEGRAM_AUTOPUBLISH is enabled in production")
+
+            if self.SEO_MULTI_CHANNEL_AUTOPUBLISH:
+                # SEO multi-channel publishing requires at least one platform configured
+                if not (self.MOLTBOOK_AUTOPUBLISH or self.X_AUTOPUBLISH or self.TELEGRAM_AUTOPUBLISH):
+                    errors.append("SEO multi-channel autopublish requires at least one platform (Moltbook, X, or Telegram) to have autopublish enabled")
 
             # Agent-specific autopublish validation
             for agent_prefix in ["FOUNDER_CONTENT", "TECHNICAL_CONTENT", "SEO_CONTENT"]:

@@ -84,20 +84,70 @@ def scheduled_telegram_republisher():
     Runs every 6 hours to avoid overwhelming the channel.
     """
     logger.info("Running scheduled Telegram republisher")
-    
+
     from apps.agents.registry import get_agent
-    
+
     agent = get_agent("Telegram Republisher")
     if not agent:
         logger.error("Telegram Republisher agent not found")
         return
-    
+
     try:
         result = asyncio.run(agent.execute({}))
         logger.info(f"Telegram republisher result: {result}")
     except Exception as e:
         logger.error(f"Telegram republisher task failed: {e}")
         raise
+
+
+@dramatiq.actor(periodic=cron("0 */12 * * *"))
+def scheduled_seo_content_generator():
+    """
+    Scheduled task to generate SEO content on a regular interval.
+    Runs every 12 hours to generate new SEO content via Content Strategy agent.
+    """
+    logger.info("Running scheduled SEO content generator")
+
+    from apps.models.task import TaskModel
+    from apps.models.base import get_sync_session
+    from apps.workers.tasks import run_agent_task
+
+    with get_sync_session() as session:
+        # Create a Content Strategy task with SEO-oriented objective
+        task = TaskModel(
+            task_type="Content Strategy",
+            input_data={
+                "objective": "Generate SEO-optimized content for Google search",
+                "channel": "google",
+                "format": "article",
+                "target_audience": "developers and AI enthusiasts"
+            },
+            status="pending"
+        )
+        session.add(task)
+        session.flush()
+
+        logger.info(f"Created Content Strategy task {task.id} for SEO content generation")
+
+        # Dispatch the task
+        run_agent_task.send(task.id)
+        logger.info(f"Dispatched SEO content generation task {task.id}")
+
+
+def setup_scheduled_tasks():
+    """
+    Setup scheduled tasks for autonomous publishing.
+    Note: periodiq handles scheduling via decorators, so this function is informational.
+    """
+    logger.info("Periodiq middleware installed - automatic scheduling enabled")
+    logger.info("Scheduled tasks:")
+    logger.info("- Founder Content: Every 30 minutes (*/30 * * * *)")
+    logger.info("- Technical Content: Every 45 minutes (*/45 * * * *)")
+    logger.info("- SEO Content: Every 60 minutes (*/60 * * * *)")
+    logger.info("- Telegram Republisher: Every 6 hours (0 */6 * * *)")
+    logger.info("- SEO Content Generator: Every 12 hours (0 */12 * * *)")
+
+    return
 
 
 def setup_scheduled_tasks():
