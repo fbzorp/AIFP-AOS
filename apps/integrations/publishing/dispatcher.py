@@ -64,14 +64,13 @@ class MoltbookPublisher(PublisherBase):
             # Fallback to global settings
             creds = {
                 "agent_api_key": settings.MOLTBOOK_AGENT_API_KEY,
-                "app_key": settings.MOLTBOOK_APP_KEY,
-                "autopublish": getattr(settings, "MOLTBOOK_AUTOPUBLISH", False)
+                "app_key": settings.MOLTBOOK_APP_KEY
             }
-        
+
         self._client = MoltbookClient(
-            agent_api_key=creds.get("agent_api_key"),
+            agent_key=creds.get("agent_api_key"),
             app_key=creds.get("app_key"),
-            autopublish=creds.get("autopublish")
+            timeout=20
         )
         self._initialized = True
     
@@ -131,16 +130,15 @@ class XPublisher(PublisherBase):
                 "api_key": settings.X_API_KEY,
                 "api_secret": settings.X_API_SECRET,
                 "access_token": settings.X_ACCESS_TOKEN,
-                "access_token_secret": settings.X_ACCESS_TOKEN_SECRET,
-                "autopublish": getattr(settings, "X_AUTOPUBLISH", False)
+                "access_token_secret": settings.X_ACCESS_TOKEN_SECRET
             }
-        
+
         self._client = XClient(
             api_key=creds.get("api_key"),
             api_secret=creds.get("api_secret"),
             access_token=creds.get("access_token"),
             access_token_secret=creds.get("access_token_secret"),
-            autopublish=creds.get("autopublish")
+            timeout=20
         )
         self._initialized = True
     
@@ -189,14 +187,13 @@ class TelegramPublisher(PublisherBase):
             creds = {
                 "bot_token": settings.TELEGRAM_BOT_TOKEN,
                 "chat_id": getattr(settings, "TELEGRAM_CHAT_ID", None),
-                "default_channel": getattr(settings, "TELEGRAM_DEFAULT_CHANNEL", None),
-                "autopublish": getattr(settings, "TELEGRAM_AUTOPUBLISH", False)
+                "default_channel": getattr(settings, "TELEGRAM_DEFAULT_CHANNEL", None)
             }
 
         self._client = TelegramClient(
             bot_token=creds.get("bot_token"),
             chat_id=creds.get("chat_id"),
-            autopublish=creds.get("autopublish")
+            timeout=20
         )
         self._initialized = True
 

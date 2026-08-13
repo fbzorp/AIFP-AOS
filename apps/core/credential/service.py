@@ -40,18 +40,16 @@ class CredentialService:
                 "api_key": agent_api_key,
                 "api_secret": agent_api_secret,
                 "access_token": agent_access_token,
-                "access_token_secret": agent_access_token_secret,
-                "autopublish": agent_autopublish if agent_autopublish is not None else getattr(settings, "X_AUTOPUBLISH", False)
+                "access_token_secret": agent_access_token_secret
             }
-        
+
         # Fallback to global credentials
         logger.info(f"Using global X credentials for {agent_name}")
         return {
             "api_key": settings.X_API_KEY,
             "api_secret": settings.X_API_SECRET,
             "access_token": settings.X_ACCESS_TOKEN,
-            "access_token_secret": settings.X_ACCESS_TOKEN_SECRET,
-            "autopublish": getattr(settings, "X_AUTOPUBLISH", False)
+            "access_token_secret": settings.X_ACCESS_TOKEN_SECRET
         }
     
     @staticmethod
@@ -77,16 +75,14 @@ class CredentialService:
             logger.info(f"Using agent-specific Moltbook credentials for {agent_name}")
             return {
                 "agent_api_key": agent_api_key,
-                "app_key": agent_app_key or "moltdev_replace_me",
-                "autopublish": agent_autopublish if agent_autopublish is not None else getattr(settings, "MOLTBOOK_AUTOPUBLISH", False)
+                "app_key": agent_app_key or "moltdev_replace_me"
             }
-        
+
         # Fallback to global credentials
         logger.info(f"Using global Moltbook credentials for {agent_name}")
         return {
             "agent_api_key": settings.MOLTBOOK_AGENT_API_KEY,
-            "app_key": settings.MOLTBOOK_APP_KEY,
-            "autopublish": getattr(settings, "MOLTBOOK_AUTOPUBLISH", False)
+            "app_key": settings.MOLTBOOK_APP_KEY
         }
     
     @staticmethod
@@ -114,17 +110,15 @@ class CredentialService:
             return {
                 "bot_token": agent_bot_token,
                 "chat_id": agent_chat_id,
-                "default_channel": agent_default_channel,
-                "autopublish": agent_autopublish if agent_autopublish is not None else getattr(settings, "TELEGRAM_AUTOPUBLISH", False)
+                "default_channel": agent_default_channel
             }
-        
+
         # Fallback to global credentials
         logger.info(f"Using global Telegram credentials for {agent_name}")
         return {
             "bot_token": settings.TELEGRAM_BOT_TOKEN,
             "chat_id": getattr(settings, "TELEGRAM_CHAT_ID", None),
-            "default_channel": getattr(settings, "TELEGRAM_DEFAULT_CHANNEL", None),
-            "autopublish": getattr(settings, "TELEGRAM_AUTOPUBLISH", False)
+            "default_channel": getattr(settings, "TELEGRAM_DEFAULT_CHANNEL", None)
         }
     
     @staticmethod

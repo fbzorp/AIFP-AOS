@@ -36,14 +36,12 @@ class XClient:
         api_secret: Optional[str] = None,
         access_token: Optional[str] = None,
         access_token_secret: Optional[str] = None,
-        autopublish: Optional[bool] = None,
         timeout: float = 20
     ):
         self._api_key = api_key
         self._api_secret = api_secret
         self._access_token = access_token
         self._access_token_secret = access_token_secret
-        self._autopublish = autopublish
         self._timeout = timeout
         self.http = httpx.AsyncClient(timeout=timeout)
         self.base_url = "https://api.twitter.com/2"
@@ -122,8 +120,6 @@ class XClient:
     
     @property
     def autopublish_enabled(self) -> bool:
-        if self._autopublish is not None:
-            return self._autopublish
         return getattr(settings, "X_AUTOPUBLISH", False)
     
     @retry(retry=retry_if_exception(is_transient_error), stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)

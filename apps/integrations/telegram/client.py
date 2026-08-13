@@ -29,12 +29,10 @@ class TelegramClient:
         self,
         bot_token: Optional[str] = None,
         chat_id: Optional[str] = None,
-        autopublish: Optional[bool] = None,
         timeout: float = 20
     ):
         self._bot_token = bot_token
         self._chat_id = chat_id
-        self._autopublish = autopublish
         self._timeout = timeout
         self.http = httpx.AsyncClient(timeout=timeout)
     
@@ -52,8 +50,6 @@ class TelegramClient:
     
     @property
     def autopublish_enabled(self) -> bool:
-        if self._autopublish is not None:
-            return self._autopublish
         return getattr(settings, "TELEGRAM_AUTOPUBLISH", False)
     
     @retry(retry=retry_if_exception(is_transient_error), stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
