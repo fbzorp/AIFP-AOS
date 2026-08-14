@@ -136,7 +136,7 @@ def explain_pipeline():
     print("4. TELEGRAM DIGEST")
     print("   - Every 6 hours, Telegram republisher creates digest")
     print("   - Digest includes ALL published content from last 6 hours")
-    print("   - Posted to zorpresearch channel with live URLs\n")
+    print("   - Posted to aifp_publisher_bot channel with live URLs\n")
 
     print("5. REQUIREMENTS FOR REAL PUBLISHING")
     print("   - Valid API credentials in .env file")

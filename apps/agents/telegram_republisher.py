@@ -1,6 +1,6 @@
 """
 Telegram Republisher Agent
-Monitors for successful content from all agents and republishes to the "zorpresearch" channel.
+Monitors for successful content from all agents and republishes to the configured Telegram channel.
 Uses DeepSeek reasoning model for execution decisions.
 """
 
@@ -31,7 +31,7 @@ class TelegramRepublisherAgent(BaseAgent):
             description="Monitors successful SEO content and republishes to Telegram channel"
         )
         self.telegram_client = None
-        self.channel_id = "zorpresearch"
+        self.channel_id = getattr(settings, "TELEGRAM_DEFAULT_CHANNEL", "@aifp_publisher_bot")
     
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -152,8 +152,9 @@ class TelegramRepublisherAgent(BaseAgent):
             logger.warning("DeepSeek reasoning model not configured, defaulting to publish")
             return True
         
+        channel_name = self.channel_id or "aifp_publisher_bot"
         prompt = f"""
-        Evaluate this SEO content for republishing to the "zorpresearch" Telegram channel.
+        Evaluate this SEO content for republishing to the "{channel_name}" Telegram channel.
 
 Content Title: {content.title}
 Content Body: {content.body[:500] if content.body else content.variants}

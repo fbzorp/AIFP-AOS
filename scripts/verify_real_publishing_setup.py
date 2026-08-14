@@ -34,7 +34,7 @@ def check_env_file():
         print("MOLTBOOK_APP_KEY=your-moltbook-app-key")
         print("TELEGRAM_BOT_TOKEN=your-telegram-bot-token")
         print("TELEGRAM_CHAT_ID=your-telegram-chat-id")
-        print("TELEGRAM_DEFAULT_CHANNEL=zorpresearch")
+        print("TELEGRAM_DEFAULT_CHANNEL=aifp_publisher_bot")
         return False
 
     print("[OK] .env file found")
@@ -98,7 +98,7 @@ def print_verification_instructions():
     print("5. Verify real posts:")
     print("   - Check content.post_url is a live URL")
     print("   - Check audit events show dry_run: False")
-    print("   - Check Telegram digest posts to zorpresearch")
+    print("   - Check Telegram digest posts to aifp_publisher_bot")
     print()
     print("6. Export evidence:")
     print("   - Query DB for published content with real post_urls")

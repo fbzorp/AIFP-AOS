@@ -69,7 +69,7 @@ async def test_telegram_publishing():
     
     client = TelegramClient(autopublish=True)
     
-    test_message = "Testing real Telegram publishing via AIFP automation to zorpresearch channel"
+    test_message = "Testing real Telegram publishing via AIFP automation to aifp_publisher_bot channel"
     
     try:
         result = await client.publish_post(test_message)

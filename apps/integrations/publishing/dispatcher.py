@@ -244,6 +244,7 @@ class MultiChannelPublisher(PublisherBase):
 
         # Initialize all available publishers with agent-specific credentials
         # We'll publish to Moltbook, X, and Telegram if credentials are available
+        # "google" channel is handled externally - it routes to Moltbook with google submolt
         channels_to_try = ["moltbook", "x", "telegram"]
 
         for channel in channels_to_try:
@@ -324,11 +325,11 @@ _CHANNEL_PUBLISHERS: Dict[str, Type[PublisherBase]] = {
     "general": MoltbookPublisher,  # Moltbook submolt
     "aifintech": MoltbookPublisher,  # Moltbook submolt
     "aiagents": MoltbookPublisher,  # Moltbook submolt
+    "google": MoltbookPublisher,  # SEO content routes to Moltbook with google submolt
     "x": XPublisher,
     "twitter": XPublisher,
     "telegram": TelegramPublisher,
-    # SEO/Google/Blog channels map to multi-channel publisher for maximum reach
-    "google": MultiChannelPublisher,
+    # SEO/Blog channels map to multi-channel publisher for maximum reach
     "seo": MultiChannelPublisher,
     "blog": MultiChannelPublisher,
 }
