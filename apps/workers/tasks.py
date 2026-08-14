@@ -209,12 +209,16 @@ async def _perform_publish_logic(session, content_id: str, approval_id: str, dra
         publisher_params = {}
         if content.channel.lower() in ["moltbook", "general", "aifintech", "aiagents"]:
             publisher_params["submolt"] = content.channel.lower()
+        elif content.channel.lower() == "google":
+            # For google channel, route to google submolt on Moltbook
+            publisher_params["submolt"] = "google"
         
         # Call publisher
         async with publisher as pub_client:
             pub_result = await pub_client.publish_post(
                 title=content.title,
                 body=content.body or str(content.variants),
+                channel=content.channel,  # Pass channel for routing decisions
                 **publisher_params
             )
         

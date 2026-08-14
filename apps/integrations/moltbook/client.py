@@ -274,7 +274,8 @@ class MoltbookClient:
                         logger.info("Verification successful!")
                         # Merge verification success into original response
                         post_id = post_data.get("id")
-                        post_url = f"{self.base_url}/posts/{post_id}"
+                        # Use API URL instead of web URL since web URLs return 404 for agent posts
+                        post_url = f"{self.base_url}/api/v1/posts/{post_id}"
                         return {
                             "success": True,
                             "dry_run": False,
@@ -287,7 +288,8 @@ class MoltbookClient:
                 # Normal success path
                 post_data = data.get("post") or data.get("agent") or {}
                 post_id = data.get("post_id") or post_data.get("id")
-                post_url = data.get("post_url") or f"{self.base_url}/posts/{post_id}"
+                # Use API URL instead of web URL since web URLs return 404 for agent posts
+                post_url = data.get("post_url") or f"{self.base_url}/api/v1/posts/{post_id}"
                 
                 return {
                     "success": True,

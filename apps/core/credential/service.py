@@ -75,14 +75,14 @@ class CredentialService:
             logger.info(f"Using agent-specific Moltbook credentials for {agent_name}")
             return {
                 "agent_api_key": agent_api_key,
-                "app_key": agent_app_key or "moltdev_replace_me"
+                "app_key": agent_app_key or ""  # Empty string is fine for Moltbook posting
             }
 
         # Fallback to global credentials
         logger.info(f"Using global Moltbook credentials for {agent_name}")
         return {
             "agent_api_key": settings.MOLTBOOK_AGENT_API_KEY,
-            "app_key": settings.MOLTBOOK_APP_KEY
+            "app_key": settings.MOLTBOOK_APP_KEY or ""  # Empty string is fine for Moltbook posting
         }
     
     @staticmethod

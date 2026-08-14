@@ -64,12 +64,12 @@ class MoltbookPublisher(PublisherBase):
             # Fallback to global settings
             creds = {
                 "agent_api_key": settings.MOLTBOOK_AGENT_API_KEY,
-                "app_key": settings.MOLTBOOK_APP_KEY
+                "app_key": settings.MOLTBOOK_APP_KEY or ""  # Empty string is fine for Moltbook posting
             }
 
         self._client = MoltbookClient(
             agent_key=creds.get("agent_api_key"),
-            app_key=creds.get("app_key"),
+            app_key=creds.get("app_key") or "",  # Ensure empty string if None
             timeout=20
         )
         self._initialized = True
@@ -81,9 +81,15 @@ class MoltbookPublisher(PublisherBase):
         submolt = kwargs.get("submolt", "general")
         
         # Enforce allowlist
-        allowed_submolts = getattr(settings, "MOLTBOOK_ALLOWED_SUBMOLTS", "general").split(",")
+        allowed_submolts_str = getattr(settings, "MOLTBOOK_ALLOWED_SUBMOLTS", "general")
+        allowed_submolts = [s.strip().lower() for s in allowed_submolts_str.split(",")]
         target_submolt = submolt.lower()
-        if target_submolt not in [s.strip().lower() for s in allowed_submolts]:
+        
+        # Debug logging
+        logger.info(f"MoltbookPublisher: Checking submolt '{target_submolt}' against allowlist: {allowed_submolts}")
+        
+        if target_submolt not in allowed_submolts:
+            logger.error(f"Submolt {target_submolt} not in allowlist {allowed_submolts}")
             raise ValueError(f"Submolt {target_submolt} not in allowlist")
         
         result = await self._client.publish_post(
@@ -274,7 +280,13 @@ class MultiChannelPublisher(PublisherBase):
 
         for channel, publisher in self._publishers.items():
             try:
-                result = await publisher.publish_post(title, body, **kwargs)
+                # For Moltbook, pass through submolt parameter if provided
+                publish_kwargs = kwargs.copy()
+                if channel == "moltbook" and "submolt" not in publish_kwargs:
+                    # Default to general if no submolt specified
+                    publish_kwargs["submolt"] = "general"
+                
+                result = await publisher.publish_post(title, body, **publish_kwargs)
                 results.append((channel, result))
 
                 if result.get("success") and result.get("post_url"):
