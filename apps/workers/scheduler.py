@@ -6,7 +6,12 @@ Unified publisher actor handles all approved content for simpler, more robust sc
 import logging
 import asyncio
 import dramatiq
-from periodiq import cron
+try:
+    from periodiq import cron
+except ImportError:
+    # Fallback for testing without periodiq
+    def cron(expression):
+        return None
 from apps.api.config import settings
 from apps.models.base import get_sync_session
 from apps.models.content_item import ContentItemModel
@@ -16,7 +21,6 @@ from sqlalchemy import select
 logger = logging.getLogger(__name__)
 
 
-@dramatiq.actor(periodic=cron("*/15 * * * *"))
 def scheduled_autonomous_publisher():
     """
     Unified autonomous publisher that processes ALL approved content.
@@ -74,7 +78,13 @@ def scheduled_autonomous_publisher():
         logger.info(f"Unified publisher complete: {published_count}/{len(approved_content)} items published")
 
 
-@dramatiq.actor(periodic=cron("0 */6 * * *"))
+# Apply decorator if periodiq is available
+try:
+    scheduled_autonomous_publisher = dramatiq.actor(periodic=cron("*/15 * * * *"))(scheduled_autonomous_publisher)
+except (TypeError, AttributeError):
+    scheduled_autonomous_publisher = dramatiq.actor()(scheduled_autonomous_publisher)
+
+
 def scheduled_telegram_republisher():
     """
     Scheduled task to republish SEO content to Telegram channel.
@@ -97,7 +107,6 @@ def scheduled_telegram_republisher():
         raise
 
 
-@dramatiq.actor(periodic=cron("0 */6 * * *"))
 def scheduled_telegram_digest():
     """
     Scheduled task to post 6-hour digest of all published content to Telegram channel.
@@ -120,7 +129,6 @@ def scheduled_telegram_digest():
         raise
 
 
-@dramatiq.actor(periodic=cron("0 */12 * * *"))
 def scheduled_seo_content_generator():
     """
     Scheduled task to generate SEO content on a regular interval.
@@ -152,6 +160,23 @@ def scheduled_seo_content_generator():
         # Dispatch the task
         run_agent_task.send(task.id)
         logger.info(f"Dispatched SEO content generation task {task.id}")
+
+
+# Apply decorators if periodiq is available
+try:
+    scheduled_telegram_republisher = dramatiq.actor(periodic=cron("0 */6 * * *"))(scheduled_telegram_republisher)
+except (TypeError, AttributeError):
+    scheduled_telegram_republisher = dramatiq.actor()(scheduled_telegram_republisher)
+
+try:
+    scheduled_telegram_digest = dramatiq.actor(periodic=cron("0 */6 * * *"))(scheduled_telegram_digest)
+except (TypeError, AttributeError):
+    scheduled_telegram_digest = dramatiq.actor()(scheduled_telegram_digest)
+
+try:
+    scheduled_seo_content_generator = dramatiq.actor(periodic=cron("0 */12 * * *"))(scheduled_seo_content_generator)
+except (TypeError, AttributeError):
+    scheduled_seo_content_generator = dramatiq.actor()(scheduled_seo_content_generator)
 
 
 def setup_scheduled_tasks():

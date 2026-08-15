@@ -15,15 +15,18 @@ from apps.core.policy.engine import PolicyEngine, compute_draft_hash
 from apps.core.audit.service import record_event
 from apps.agents.registry import get_agent
 
+logger = logging.getLogger(__name__)
+
 # Setup Dramatiq Redis Broker
 broker = RedisBroker(url=settings.REDIS_URL)
 dramatiq.set_broker(broker)
 
 # Add periodiq middleware for cron scheduling
-from periodiq import PeriodiqMiddleware
-broker.add_middleware(PeriodiqMiddleware(skip_delay=30))
-
-logger = logging.getLogger(__name__)
+try:
+    from periodiq import PeriodiqMiddleware
+    broker.add_middleware(PeriodiqMiddleware(skip_delay=30))
+except ImportError:
+    logger.warning("PeriodiqMiddleware not available, cron scheduling may not work")
 
 @dramatiq.actor(max_retries=3, min_backoff=1000, max_backoff=30000)
 def run_agent_task(task_id: str):
