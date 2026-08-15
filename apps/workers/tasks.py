@@ -23,10 +23,18 @@ dramatiq.set_broker(broker)
 
 # Add periodiq middleware for cron scheduling
 try:
-    from periodiq import PeriodiqMiddleware
-    broker.add_middleware(PeriodiqMiddleware(skip_delay=30))
+    # Try new periodiq API first
+    from dramatiq.middleware import CronMiddleware
+    broker.add_middleware(CronMiddleware())
+    logger.info("Cron middleware installed for scheduled tasks")
 except ImportError:
-    logger.warning("PeriodiqMiddleware not available, cron scheduling may not work")
+    try:
+        # Fallback to old periodiq API
+        from periodiq import PeriodiqMiddleware
+        broker.add_middleware(PeriodiqMiddleware(skip_delay=30))
+        logger.info("Periodiq middleware installed for scheduled tasks")
+    except ImportError:
+        logger.warning("Cron middleware not available, using manual scheduling")
 
 @dramatiq.actor(max_retries=3, min_backoff=1000, max_backoff=30000)
 def run_agent_task(task_id: str):

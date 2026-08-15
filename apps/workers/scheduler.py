@@ -6,12 +6,6 @@ Unified publisher actor handles all approved content for simpler, more robust sc
 import logging
 import asyncio
 import dramatiq
-try:
-    from periodiq import cron
-except ImportError:
-    # Fallback for testing without periodiq
-    def cron(expression):
-        return None
 from apps.api.config import settings
 from apps.models.base import get_sync_session
 from apps.models.content_item import ContentItemModel
@@ -76,13 +70,6 @@ def scheduled_autonomous_publisher():
                 # Continue with next item rather than failing the whole batch
         
         logger.info(f"Unified publisher complete: {published_count}/{len(approved_content)} items published")
-
-
-# Apply decorator if periodiq is available
-try:
-    scheduled_autonomous_publisher = dramatiq.actor(periodic=cron("*/15 * * * *"))(scheduled_autonomous_publisher)
-except (TypeError, AttributeError):
-    scheduled_autonomous_publisher = dramatiq.actor()(scheduled_autonomous_publisher)
 
 
 def scheduled_telegram_republisher():
@@ -162,33 +149,24 @@ def scheduled_seo_content_generator():
         logger.info(f"Dispatched SEO content generation task {task.id}")
 
 
-# Apply decorators if periodiq is available
-try:
-    scheduled_telegram_republisher = dramatiq.actor(periodic=cron("0 */6 * * *"))(scheduled_telegram_republisher)
-except (TypeError, AttributeError):
-    scheduled_telegram_republisher = dramatiq.actor()(scheduled_telegram_republisher)
-
-try:
-    scheduled_telegram_digest = dramatiq.actor(periodic=cron("0 */6 * * *"))(scheduled_telegram_digest)
-except (TypeError, AttributeError):
-    scheduled_telegram_digest = dramatiq.actor()(scheduled_telegram_digest)
-
-try:
-    scheduled_seo_content_generator = dramatiq.actor(periodic=cron("0 */12 * * *"))(scheduled_seo_content_generator)
-except (TypeError, AttributeError):
-    scheduled_seo_content_generator = dramatiq.actor()(scheduled_seo_content_generator)
+# Use simple actors without cron for now - cron can be added later
+scheduled_autonomous_publisher = dramatiq.actor()(scheduled_autonomous_publisher)
+scheduled_telegram_republisher = dramatiq.actor()(scheduled_telegram_republisher)
+scheduled_telegram_digest = dramatiq.actor()(scheduled_telegram_digest)
+scheduled_seo_content_generator = dramatiq.actor()(scheduled_seo_content_generator)
 
 
 def setup_scheduled_tasks():
     """
     Setup scheduled tasks for autonomous publishing.
-    Note: periodiq handles scheduling via decorators, so this function is informational.
+    Note: Currently using manual actor registration - cron scheduling can be added with periodiq.
     """
-    logger.info("Periodiq middleware installed - automatic scheduling enabled")
-    logger.info("Scheduled tasks:")
-    logger.info("- Unified Autonomous Publisher: Every 15 minutes (*/15 * * * *)")
-    logger.info("- Telegram Republisher: Every 6 hours (0 */6 * * *)")
-    logger.info("- Telegram Digest: Every 6 hours (0 */6 * * *)")
-    logger.info("- SEO Content Generator: Every 12 hours (0 */12 * * *)")
+    logger.info("Dramatiq actors registered for scheduled tasks")
+    logger.info("Scheduled tasks (manual trigger):")
+    logger.info("- Unified Autonomous Publisher: Processes approved content in batches")
+    logger.info("- Telegram Republisher: Republishes SEO content to Telegram")
+    logger.info("- Telegram Digest: Posts 6-hour digest of all content")
+    logger.info("- SEO Content Generator: Creates SEO content via Content Strategy")
+    logger.info("Note: Cron scheduling requires periodiq middleware configuration")
 
     return
