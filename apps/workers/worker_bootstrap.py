@@ -8,9 +8,7 @@ from apps.workers.tasks import broker, dramatiq
 
 # Import scheduler to register periodic tasks with periodiq
 from apps.workers.scheduler import (
-    scheduled_publisher_agent_task_founder,
-    scheduled_publisher_agent_task_technical,
-    scheduled_publisher_agent_task_seo,
+    scheduled_autonomous_publisher,
     scheduled_telegram_republisher,
     scheduled_telegram_digest,
     scheduled_seo_content_generator,
