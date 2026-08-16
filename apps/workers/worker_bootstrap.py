@@ -1,12 +1,12 @@
 """
-Worker bootstrap file to initialize scheduled tasks without circular imports.
-This file is used as the Dramatiq/Periodiq entry point.
+Worker bootstrap file to initialize Dramatiq worker.
+This file is used as the Dramatiq entry point.
 """
 
 # Import tasks to ensure all actors are registered
 from apps.workers.tasks import broker, dramatiq
 
-# Import scheduler to register periodic tasks with periodiq
+# Import scheduler to register actors
 from apps.workers.scheduler import (
     scheduled_autonomous_publisher,
     scheduled_telegram_republisher,
@@ -15,7 +15,7 @@ from apps.workers.scheduler import (
     setup_scheduled_tasks
 )
 
-# Setup scheduled tasks
+# Setup scheduled tasks (informational only since we removed cron)
 setup_scheduled_tasks()
 
 # Export for Dramatiq CLI
