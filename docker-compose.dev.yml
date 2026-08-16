@@ -64,7 +64,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: aifp_worker_dev
     restart: unless-stopped
-    command: ["uv", "run", "dramatiq", "apps.workers.worker_bootstrap:worker", "--processes", "1", "--threads", "1", "--worker-timeout", "60000"]
+    command: ["uv", "run", "dramatiq", "apps.workers.worker_bootstrap:worker", "--processes", "1", "--threads", "1"]
     env_file:
       - .env
     volumes:
