@@ -275,6 +275,19 @@ async def _perform_publish_logic(session, content_id: str, approval_id: str, dra
                 }
             )
             session.commit()
+            
+            # Trigger Telegram republisher for successful publishes with URLs
+            if content.post_url:
+                try:
+                    from apps.agents.registry import get_agent
+                    telegram_agent = get_agent("Telegram Republisher")
+                    if telegram_agent:
+                        logger.info(f"Triggering Telegram republisher for {content_id}")
+                        # Send republish task with content_id
+                        trigger_telegram_republish.send(content_id)
+                except Exception as e:
+                    logger.warning(f"Failed to trigger Telegram republisher: {e}")
+            
             return {"status": "published", "content_id": content_id, "post_id": content.post_id, "post_url": content.post_url, "dry_run": False}
         
     except Exception as e:
@@ -282,6 +295,26 @@ async def _perform_publish_logic(session, content_id: str, approval_id: str, dra
         content.publish_error = str(e)
         record_event(session, "System", "publish_failed", f"Failed to publish {content_id}: {e}", {"content_id": content_id})
         session.commit()
+        raise
+
+@dramatiq.actor
+def trigger_telegram_republish(content_id: str):
+    """
+    Trigger Telegram republisher for a specific content item.
+    """
+    logger.info(f"Telegram republish triggered for {content_id}")
+    
+    try:
+        from apps.agents.registry import get_agent
+        agent = get_agent("Telegram Republisher")
+        if not agent:
+            logger.error("Telegram Republisher agent not found")
+            return
+        
+        result = asyncio.run(agent.execute({"content_id": content_id}))
+        logger.info(f"Telegram republish result: {result}")
+    except Exception as e:
+        logger.error(f"Telegram republish task failed: {e}")
         raise
 
 @dramatiq.actor

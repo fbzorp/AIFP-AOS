@@ -19,4 +19,4 @@ from apps.workers.scheduler import (
 setup_scheduled_tasks()
 
 # Export for Dramatiq CLI
-__all__ = ['broker', 'dramatiq']
+__all__ = ['broker']
