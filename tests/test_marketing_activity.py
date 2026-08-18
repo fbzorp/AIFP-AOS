@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from apps.models.content_item import ContentItemModel
 from apps.models.base import Base
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Create test database
 engine = create_engine("sqlite:///:memory:")
@@ -82,7 +82,7 @@ class TestMarketingActivityModels:
             engagement=25,
             referrals=10,
             conversions=5,
-            last_analytics_update=datetime.utcnow()
+            last_analytics_update=datetime.now(timezone.utc)
         )
         session.add(content)
         session.commit()
@@ -108,7 +108,7 @@ class TestMarketingActivityModels:
             title="Approved Content",
             channel="moltbook",
             status="approved",
-            approved_at=datetime.utcnow() - timedelta(hours=1),
+            approved_at=datetime.now(timezone.utc) - timedelta(hours=1),
             approver="human_approver"
         )
         session.add(content)
