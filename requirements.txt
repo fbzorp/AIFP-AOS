@@ -29,6 +29,7 @@ python-dotenv>=1.0.1
 python-multipart>=0.0.9
 passlib[bcrypt]>=1.7.4
 python-jose[cryptography]>=3.3.0
+jinja2>=3.1.2
 
 # Google ADK (Agent Development Kit)
 google-adk>=0.1.0
@@ -36,11 +37,11 @@ google-adk>=0.1.0
 # AiFinPay SDK
 aifinpay-agent>=1.0.0
 
-# Blockchain & Cryptography
-solana==0.40.1
-solders==0.28.0
-web3>=6.0.0
-eth-account>=0.9.0
+# Blockchain & Cryptography (Payment functionality removed)
+# solana==0.40.1
+# sellers==0.28.0
+# web3>=6.0.0
+# eth-account>=0.9.0
 
 # Testing
 pytest>=8.2.2
