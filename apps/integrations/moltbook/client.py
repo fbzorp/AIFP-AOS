@@ -283,7 +283,14 @@ class MoltbookClient:
                             "post_url": post_url
                         }
                     else:
-                        raise ValueError(f"Verification failed: {verify_result.get('error')}")
+                        logger.error(f"Verification failed: {verify_result.get('error')}")
+                        return {
+                            "success": False,
+                            "dry_run": False,
+                            "post_id": None,
+                            "post_url": None,
+                            "error": f"Verification failed: {verify_result.get('error')}"
+                        }
             else:
                 # Normal success path
                 post_data = data.get("post") or data.get("agent") or {}

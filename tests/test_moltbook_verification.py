@@ -10,11 +10,13 @@ from apps.integrations.moltbook.client import MoltbookClient
 async def test_publish_post_with_verification_success():
     # Patch settings for testing
     original_autopublish = settings.MOLTBOOK_AUTOPUBLISH
+    original_agent_key = settings.MOLTBOOK_AGENT_API_KEY
     original_deepseek_api_key = settings.DEEPSEEK_API_KEY
     original_deepseek_primary_model = settings.DEEPSEEK_PRIMARY_MODEL
     original_deepseek_api_base = settings.DEEPSEEK_API_BASE
 
     settings.MOLTBOOK_AUTOPUBLISH = True
+    settings.MOLTBOOK_AGENT_API_KEY = "mock_agent_key"
     settings.DEEPSEEK_API_KEY = "mock_deepseek_key"
     settings.DEEPSEEK_PRIMARY_MODEL = "mock_model"
     settings.DEEPSEEK_API_BASE = "https://mock.deepseek.com"
@@ -67,6 +69,7 @@ async def test_publish_post_with_verification_success():
 
     # Restore original settings
     settings.MOLTBOOK_AUTOPUBLISH = original_autopublish
+    settings.MOLTBOOK_AGENT_API_KEY = original_agent_key
     settings.DEEPSEEK_API_KEY = original_deepseek_api_key
     settings.DEEPSEEK_PRIMARY_MODEL = original_deepseek_primary_model
     settings.DEEPSEEK_API_BASE = original_deepseek_api_base
@@ -75,11 +78,13 @@ async def test_publish_post_with_verification_success():
 async def test_publish_post_with_verification_failure():
     # Patch settings for testing
     original_autopublish = settings.MOLTBOOK_AUTOPUBLISH
+    original_agent_key = settings.MOLTBOOK_AGENT_API_KEY
     original_deepseek_api_key = settings.DEEPSEEK_API_KEY
     original_deepseek_primary_model = settings.DEEPSEEK_PRIMARY_MODEL
     original_deepseek_api_base = settings.DEEPSEEK_API_BASE
 
     settings.MOLTBOOK_AUTOPUBLISH = True
+    settings.MOLTBOOK_AGENT_API_KEY = "mock_agent_key"
     settings.DEEPSEEK_API_KEY = "mock_deepseek_key"
     settings.DEEPSEEK_PRIMARY_MODEL = "mock_model"
     settings.DEEPSEEK_API_BASE = "https://mock.deepseek.com"
@@ -129,6 +134,7 @@ async def test_publish_post_with_verification_failure():
 
     # Restore original settings
     settings.MOLTBOOK_AUTOPUBLISH = original_autopublish
+    settings.MOLTBOOK_AGENT_API_KEY = original_agent_key
     settings.DEEPSEEK_API_KEY = original_deepseek_api_key
     settings.DEEPSEEK_PRIMARY_MODEL = original_deepseek_primary_model
     settings.DEEPSEEK_API_BASE = original_deepseek_api_base
@@ -137,9 +143,11 @@ async def test_publish_post_with_verification_failure():
 async def test_publish_post_with_missing_deepseek_api_key():
     # Patch settings for testing
     original_autopublish = settings.MOLTBOOK_AUTOPUBLISH
+    original_agent_key = settings.MOLTBOOK_AGENT_API_KEY
     original_deepseek_api_key = settings.DEEPSEEK_API_KEY
 
     settings.MOLTBOOK_AUTOPUBLISH = True
+    settings.MOLTBOOK_AGENT_API_KEY = "mock_agent_key"
     settings.DEEPSEEK_API_KEY = None # Simulate missing API key
 
     client = MoltbookClient(base_url="https://www.moltbook.com")
@@ -173,5 +181,6 @@ async def test_publish_post_with_missing_deepseek_api_key():
 
     # Restore original settings
     settings.MOLTBOOK_AUTOPUBLISH = original_autopublish
+    settings.MOLTBOOK_AGENT_API_KEY = original_agent_key
     settings.DEEPSEEK_API_KEY = original_deepseek_api_key
 

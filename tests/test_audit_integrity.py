@@ -166,14 +166,17 @@ class TestPostgresTriggerProtection:
                 END;
                 $$ LANGUAGE plpgsql;
             """))
+            # Drop triggers if they exist to avoid duplicate errors
+            conn.execute(text("DROP TRIGGER IF EXISTS audit_events_prevent_update ON audit_events"))
+            conn.execute(text("DROP TRIGGER IF EXISTS audit_events_prevent_delete ON audit_events"))
             conn.execute(text("""
-                CREATE TRIGGER IF NOT EXISTS audit_events_prevent_update
+                CREATE TRIGGER audit_events_prevent_update
                 BEFORE UPDATE ON audit_events
                 FOR EACH ROW
                 EXECUTE FUNCTION prevent_audit_modification();
             """))
             conn.execute(text("""
-                CREATE TRIGGER IF NOT EXISTS audit_events_prevent_delete
+                CREATE TRIGGER audit_events_prevent_delete
                 BEFORE DELETE ON audit_events
                 FOR EACH ROW
                 EXECUTE FUNCTION prevent_audit_modification();
