@@ -78,7 +78,7 @@ class XClient:
     def _generate_oauth_headers(self, method: str, url: str, params: Dict[str, str]) -> Dict[str, str]:
         """Generate OAuth1.0a headers for X API requests."""
         timestamp = str(int(time.time()))
-        nonce = hashlib.md5(timestamp.encode()).hexdigest()
+        nonce = hashlib.sha256(timestamp.encode()).hexdigest()
         
         oauth_params = {
             'oauth_consumer_key': self.api_key,

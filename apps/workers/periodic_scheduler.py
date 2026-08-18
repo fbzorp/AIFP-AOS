@@ -10,7 +10,8 @@ from apps.workers.scheduler import (
     scheduled_autonomous_publisher,
     scheduled_telegram_republisher,
     scheduled_telegram_digest,
-    scheduled_seo_content_generator
+    scheduled_seo_content_generator,
+    scheduled_seo_sitemap_update
 )
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,8 @@ SCHEDULES = [
     (cron("0 3,9,15,21 * * *"), scheduled_telegram_digest.actor_name),
     # SEO content generator: every 12 hours
     (cron("0 */12 * * *"), scheduled_seo_content_generator.actor_name),
+    # SEO sitemap update: every 6 hours
+    (cron("0 */6 * * *"), scheduled_seo_sitemap_update.actor_name),
 ]
 
 logger.info(f"Configured {len(SCHEDULES)} periodic tasks:")

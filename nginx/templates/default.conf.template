@@ -49,6 +49,27 @@ server {
         add_header Cache-Control "public, max-age=3600";
     }
 
+    # SEO pages (served from shared volume)
+    location /blog/ {
+        alias /var/www/html/seo/;
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "public, max-age=3600";
+    }
+
+    # Sitemap.xml for SEO
+    location = /sitemap.xml {
+        alias /var/www/html/seo/sitemap.xml;
+        add_header Content-Type application/xml;
+        add_header Cache-Control "public, max-age=3600";
+    }
+
+    # Robots.txt for SEO
+    location = /robots.txt {
+        alias /var/www/html/seo/robots.txt;
+        add_header Content-Type text/plain;
+        add_header Cache-Control "public, max-age=3600";
+    }
+
     # Deny access to sensitive files
     location ~ /\. {
         deny all;
@@ -112,6 +133,27 @@ server {
     location /static/ {
         proxy_pass http://dashboard;
         proxy_cache_valid 200 1h;
+        add_header Cache-Control "public, max-age=3600";
+    }
+
+    # SEO pages (served from shared volume)
+    location /blog/ {
+        alias /var/www/html/seo/;
+        try_files $uri $uri/ =404;
+        add_header Cache-Control "public, max-age=3600";
+    }
+
+    # Sitemap.xml for SEO
+    location = /sitemap.xml {
+        alias /var/www/html/seo/sitemap.xml;
+        add_header Content-Type application/xml;
+        add_header Cache-Control "public, max-age=3600";
+    }
+
+    # Robots.txt for SEO
+    location = /robots.txt {
+        alias /var/www/html/seo/robots.txt;
+        add_header Content-Type text/plain;
         add_header Cache-Control "public, max-age=3600";
     }
 

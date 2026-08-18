@@ -123,12 +123,15 @@ def test_seo_page_publisher_sitemap_generation():
 
 def test_seo_page_publisher_robots_txt_generation():
     """Test robots.txt generation."""
-    publisher = SeoPagePublisher()
-    publisher._base_url = "https://example.com/seo"
-    
-    robots_txt = publisher.generate_robots_txt()
-    
-    assert "User-agent: *" in robots_txt
-    assert "Allow: /seo/" in robots_txt
-    assert "Disallow: /api/" in robots_txt
-    assert "Sitemap: https://example.com/seo/sitemap.xml" in robots_txt
+    with tempfile.TemporaryDirectory() as tmpdir:
+        publisher = SeoPagePublisher()
+        publisher._output_dir = Path(tmpdir)
+        publisher._base_url = "https://example.com/seo"
+        publisher._initialized = True
+        
+        robots_txt = publisher.generate_robots_txt()
+        
+        assert "User-agent: *" in robots_txt
+        assert "Allow: /blog/" in robots_txt
+        assert "Disallow: /api/" in robots_txt
+        assert "Sitemap: https://example.com/seo/sitemap.xml" in robots_txt

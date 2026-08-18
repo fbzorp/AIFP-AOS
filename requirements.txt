@@ -21,6 +21,7 @@ pydantic-settings>=2.3.4
 # HTTP Client
 httpx>=0.27.0
 litellm>=1.40.0
+h2>=4.4.1
 
 # Environment
 python-dotenv>=1.0.1
@@ -42,6 +43,7 @@ aifinpay-agent>=1.0.0
 # solders==0.28.0
 # web3>=6.0.0
 # eth-account>=0.9.0
+# torch (ML dependencies - payment functionality removed)
 
 # Testing
 pytest>=8.2.2

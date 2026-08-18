@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, Optional
 from datetime import datetime
 from jinja2 import Template
+import httpx
 from apps.api.config import settings
 
 logger = logging.getLogger(__name__)
@@ -140,6 +141,14 @@ class SeoPagePublisher:
             
             logger.info(f"SEO page published: {filepath} -> {post_url}")
             
+            # Regenerate sitemap and robots.txt after each page
+            self._update_sitemap_and_robots()
+            
+            # Submit to IndexNow if key is configured
+            indexing_status = "pending"
+            if getattr(settings, "SEO_INDEXNOW_KEY", None):
+                indexing_status = await self._submit_to_indexnow(post_url)
+            
             # Return metadata for updating content item
             return {
                 "success": True,
@@ -150,7 +159,7 @@ class SeoPagePublisher:
                 "target_keyword": variants.get("keywords", [""])[0] if variants.get("keywords") else None,
                 "meta_title": variants.get("seo_title_tag", title),
                 "meta_description": variants.get("meta_description", ""),
-                "indexing_status": "pending"
+                "indexing_status": indexing_status
             }
             
         except Exception as e:
@@ -167,8 +176,52 @@ class SeoPagePublisher:
         """No resources to clean up."""
         pass
     
-    def generate_sitemap(self) -> str:
-        """Generate sitemap.xml for all published SEO pages."""
+    def _update_sitemap_and_robots(self):
+        """Regenerate and write sitemap.xml and robots.txt to output directory."""
+        try:
+            sitemap = self._generate_sitemap_content()
+            sitemap_path = self._output_dir / "sitemap.xml"
+            with open(sitemap_path, "w", encoding="utf-8") as f:
+                f.write(sitemap)
+            logger.info(f"Sitemap updated: {sitemap_path}")
+            
+            robots = self._generate_robots_content()
+            robots_path = self._output_dir / "robots.txt"
+            with open(robots_path, "w", encoding="utf-8") as f:
+                f.write(robots)
+            logger.info(f"Robots.txt updated: {robots_path}")
+        except Exception as e:
+            logger.error(f"Failed to update sitemap/robots: {e}")
+    
+    async def _submit_to_indexnow(self, url: str) -> str:
+        """Submit URL to IndexNow API for faster indexing."""
+        indexnow_key = getattr(settings, "SEO_INDEXNOW_KEY", None)
+        if not indexnow_key:
+            return "pending"
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://www.indexnow.org/indexnow",
+                    json={
+                        "host": self._base_url.replace("https://", "").replace("http://", "").split("/")[0],
+                        "key": indexnow_key,
+                        "urlList": [url]
+                    },
+                    headers={"Content-Type": "application/json"}
+                )
+                if response.status_code == 200:
+                    logger.info(f"IndexNow submission successful for {url}")
+                    return "submitted"
+                else:
+                    logger.warning(f"IndexNow submission failed: {response.status_code}")
+                    return "pending"
+        except Exception as e:
+            logger.error(f"IndexNow submission error: {e}")
+            return "pending"
+    
+    def _generate_sitemap_content(self) -> str:
+        """Generate sitemap.xml content for all published SEO pages."""
         if not self._output_dir.exists():
             return ""
         
@@ -185,12 +238,33 @@ class SeoPagePublisher:
         
         return sitemap
     
-    def generate_robots_txt(self) -> str:
-        """Generate robots.txt to allow indexing of SEO pages."""
+    def _generate_robots_content(self) -> str:
+        """Generate robots.txt content to allow indexing of SEO pages."""
         return f"""User-agent: *
-Allow: /seo/
+Allow: /blog/
 Disallow: /api/
 Disallow: /admin/
 
 Sitemap: {self._base_url}/sitemap.xml
 """
+    
+    def generate_sitemap(self) -> str:
+        """Generate sitemap.xml for all published SEO pages and write to file."""
+        if not self._output_dir.exists():
+            return ""
+        
+        sitemap = self._generate_sitemap_content()
+        sitemap_path = self._output_dir / "sitemap.xml"
+        with open(sitemap_path, "w", encoding="utf-8") as f:
+            f.write(sitemap)
+        
+        return sitemap
+    
+    def generate_robots_txt(self) -> str:
+        """Generate robots.txt to allow indexing of SEO pages and write to file."""
+        robots = self._generate_robots_content()
+        robots_path = self._output_dir / "robots.txt"
+        with open(robots_path, "w", encoding="utf-8") as f:
+            f.write(robots)
+        
+        return robots
