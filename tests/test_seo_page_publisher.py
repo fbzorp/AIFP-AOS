@@ -52,15 +52,19 @@ async def test_seo_page_publisher_generates_html():
 @pytest.mark.asyncio
 async def test_seo_page_publisher_requires_content_id():
     """Test that SEO page publisher requires content_id."""
-    publisher = SeoPagePublisher()
-    
-    result = await publisher.publish_post(
-        title="Test",
-        body="Content"
-    )
-    
-    assert result["success"] is False
-    assert "content_id required" in result["error"]
+    with tempfile.TemporaryDirectory() as tmpdir:
+        publisher = SeoPagePublisher()
+        publisher._output_dir = Path(tmpdir)
+        publisher._base_url = "https://example.com/seo"
+        publisher._initialized = True
+        
+        result = await publisher.publish_post(
+            title="Test",
+            body="Content"
+        )
+        
+        assert result["success"] is False
+        assert "content_id required" in result["error"]
 
 
 @pytest.mark.asyncio

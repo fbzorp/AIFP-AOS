@@ -224,6 +224,18 @@ async def _perform_publish_logic(session, content_id: str, approval_id: str, dra
             content.published_at = func.now()
             content.status = "published"
             
+            # Capture SEO metadata if available (from SeoPagePublisher)
+            if pub_result.get("canonical_url"):
+                content.canonical_url = pub_result.get("canonical_url")
+            if pub_result.get("target_keyword"):
+                content.target_keyword = pub_result.get("target_keyword")
+            if pub_result.get("meta_title"):
+                content.meta_title = pub_result.get("meta_title")
+            if pub_result.get("meta_description"):
+                content.meta_description = pub_result.get("meta_description")
+            if pub_result.get("indexing_status"):
+                content.indexing_status = pub_result.get("indexing_status")
+            
             record_event(
                 session, 
                 "System", 

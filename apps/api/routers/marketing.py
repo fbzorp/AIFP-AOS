@@ -1,9 +1,12 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, and_, or_
 from datetime import datetime, timedelta
+import csv
+import io
 from apps.models.base import get_db
 from apps.models.content_item import ContentItemModel
 from apps.models.source import SourceModel
@@ -12,13 +15,14 @@ from apps.api.auth import require_viewer
 router = APIRouter()
 
 class MarketingActivityItem(BaseModel):
-    """Marketing activity and evidence registry item."""
+    """Marketing activity and evidence registry item with full SEO and analytics metadata."""
     id: str
     title: str
     agent: str
     objective: Optional[str]
     target_audience: Optional[str]
     source_id: Optional[str]
+    source_urls: Optional[list]  # List of source URLs
     format: Optional[str]
     channel: Optional[str]
     status: str
@@ -32,6 +36,23 @@ class MarketingActivityItem(BaseModel):
     publish_error: Optional[str]
     live_url: Optional[str]
     is_real_publish: bool
+    
+    # SEO Metadata
+    target_keyword: Optional[str]
+    search_intent: Optional[str]
+    meta_title: Optional[str]
+    meta_description: Optional[str]
+    canonical_url: Optional[str]
+    indexing_status: Optional[str]
+    internal_links: Optional[list]
+    
+    # Analytics Metrics
+    impressions: Optional[int]
+    clicks: Optional[int]
+    engagement: Optional[int]
+    referrals: Optional[int]
+    conversions: Optional[int]
+    last_analytics_update: Optional[datetime]
 
 class MarketingActivityResponse(BaseModel):
     """Response containing marketing activity items."""
@@ -137,6 +158,7 @@ async def get_marketing_activity(
             objective=item.objective,
             target_audience=item.target_audience,
             source_id=item.source_id,
+            source_urls=item.source_urls,
             format=item.format,
             channel=item.channel,
             status=item.status,
@@ -149,7 +171,22 @@ async def get_marketing_activity(
             post_id=item.post_id,
             publish_error=item.publish_error,
             live_url=item.post_url if is_real else None,
-            is_real_publish=is_real
+            is_real_publish=is_real,
+            # SEO Metadata
+            target_keyword=item.target_keyword,
+            search_intent=item.search_intent,
+            meta_title=item.meta_title,
+            meta_description=item.meta_description,
+            canonical_url=item.canonical_url,
+            indexing_status=item.indexing_status,
+            internal_links=item.internal_links,
+            # Analytics Metrics
+            impressions=item.impressions,
+            clicks=item.clicks,
+            engagement=item.engagement,
+            referrals=item.referrals,
+            conversions=item.conversions,
+            last_analytics_update=item.last_analytics_update
         )
         
         items.append(activity_item)
@@ -210,6 +247,7 @@ async def get_marketing_activity_detail(
         "objective": item.objective,
         "target_audience": item.target_audience,
         "source_id": item.source_id,
+        "source_urls": item.source_urls,
         "source": source_info,
         "format": item.format,
         "channel": item.channel,
@@ -224,5 +262,134 @@ async def get_marketing_activity_detail(
         "publish_error": item.publish_error,
         "live_url": item.post_url if is_real else None,
         "is_real_publish": is_real,
-        "updated_at": item.updated_at
+        "updated_at": item.updated_at,
+        # SEO Metadata
+        "target_keyword": item.target_keyword,
+        "search_intent": item.search_intent,
+        "meta_title": item.meta_title,
+        "meta_description": item.meta_description,
+        "canonical_url": item.canonical_url,
+        "indexing_status": item.indexing_status,
+        "internal_links": item.internal_links,
+        # Analytics Metrics
+        "impressions": item.impressions,
+        "clicks": item.clicks,
+        "engagement": item.engagement,
+        "referrals": item.referrals,
+        "conversions": item.conversions,
+        "last_analytics_update": item.last_analytics_update
     }
+
+@router.get("/marketing/activity/export/csv", summary="Export Marketing Activity to CSV", description="Export full marketing activity registry to CSV format")
+async def export_marketing_activity_csv(
+    start_date: Optional[datetime] = Query(None, description="Filter by start date"),
+    end_date: Optional[datetime] = Query(None, description="Filter by end date"),
+    channel: Optional[str] = Query(None, description="Filter by channel"),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    only_real: bool = Query(False, description="Only include real (non-dry-run) publications"),
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(require_viewer)
+):
+    """Export marketing activity registry to CSV format."""
+    # Build base query (same as get_marketing_activity)
+    query = select(ContentItemModel).order_by(desc(ContentItemModel.created_at))
+    
+    # Apply filters
+    conditions = []
+    
+    if start_date:
+        conditions.append(ContentItemModel.created_at >= start_date)
+    
+    if end_date:
+        conditions.append(ContentItemModel.created_at <= end_date)
+    
+    if channel:
+        conditions.append(ContentItemModel.channel == channel)
+    
+    if status:
+        conditions.append(ContentItemModel.status == status)
+    
+    if only_real:
+        conditions.append(
+            and_(
+                ContentItemModel.post_url.isnot(None),
+                ContentItemModel.post_url != "",
+                ~ContentItemModel.post_url.like("%dry-run%")
+            )
+        )
+    
+    if conditions:
+        query = query.where(and_(*conditions))
+    
+    # Execute query
+    result = await db.execute(query)
+    content_items = result.scalars().all()
+    
+    # Generate CSV
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    header = [
+        "ID", "Title", "Agent", "Channel", "Status", "Created At", "Published At",
+        "Post URL", "Post ID", "Live URL", "Is Real Publish",
+        "Target Keyword", "Search Intent", "Meta Title", "Meta Description",
+        "Canonical URL", "Indexing Status", "Impressions", "Clicks",
+        "Engagement", "Referrals", "Conversions", "Last Analytics Update"
+    ]
+    writer.writerow(header)
+    
+    # Write rows
+    for item in content_items:
+        is_real = (
+            item.post_url is not None 
+            and item.post_url != "" 
+            and "dry-run" not in item.post_url.lower()
+            and item.post_id is not None
+            and item.post_id != ""
+        )
+        
+        row = [
+            item.id,
+            item.title,
+            item.author_agent,
+            item.channel,
+            item.status,
+            item.created_at.isoformat() if item.created_at else "",
+            item.published_at.isoformat() if item.published_at else "",
+            item.post_url or "",
+            item.post_id or "",
+            item.post_url if is_real else "",
+            "Yes" if is_real else "No",
+            item.target_keyword or "",
+            item.search_intent or "",
+            item.meta_title or "",
+            item.meta_description or "",
+            item.canonical_url or "",
+            item.indexing_status or "",
+            item.impressions or 0,
+            item.clicks or 0,
+            item.engagement or 0,
+            item.referrals or 0,
+            item.conversions or 0,
+            item.last_analytics_update.isoformat() if item.last_analytics_update else ""
+        ]
+        writer.writerow(row)
+    
+    # Reset buffer position
+    output.seek(0)
+    
+    # Return CSV as streaming response
+    csv_content = output.getvalue()
+    csv_bytes = csv_content.encode('utf-8')
+    
+    def generate():
+        yield csv_bytes
+    
+    return StreamingResponse(
+        generate(),
+        media_type='text/csv',
+        headers={
+            'Content-Disposition': f'attachment; filename="marketing_activity_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.csv"'
+        }
+    )

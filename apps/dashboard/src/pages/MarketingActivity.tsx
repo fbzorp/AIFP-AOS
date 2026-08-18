@@ -11,10 +11,13 @@ import {
   Calendar,
   Globe,
   Share2,
-  Zap
+  Zap,
+  Search,
+  TrendingUp
 } from 'lucide-react';
 import { 
   fetchMarketingActivity,
+  exportMarketingActivityCSV,
   MarketingActivityItem,
   cn 
 } from '../lib/api';
@@ -33,6 +36,27 @@ const MarketingActivity: React.FC = () => {
     }),
     refetchInterval: 10000,
   });
+
+  const handleExportCSV = async () => {
+    try {
+      const blob = await exportMarketingActivityCSV({
+        channel: filterChannel || undefined,
+        status: filterStatus || undefined,
+        only_real: onlyReal
+      });
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `marketing_activity_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Failed to export CSV:', error);
+    }
+  };
 
   const channels = Array.from(new Set(activity?.items.map(item => item.channel).filter(Boolean) || []));
   const statuses = Array.from(new Set(activity?.items.map(item => item.status).filter(Boolean) || []));
@@ -69,6 +93,13 @@ const MarketingActivity: React.FC = () => {
           <p className="text-gray-400 mt-1">Complete lineage: created → approved → published → live URLs</p>
         </div>
         <div className="flex items-center space-x-3">
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#3730a3]/30 border border-[#6366f1]/30 hover:bg-[#3730a3]/50 transition-colors"
+          >
+            <Download size={16} className="text-gray-300" />
+            <span className="text-sm font-medium text-gray-300">Export CSV</span>
+          </button>
           <div className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-[#3730a3]/30 border border-[#6366f1]/30">
             <div className="w-2 h-2 rounded-full bg-green-500"></div>
             <span className="text-sm font-medium text-gray-300">
@@ -136,16 +167,18 @@ const MarketingActivity: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Title</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Agent</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Channel</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Keyword</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Created</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Published</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Live URL</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Analytics</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
               </tr>
             </thead>
             <tbody>
               {activity?.items.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
                     <FileText className="h-12 w-12 mx-auto mb-4 text-gray-600" />
                     <p>No marketing activity found</p>
                   </td>
@@ -183,6 +216,11 @@ const MarketingActivity: React.FC = () => {
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-xs text-gray-400">
+                        {item.target_keyword || 'N/A'}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-xs text-gray-400">
                         {item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}
                       </div>
                     </td>
@@ -209,6 +247,22 @@ const MarketingActivity: React.FC = () => {
                       )}
                     </td>
                     <td className="px-4 py-3">
+                      <div className="flex items-center space-x-2 text-xs text-gray-400">
+                        {item.impressions !== undefined && item.impressions > 0 && (
+                          <span title="Impressions"><TrendingUp size={12} /> {item.impressions}</span>
+                        )}
+                        {item.clicks !== undefined && item.clicks > 0 && (
+                          <span title="Clicks">{item.clicks}</span>
+                        )}
+                        {item.engagement !== undefined && item.engagement > 0 && (
+                          <span title="Engagement">{item.engagement}</span>
+                        )}
+                        {(item.impressions === undefined || item.impressions === 0) && (
+                          <span>N/A</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
                       {item.is_real_publish ? (
                         <span className="flex items-center space-x-1 text-xs text-green-400">
                           <Globe size={12} />
@@ -230,7 +284,7 @@ const MarketingActivity: React.FC = () => {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="glass-card p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -256,6 +310,17 @@ const MarketingActivity: React.FC = () => {
               <p className="text-2xl font-bold text-amber-400">{activity?.dry_run_count || 0}</p>
             </div>
             <Zap className="text-amber-400" size={24} />
+          </div>
+        </div>
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400">SEO Pages Indexed</p>
+              <p className="text-2xl font-bold text-blue-400">
+                {activity?.items.filter(i => i.indexing_status === 'indexed').length || 0}
+              </p>
+            </div>
+            <Search className="text-blue-400" size={24} />
           </div>
         </div>
       </div>

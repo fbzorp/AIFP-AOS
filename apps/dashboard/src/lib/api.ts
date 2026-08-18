@@ -300,6 +300,7 @@ export interface MarketingActivityItem {
   objective?: string;
   target_audience?: string;
   source_id?: string;
+  source_urls?: string[];
   format?: string;
   channel?: string;
   status: string;
@@ -313,6 +314,23 @@ export interface MarketingActivityItem {
   publish_error?: string;
   live_url?: string;
   is_real_publish: boolean;
+  
+  // SEO Metadata
+  target_keyword?: string;
+  search_intent?: string;
+  meta_title?: string;
+  meta_description?: string;
+  canonical_url?: string;
+  indexing_status?: string;
+  internal_links?: string[];
+  
+  // Analytics Metrics
+  impressions?: number;
+  clicks?: number;
+  engagement?: number;
+  referrals?: number;
+  conversions?: number;
+  last_analytics_update?: string;
 }
 
 export interface MarketingActivityResponse {
@@ -349,6 +367,25 @@ export const fetchMarketingActivityDetail = async (contentId: string) => {
     return data;
   } catch (error) {
     console.error('Failed to fetch marketing activity detail:', error);
+    throw error;
+  }
+};
+
+export const exportMarketingActivityCSV = async (params?: {
+  start_date?: string;
+  end_date?: string;
+  channel?: string;
+  status?: string;
+  only_real?: boolean;
+}): Promise<Blob> => {
+  try {
+    const { data } = await api.get('/marketing/activity/export/csv', {
+      params,
+      responseType: 'blob'
+    });
+    return data;
+  } catch (error) {
+    console.error('Failed to export marketing activity CSV:', error);
     throw error;
   }
 };

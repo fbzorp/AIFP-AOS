@@ -17,6 +17,10 @@ depends_on = None
 
 
 def upgrade():
+    # Add approved_at and approver columns for approval tracking
+    op.add_column('content_items', sa.Column('approved_at', sa.DateTime(timezone=True), nullable=True))
+    op.add_column('content_items', sa.Column('approver', sa.String(), nullable=True))
+    
     # Add SEO metadata columns
     op.add_column('content_items', sa.Column('source_urls', sa.JSON(), nullable=True))
     op.add_column('content_items', sa.Column('target_keyword', sa.String(), nullable=True))
@@ -62,3 +66,7 @@ def downgrade():
     op.drop_column('content_items', 'search_intent')
     op.drop_column('content_items', 'target_keyword')
     op.drop_column('content_items', 'source_urls')
+    
+    # Remove approval tracking columns
+    op.drop_column('content_items', 'approver')
+    op.drop_column('content_items', 'approved_at')

@@ -43,6 +43,8 @@ class ContentItemModel(Base):
     
     # Publication & Calendar
     scheduled_at = Column(DateTime(timezone=True), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)  # When human approved the content
+    approver = Column(String, nullable=True)  # Who approved the content
     published_at = Column(DateTime(timezone=True), nullable=True)
     post_url = Column(String, nullable=True)
     post_id = Column(String, nullable=True)

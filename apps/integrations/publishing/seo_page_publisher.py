@@ -140,11 +140,17 @@ class SeoPagePublisher:
             
             logger.info(f"SEO page published: {filepath} -> {post_url}")
             
+            # Return metadata for updating content item
             return {
                 "success": True,
                 "dry_run": False,
                 "post_id": content_id,
-                "post_url": post_url
+                "post_url": post_url,
+                "canonical_url": post_url,
+                "target_keyword": variants.get("keywords", [""])[0] if variants.get("keywords") else None,
+                "meta_title": variants.get("seo_title_tag", title),
+                "meta_description": variants.get("meta_description", ""),
+                "indexing_status": "pending"
             }
             
         except Exception as e:
