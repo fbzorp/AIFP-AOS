@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "AiFinPay Autonomous Growth OS",
-    "description": "AiFinPay Autonomous OS API - Payment processing, content approvals, MCP/x402 integration, and system health monitoring with JWT-based authentication and role-based access control",
+    "description": "AiFinPay Autonomous OS API - Content approvals, MCP integration, and system health monitoring with JWT-based authentication and role-based access control",
     "version": "1.0.0"
   },
   "paths": {
@@ -699,220 +699,6 @@
         ]
       }
     },
-    "/api/v1/payments/": {
-      "post": {
-        "tags": [
-          "Payments"
-        ],
-        "summary": "Create a new payment request",
-        "description": "Create a new payment request with automatic approval for small amounts. Requires write permission.",
-        "operationId": "create_payment_api_v1_payments__post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PaymentCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaymentResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Payments"
-        ],
-        "summary": "List all payments",
-        "description": "Retrieve a paginated list of all payment records with their current status. Requires viewer role.",
-        "operationId": "list_payments_api_v1_payments__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 0,
-              "title": "Skip"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 100,
-              "title": "Limit"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PaymentResponse"
-                  },
-                  "title": "Response List Payments Api V1 Payments  Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/payments/{payment_id}/approve": {
-      "post": {
-        "tags": [
-          "Payments"
-        ],
-        "summary": "Approve a pending payment",
-        "description": "Approve a pending payment request for execution. Enforces spending limits and daily caps. Requires approve permission.",
-        "operationId": "approve_payment_api_v1_payments__payment_id__approve_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "payment_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Payment Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PaymentApprove"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaymentResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/payments/{payment_id}/execute": {
-      "post": {
-        "tags": [
-          "Payments"
-        ],
-        "summary": "Execute an approved payment",
-        "description": "Execute an approved payment transaction. Requires admin role. Enforces kill switch and allowlist checks.",
-        "operationId": "execute_payment_api_v1_payments__payment_id__execute_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "payment_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Payment Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaymentResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/settings/credentials": {
       "get": {
         "tags": [
@@ -1158,6 +944,129 @@
         }
       }
     },
+    "/api/v1/marketing/activity/export/csv": {
+      "get": {
+        "tags": [
+          "Marketing"
+        ],
+        "summary": "Export Marketing Activity to CSV",
+        "description": "Export full marketing activity registry to CSV format",
+        "operationId": "export_marketing_activity_csv_api_v1_marketing_activity_export_csv_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by start date",
+              "title": "Start Date"
+            },
+            "description": "Filter by start date"
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by end date",
+              "title": "End Date"
+            },
+            "description": "Filter by end date"
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by channel",
+              "title": "Channel"
+            },
+            "description": "Filter by channel"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status",
+              "title": "Status"
+            },
+            "description": "Filter by status"
+          },
+          {
+            "name": "only_real",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Only include real (non-dry-run) publications",
+              "default": false,
+              "title": "Only Real"
+            },
+            "description": "Only include real (non-dry-run) publications"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health Check",
@@ -1367,211 +1276,6 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "PaymentApprove": {
-        "properties": {
-          "approved_by": {
-            "type": "string",
-            "title": "Approved By"
-          }
-        },
-        "type": "object",
-        "required": [
-          "approved_by"
-        ],
-        "title": "PaymentApprove"
-      },
-      "PaymentCreate": {
-        "properties": {
-          "purpose": {
-            "type": "string",
-            "title": "Purpose"
-          },
-          "recipient_address": {
-            "type": "string",
-            "title": "Recipient Address"
-          },
-          "amount": {
-            "type": "number",
-            "title": "Amount"
-          },
-          "currency": {
-            "type": "string",
-            "title": "Currency",
-            "default": "USDC"
-          },
-          "network": {
-            "type": "string",
-            "title": "Network",
-            "default": "solana"
-          }
-        },
-        "type": "object",
-        "required": [
-          "purpose",
-          "recipient_address",
-          "amount"
-        ],
-        "title": "PaymentCreate"
-      },
-      "PaymentResponse": {
-        "properties": {
-          "purpose": {
-            "type": "string",
-            "title": "Purpose"
-          },
-          "recipient_address": {
-            "type": "string",
-            "title": "Recipient Address"
-          },
-          "amount": {
-            "type": "number",
-            "title": "Amount"
-          },
-          "currency": {
-            "type": "string",
-            "title": "Currency",
-            "default": "USDC"
-          },
-          "network": {
-            "type": "string",
-            "title": "Network",
-            "default": "solana"
-          },
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "tx_hash": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tx Hash"
-          },
-          "tx_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tx Url"
-          },
-          "x402_request_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "X402 Request Url"
-          },
-          "approved_by": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Approved By"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "mcp_tool": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mcp Tool"
-          },
-          "request_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Request Id"
-          },
-          "latency_ms": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latency Ms"
-          },
-          "cost_usd": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cost Usd"
-          },
-          "wallet": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Wallet"
-          }
-        },
-        "type": "object",
-        "required": [
-          "purpose",
-          "recipient_address",
-          "amount",
-          "id",
-          "status",
-          "created_at"
-        ],
-        "title": "PaymentResponse"
-      },
       "TaskCreateRequest": {
         "properties": {
           "task_type": {
@@ -1647,10 +1351,6 @@
     {
       "name": "Approvals",
       "description": "Content approval workflow, engagement proposals, and calendar management"
-    },
-    {
-      "name": "Payments",
-      "description": "Payment processing, approval workflows, and transaction execution"
     },
     {
       "name": "Settings",
