@@ -223,6 +223,10 @@ class TestPostgresTriggerProtection:
     
     def test_insert_still_works(self, postgres_session):
         """Test that INSERT operations still work with the trigger."""
+        # Clear any existing events to avoid state pollution
+        postgres_session.query(AuditEventModel).delete()
+        postgres_session.commit()
+        
         event = record_event(postgres_session, "TestAgent", "test", "Test message")
         postgres_session.commit()
 
@@ -233,6 +237,10 @@ class TestPostgresTriggerProtection:
 
     def test_record_event_with_populated_hash_succeeds(self, postgres_session):
         """Test that normal record_event call succeeds with populated record_hash under active trigger."""
+        # Clear any existing events to avoid state pollution
+        postgres_session.query(AuditEventModel).delete()
+        postgres_session.commit()
+        
         # This test proves the fix: record_event now computes hash before INSERT
         # avoiding the UPDATE that would trigger append-only protection
         event = record_event(postgres_session, "TestAgent", "event1", "Test event with hash")
