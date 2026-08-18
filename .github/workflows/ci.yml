@@ -69,9 +69,6 @@ jobs:
       env:
         DATABASE_URL: postgresql+asyncpg://aifp:devpassword@localhost:5432/aifp_dev
         REDIS_URL: redis://localhost:6379/0
-        PAYMENTS_KILL_SWITCH: false
-        SOLANA_RPC_URL: https://api.devnet.solana.com
-        PAYMENTS_NETWORK: devnet
         EMBEDDING_MODEL_DIR: /tmp/test_model
         DEEPSEEK_API_KEY: test-key-for-ci-tests
     

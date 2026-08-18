@@ -568,14 +568,14 @@ class TestFollowOnTaskChaining:
         assert len(follow_ons) == 0
 
 
-class TestAutoApprovalSEOContent:
-    """Tests for auto-approval of SEO content after compliance passes."""
+class TestHumanApprovalRequiredForAllContent:
+    """Tests for human approval requirement for all content including SEO."""
 
     @patch("apps.workers.tasks.get_sync_session")
     @patch("apps.workers.tasks.get_agent")
     @patch("apps.workers.tasks.record_event")
-    def test_seo_content_auto_approved_after_compliance(self, mock_record, mock_get_agent, mock_get_session):
-        """Test that SEO content gets auto-approved after compliance passes."""
+    def test_seo_content_stays_pending_review_after_compliance(self, mock_record, mock_get_agent, mock_get_session):
+        """Test that SEO content stays pending_review after compliance passes (no auto-approval)."""
         session = TestingSessionLocal()
         mock_get_session.return_value.__enter__.return_value = session
 
@@ -613,23 +613,20 @@ class TestAutoApprovalSEOContent:
 
         run_agent_task("task-123")
 
-        # Verify SEO content was auto-approved
+        # Verify SEO content stays pending_review (no auto-approval)
         seo_content = session.query(ContentItemModel).filter(ContentItemModel.id == "seo-item-1").first()
-        assert seo_content.status == "approved"
-        assert seo_content.scheduled_at is not None
+        assert seo_content.status == "pending_review"
 
-        # Verify approval record was created
+        # Verify no approval record was created (auto-approval removed)
         from apps.models.approval import ApprovalModel
         approval = session.query(ApprovalModel).filter(ApprovalModel.content_id == "seo-item-1").first()
-        assert approval is not None
-        assert approval.status == "approved"
-        assert "Auto-Approval for SEO" in approval.approved_by
+        assert approval is None
 
     @patch("apps.workers.tasks.get_sync_session")
     @patch("apps.workers.tasks.get_agent")
     @patch("apps.workers.tasks.record_event")
-    def test_non_seo_content_remains_pending_review(self, mock_record, mock_get_agent, mock_get_session):
-        """Test that non-SEO content remains pending_review after compliance passes."""
+    def test_all_content_stays_pending_review_after_compliance(self, mock_record, mock_get_agent, mock_get_session):
+        """Test that all content (including non-SEO) stays pending_review after compliance passes."""
         session = TestingSessionLocal()
         mock_get_session.return_value.__enter__.return_value = session
 

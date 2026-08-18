@@ -51,7 +51,7 @@ async def test_list_discussions_uses_read_only_posts_feed_and_normalizes_posts()
                     {
                         "id": "post-123",
                         "submolt": {"name": "aifintech"},
-                        "content": "How can an AI agent safely use x402 payments?",
+                        "content": "How can an AI agent safely use autonomous publishing?",
                     },
                     {
                         "id": "post-456",
@@ -95,7 +95,7 @@ async def test_list_discussions_uses_read_only_posts_feed_and_normalizes_posts()
         {
             "url": "https://www.moltbook.com/posts/post-123",
             "submolt": "aifintech",
-            "content": "How can an AI agent safely use x402 payments?",
+            "content": "How can an AI agent safely use autonomous publishing?",
         },
         {
             "url": "https://www.moltbook.com/posts/post-789",
@@ -327,8 +327,8 @@ async def test_community_engagement_persists_approval_gated_proposals(
     session = TestingSessionLocal()
     mock_get_session.return_value.__enter__.return_value = session
     mock_complete_json.return_value = {
-        "discussion_summary": "An agent needs guidance on x402 payments.",
-        "proposed_reply": "AiFinPay can help with an approval-gated x402 payment flow.",
+        "discussion_summary": "An agent needs guidance on autonomous publishing.",
+        "proposed_reply": "The autonomous publishing system can help with an approval-gated content flow.",
     }
 
     result = await CommunityEngagementAgent().execute(
@@ -337,7 +337,7 @@ async def test_community_engagement_persists_approval_gated_proposals(
                 {
                     "url": "https://www.moltbook.com/posts/post-123",
                     "submolt": "aifintech",
-                    "content": "How can an AI agent safely use x402 payments?",
+                    "content": "How can an AI agent safely use autonomous publishing?",
                 }
             ]
         }

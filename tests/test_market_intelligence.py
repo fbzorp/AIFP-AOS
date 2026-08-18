@@ -46,9 +46,9 @@ async def test_market_intelligence_stores_sources():
     agent = MarketIntelligenceAgent()
     
     mock_llm_response = {
-        "summary": "AI agents are transforming fintech payments.",
+        "summary": "AI agents are transforming autonomous publishing.",
         "relevance_score": 0.95,
-        "content_angle": "Focus on API monetization"
+        "content_angle": "Focus on content automation"
     }
     
     input_data = {
@@ -81,7 +81,7 @@ async def test_market_intelligence_stores_sources():
             source = session.query(SourceModel).filter_by(url="https://example.com/ai-news").first()
             assert source is not None
             assert source.relevance_score == 0.95
-            assert source.summary == "AI agents are transforming fintech payments."
+            assert source.summary == "AI agents are transforming autonomous publishing."
             # Note: embedding column is not accessible via model in SQLite tests
             # It's added by migration for Postgres but not defined in SourceModel
 

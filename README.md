@@ -1,6 +1,6 @@
-# AiFinPay Autonomous Growth OS (AIFP-AOS)
+# Autonomous Growth OS (AIFP-AOS)
 
-A production-ready autonomous growth system with multi-agent orchestration, content strategy, AI content generation, approval workflows, and secure payment processing capabilities.
+A production-ready autonomous growth system with multi-agent orchestration, content strategy, AI content generation, and approval workflows.
 
 ## Overview
 
@@ -8,7 +8,6 @@ AIFP-AOS is a comprehensive content growth platform that combines:
 - **Multi-Agent System**: Specialized agents for content strategy, technical writing, brand compliance, and analytics
 - **AI Content Generation**: DeepSeek-powered content creation with verification and approval workflows
 - **Semantic Search**: pgvector-powered semantic retrieval over intelligence sources using sentence-transformers
-- **Payment Integration**: Secure blockchain payment processing with kill switches and safety controls
 - **Content Management**: Approval queues, content editing, and publishing workflows
 - **Analytics**: Moltbook integration for content performance tracking
 - **Security**: JWT authentication, RBAC, and comprehensive security controls
@@ -124,25 +123,22 @@ Production environment requires:
 - `MOLTBOOK_AUTOPUBLISH`: Enable auto-publishing (true/false)
 - `MOLTBOOK_ALLOWED_SUBMOLTS`: Allowed submolts (comma-separated)
 
-### Payment Safety Settings
-- `HUMAN_APPROVAL_THRESHOLD`: Approval threshold in USD
-- `PER_TRANSACTION_LIMIT`: Per-transaction limit in USD
-- `DAILY_SPENDING_LIMIT`: Daily spending limit in USD
-- `PAYMENTS_NETWORK`: Network (devnet, mainnet)
-- `PAYMENTS_KILL_SWITCH`: Global kill switch (true/false)
-- `RECIPIENT_ALLOWLIST`: Comma-separated allowed recipient addresses
+### X / Twitter Integration
+- `X_API_KEY`: X API key
+- `X_API_SECRET`: X API secret
+- `X_ACCESS_TOKEN`: X access token
+- `X_ACCESS_TOKEN_SECRET`: X access token secret
+- `X_AUTOPUBLISH`: Enable auto-publishing (true/false)
 
-### Blockchain Configuration
-- `SOLANA_PRIVATE_KEY`: Solana private key (base58)
-- `EVM_PRIVATE_KEY`: EVM private key
-- `SOLANA_RPC_URL`: Solana RPC endpoint
-- `EVM_RPC_URL`: EVM RPC endpoint
+### Telegram Integration
+- `TELEGRAM_BOT_TOKEN`: Telegram bot token
+- `TELEGRAM_CHAT_ID`: Telegram chat ID
+- `TELEGRAM_DEFAULT_CHANNEL`: Telegram default channel
+- `TELEGRAM_AUTOPUBLISH`: Enable auto-publishing (true/false)
 
-### AiFinPay Integration
-- `AIFINPAY_AGENT_SECRET`: Ed25519 secret key
-- `AIFINPAY_AGENT_PUBKEY`: Ed25519 public key
-- `AIFINPAY_MAX_USD`: Maximum USD per transaction
-- `AIFINPAY_MCP_ENABLED`: Enable MCP integration (true/false)
+### News/Search APIs
+- `NEWS_API_KEY`: News API key
+- `SERPER_API_KEY`: Serper API key
 
 ### Embedding Model Configuration
 - `EMBEDDING_MODEL_DIR`: Path to baked-in sentence-transformers model (default: /opt/models/all-MiniLM-L6-v2)
@@ -150,8 +146,6 @@ Production environment requires:
 - `TRANSFORMERS_OFFLINE`: Disable transformers library downloads (default: 1 for offline operation)
 
 **Note**: The embedding model (all-MiniLM-L6-v2) is baked into the Docker image at build time for offline operation. No runtime downloads required.
-
-## Database Migrations
 
 ```bash
 # Run migrations
@@ -245,7 +239,6 @@ locust -f load/locustfile.py --host=http://localhost:8000 --headless -u 10 -r 2 
   - `service_agent`: Machine-to-machine (read, execute)
 - **Permission Enforcement**: Approve/publish gated to founder_admin and smm_manager; execute gated to founder_admin and service_agent
 - **Security Scanning**: pip-audit, bandit, and gitleaks integrated in CI
-- **Payment Safety**: Kill switches, allowlists, and spending limits
 - **Secrets Management**: Environment variables only, no hardcoded secrets
 
 ## Architecture

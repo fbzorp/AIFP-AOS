@@ -44,19 +44,19 @@ async def test_technical_content_verification_passes():
     # Create a test content item
     with mock_get_sync_session() as session:
         source = SourceModel(
-            url="https://aifinpay.com/docs",
+            url="https://example.com/docs",
             url_hash="test_hash",
-            title="AiFinPay Documentation",
-            raw_content="Official documentation about agent_address and agent_quote endpoints."
+            title="Autonomous Publishing Documentation",
+            raw_content="Official documentation about autonomous publishing endpoints."
         )
         session.add(source)
         session.flush()
         
         content_item = ContentItemModel(
-            title="How to Use AiFinPay SDK",
+            title="How to Use Autonomous Publishing",
             channel="moltbook",
             status="draft",
-            objective="Explain basic SDK usage",
+            objective="Explain basic autonomous publishing usage",
             source_id=source.id
         )
         session.add(content_item)
@@ -65,7 +65,7 @@ async def test_technical_content_verification_passes():
     
     # Mock LLM response with verifiable technical content
     mock_llm_response = {
-        "body": "To use the AiFinPay SDK, you can call agent_address to get agent information and agent_quote to get payment quotes. These endpoints work on devnet and mainnet networks."
+        "body": "To use the autonomous publishing system, you can create content and submit it for approval. The system supports multiple channels including X, Telegram, and Moltbook."
     }
     
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
@@ -79,13 +79,13 @@ async def test_technical_content_verification_passes():
         result = await agent.execute({"content_item_id": content_item_id})
         
         assert result["outcome"] == "tutorial_generated"
-        assert result["verification_status"] == "verified"
-        assert "verified" in result["verification_details"].lower()
+        # Technical verification disabled after payment removal - always pending
+        assert result["verification_status"] == "pending"
         
         # Verify content item was updated with verification status
         with mock_get_sync_session() as session:
             item = session.query(ContentItemModel).filter_by(id=content_item_id).first()
-            assert item.technical_verification_status == "verified"
+            assert item.technical_verification_status == "pending"
             assert item.status == "draft"  # Should remain draft for review
 
 @pytest.mark.asyncio
@@ -105,7 +105,7 @@ async def test_technical_content_verification_fails():
         session.flush()
         
         content_item = ContentItemModel(
-            title="Advanced AiFinPay Features",
+            title="Advanced Autonomous Publishing Features",
             channel="moltbook",
             status="draft",
             objective="Show advanced features",
@@ -117,7 +117,7 @@ async def test_technical_content_verification_fails():
     
     # Mock LLM response with unverifiable technical claims
     mock_llm_response = {
-        "body": "AiFinPay supports fake_testnet for blockchain payments."
+        "body": "The autonomous publishing system supports fake_testnet for test deployments."
     }
     
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
@@ -131,8 +131,8 @@ async def test_technical_content_verification_fails():
         result = await agent.execute({"content_item_id": content_item_id})
         
         assert result["outcome"] == "tutorial_generated"
-        # The verification logic might return different status based on pattern matching
-        # Just check that verification was performed
+        # Technical verification disabled after payment removal - always pending
+        assert result["verification_status"] == "pending"
         assert "verification_status" in result
         assert "verification_details" in result
 
@@ -147,13 +147,13 @@ async def test_technical_content_no_claims_pending():
             url="https://example.com/docs",
             url_hash="test_hash",
             title="Test Docs",
-            raw_content="General content about payments."
+            raw_content="General content about publishing."
         )
         session.add(source)
         session.flush()
         
         content_item = ContentItemModel(
-            title="Payment Overview",
+            title="Publishing Overview",
             channel="moltbook",
             status="draft",
             objective="General overview",
@@ -165,7 +165,7 @@ async def test_technical_content_no_claims_pending():
     
     # Mock LLM response without technical claims
     mock_llm_response = {
-        "body": "This is a general overview of payment systems without specific technical details."
+        "body": "This is a general overview of publishing systems without specific technical details."
     }
     
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
@@ -179,7 +179,7 @@ async def test_technical_content_no_claims_pending():
         result = await agent.execute({"content_item_id": content_item_id})
         
         assert result["outcome"] == "tutorial_generated"
-        # The verification logic might return different status based on pattern matching
-        # Just check that verification was performed
+        # Technical verification disabled after payment removal - always pending
+        assert result["verification_status"] == "pending"
         assert "verification_status" in result
         assert "verification_details" in result

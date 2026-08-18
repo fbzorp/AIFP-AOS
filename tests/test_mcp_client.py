@@ -7,12 +7,10 @@ from apps.integrations.mcp.client import MCPClient, MCPToolCall
 async def test_mcp_client_initialization():
     """Test MCP client initialization"""
     client = MCPClient(
-        max_usd=100.0,
         enabled=True,
         timeout=30.0
     )
     
-    assert client.max_usd == 100.0
     assert client.enabled is True
     assert client.timeout == 30.0
     assert len(client._call_history) == 0
@@ -22,45 +20,42 @@ async def test_mcp_client_initialization():
 async def test_mcp_client_disabled():
     """Test MCP client when disabled"""
     client = MCPClient(
-        max_usd=100.0,
         enabled=False
     )
     
     result = await client.call_tool("payable_fetch", "test_agent", {"url": "http://example.com"})
-    assert result == {"status": "disabled", "error": "MCP is disabled"}
+    assert result == {"status": "disabled", "error": "MCP payment functionality removed"}
 
 
 @pytest.mark.asyncio
 async def test_mcp_client_available_tools():
-    """Test getting available tools"""
+    """Test getting available tools - stub returns empty list"""
     client = MCPClient(
-        max_usd=100.0,
         enabled=True
     )
     
-    tools = client.AVAILABLE_TOOLS
-    assert len(tools) > 0
-    assert "payable_fetch" in tools
-    assert "agent_call" in tools
+    # Stub implementation doesn't have AVAILABLE_TOOLS
+    # Test that the client still works
+    assert client is not None
+    assert client.enabled is True
 
 
 @pytest.mark.asyncio
 async def test_mcp_client_unknown_tool():
-    """Test MCP client with unknown tool"""
+    """Test MCP client with unknown tool - stub ignores validation"""
     client = MCPClient(
-        max_usd=100.0,
         enabled=True
     )
     
-    with pytest.raises(ValueError, match="Unknown MCP tool"):
-        await client.call_tool("unknown_tool", "test_agent", {"param": "value"})
+    # Stub implementation returns disabled for all tools
+    result = await client.call_tool("unknown_tool", "test_agent", {"param": "value"})
+    assert result == {"status": "disabled", "error": "MCP payment functionality removed"}
 
 
 @pytest.mark.asyncio
 async def test_mcp_client_context_manager():
     """Test MCP client async context manager"""
     async with MCPClient(
-        max_usd=100.0,
         enabled=True
     ) as client:
         assert client is not None
@@ -87,14 +82,11 @@ async def test_mcp_tool_call_record():
 
 @pytest.mark.asyncio
 async def test_mcp_client_missing_secret():
-    """Test MCP client initialization without secret"""
+    """Test MCP client without secret - stub just returns disabled"""
     client = MCPClient(
-        max_usd=100.0,
         enabled=True
     )
     
-    with patch.dict('os.environ', {}, clear=True):
-        client.agent_secret = None
-        
-        with pytest.raises(RuntimeError, match="AIFINPAY_AGENT_SECRET environment variable is required"):
-            await client.call_tool("payable_fetch", "test_agent", {"url": "http://example.com"})
+    # Stub implementation doesn't require secret, just returns disabled
+    result = await client.call_tool("payable_fetch", "test_agent", {"url": "http://example.com"})
+    assert result == {"status": "disabled", "error": "MCP payment functionality removed"}

@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
 """
-Startup Autonomous Publishing Script
+DEMO SCRIPT: Startup Autonomous Publishing Script
 
-This script triggers autonomous content generation and publishing when the machine starts.
-It ensures all agents begin posting immediately upon system startup.
+⚠️  WARNING: This is a DEMO script for testing purposes only.
+- It creates content in PENDING_REVIEW status (requires human approval)
+- It does NOT auto-approve or auto-publish content
+- Set DEMO_MODE=true environment variable to run this script
+- DO NOT use in production without explicit operator approval
+
+This script triggers autonomous content generation when the machine starts.
+It ensures all agents begin creating content immediately upon system startup.
 
 Functions:
 1. Triggers content generation for all major agents
-2. Ensures content gets auto-approved
-3. Initiates publishing process
-4. Provides startup verification
+2. Sets content to PENDING_REVIEW for human approval
+3. Provides startup verification
 
-Run this script when the system starts to kickstart autonomous publishing.
+Run this script when the system starts to kickstart content generation.
 """
 
+import os
 import sys
 import asyncio
 from pathlib import Path
@@ -22,11 +28,15 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+# Safety check: require DEMO_MODE=true
+if os.environ.get("DEMO_MODE") != "true":
+    print("❌ ERROR: This is a demo script. Set DEMO_MODE=true environment variable to run.")
+    print("⚠️  This script creates PENDING_REVIEW content only - no auto-approval.")
+    sys.exit(1)
+
 from apps.models.base import get_sync_session
 from apps.models.content_item import ContentItemModel
-from apps.models.approval import ApprovalModel
 from apps.agents.registry import get_agent
-from apps.core.policy.engine import PolicyEngine, compute_draft_hash
 from apps.core.audit.service import record_event
 from sqlalchemy import select
 
@@ -38,7 +48,7 @@ STARTUP_AGENTS = [
 ]
 
 def generate_content_for_agent(agent_name: str):
-    """Generate initial content for an agent."""
+    """Generate initial content for an agent in PENDING_REVIEW status."""
     print(f"🤖 Generating content for {agent_name}...")
     
     try:
@@ -71,6 +81,14 @@ def generate_content_for_agent(agent_name: str):
         result = asyncio.run(agent.execute({"content_item_id": content_id}))
         print(f"📝 Agent execution result: {result}")
         
+        # Set to pending_review for human approval
+        with get_sync_session() as session:
+            content = session.query(ContentItemModel).filter(ContentItemModel.id == content_id).first()
+            if content:
+                content.status = "pending_review"
+                session.commit()
+                print(f"✅ Content set to PENDING_REVIEW (requires human approval)")
+        
         return content_id
             
     except Exception as e:
@@ -79,9 +97,9 @@ def generate_content_for_agent(agent_name: str):
         traceback.print_exc()
         return None
 
-def auto_approve_content(content_id: str):
-    """Auto-approve content for publishing."""
-    print(f"✅ Auto-approving content: {content_id}")
+def set_content_pending_review(content_id: str):
+    """Set content to pending_review for human approval."""
+    print(f"✅ Setting content to pending_review: {content_id}")
     
     try:
         with get_sync_session() as session:
@@ -90,100 +108,54 @@ def auto_approve_content(content_id: str):
                 print(f"❌ Content {content_id} not found")
                 return False
             
-            # Compute draft hash
-            draft_hash = compute_draft_hash(content)
-            
-            # Create approval
-            approval = ApprovalModel(
-                content_id=content_id,
-                status="approved",
-                approved_by="System Auto-Approval",
-                draft_hash=draft_hash
-            )
-            session.add(approval)
-            
-            # Update content status
-            content.status = "approved"
+            # Update content status to pending_review
+            content.status = "pending_review"
             
             session.commit()
             
             # Record audit event
-            record_event(session, "System", "auto_approval", f"Auto-approved content {content_id} for startup publishing", {"content_id": content_id})
+            record_event(session, "System", "content_pending_review", f"Content {content_id} set to pending_review for human approval", {"content_id": content_id})
             
-            print(f"✅ Content {content_id} auto-approved")
+            print(f"✅ Content {content_id} set to pending_review")
             return True
             
     except Exception as e:
-        print(f"❌ Error auto-approving content {content_id}: {e}")
+        print(f"❌ Error setting content to pending_review {content_id}: {e}")
         import traceback
         traceback.print_exc()
         return False
 
-def trigger_publishing(content_id: str):
-    """Trigger publishing for content."""
-    print(f"🚀 Triggering publishing for: {content_id}")
-    
-    try:
-        import asyncio
-        from apps.workers.tasks import _perform_publish_logic
-        
-        with get_sync_session() as session:
-            # Get approval
-            approval = session.execute(
-                select(ApprovalModel).where(
-                    ApprovalModel.content_id == content_id,
-                    ApprovalModel.status == "approved"
-                ).order_by(ApprovalModel.created_at.desc()).limit(1)
-            ).scalar_one_or_none()
-            
-            if not approval:
-                print(f"❌ No approval found for {content_id}")
-                return False
-            
-            # Trigger publishing using the async function
-            result = asyncio.run(_perform_publish_logic(session, content_id, approval.id, approval.draft_hash))
-            print(f"📤 Publishing result: {result}")
-            
-            return result.get("status") == "published"
-            
-    except Exception as e:
-        print(f"❌ Error triggering publishing for {content_id}: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
-
-def verify_startup_publishing():
-    """Verify that startup publishing was successful."""
-    print("\n🔍 Verifying startup publishing...")
+def verify_startup_content():
+    """Verify that startup content generation was successful."""
+    print("\n🔍 Verifying startup content generation...")
     
     with get_sync_session() as session:
-        # Check recent published content
-        recent_published = session.execute(
+        # Check recent pending_review content
+        recent_pending = session.execute(
             select(ContentItemModel).where(
-                ContentItemModel.status == "published",
-                ContentItemModel.post_url.isnot(None)
-            ).order_by(ContentItemModel.published_at.desc()).limit(10)
+                ContentItemModel.status == "pending_review"
+            ).order_by(ContentItemModel.created_at.desc()).limit(10)
         ).scalars().all()
         
-        print(f"📊 Found {len(recent_published)} recently published items:")
-        for item in recent_published:
+        print(f"📊 Found {len(recent_pending)} items in pending_review:")
+        for item in recent_pending:
             print(f"  ✅ {item.author_agent}: {item.title[:50]}...")
-            print(f"     URL: {item.post_url}")
+            print(f"     Content ID: {item.id}")
         
-        return len(recent_published) > 0
+        return len(recent_pending) > 0
 
 def main():
     """Main startup function."""
     print("="*70)
-    print("🚀 STARTUP AUTONOMOUS PUBLISHING")
+    print("🚀 DEMO: STARTUP CONTENT GENERATION")
     print("="*70)
+    print("⚠️  Content will be in PENDING_REVIEW status (requires human approval)")
     print()
     
     print("This script will:")
     print("1. Generate initial content for all major agents")
-    print("2. Auto-approve content for publishing")
-    print("3. Trigger publishing to configured channels")
-    print("4. Verify successful startup publishing")
+    print("2. Set content to PENDING_REVIEW for human approval")
+    print("3. Verify successful content generation")
     print()
     
     generated_content = []
@@ -197,46 +169,41 @@ def main():
             generated_content.append((agent_name, content_id))
         print()
     
-    # Step 2: Auto-approve content
-    print("Step 2: Auto-approving content")
+    # Step 2: Set content to pending_review
+    print("Step 2: Setting content to pending_review")
     print("-"*70)
-    approved_content = []
+    pending_content = []
     for agent_name, content_id in generated_content:
-        if auto_approve_content(content_id):
-            approved_content.append((agent_name, content_id))
+        if set_content_pending_review(content_id):
+            pending_content.append((agent_name, content_id))
         print()
     
-    # Step 3: Trigger publishing
-    print("Step 3: Triggering publishing")
+    # Step 3: Verify content generation
+    print("Step 3: Verifying content generation")
     print("-"*70)
-    published_count = 0
-    for agent_name, content_id in approved_content:
-        if trigger_publishing(content_id):
-            published_count += 1
-        print()
-    
-    # Step 4: Verify startup publishing
-    print("Step 4: Verifying startup publishing")
-    print("-"*70)
-    verification_success = verify_startup_publishing()
+    verification_success = verify_startup_content()
     
     # Summary
     print()
     print("="*70)
-    print("📊 STARTUP PUBLISHING SUMMARY")
+    print("📊 STARTUP CONTENT GENERATION SUMMARY")
     print("="*70)
     print(f"Agents processed: {len(STARTUP_AGENTS)}")
     print(f"Content generated: {len(generated_content)}")
-    print(f"Content approved: {len(approved_content)}")
-    print(f"Content published: {published_count}")
+    print(f"Content in pending_review: {len(pending_content)}")
     print(f"Verification: {'✅ SUCCESS' if verification_success else '❌ FAILED'}")
     print()
     
-    if published_count > 0:
-        print("🎉 Startup autonomous publishing initiated successfully!")
-        print("Agents will continue publishing on their scheduled intervals.")
+    if len(pending_content) > 0:
+        print("🎉 Startup content generation completed successfully!")
+        print("Content is ready for human approval via the approvals API.")
+        print()
+        print("To approve and publish content, use:")
+        for agent_name, content_id in pending_content:
+            print(f"  POST /api/v1/content/{content_id}/approve")
+            print(f"  POST /api/v1/content/{content_id}/publish")
     else:
-        print("⚠️  No content was published. Check logs for errors.")
+        print("⚠️  No content was generated. Check logs for errors.")
     
     print("="*70)
 

@@ -181,10 +181,7 @@ def test_telegram_republisher_seo_content_selection():
 
 
 def test_auto_approval_seo_content():
-    """Test that SEO content gets auto-approved after compliance passes."""
-    from apps.core.policy.engine import compute_draft_hash
-    from datetime import datetime, timedelta, timezone
-
+    """Test that SEO content stays pending_review after compliance passes (no auto-approval)."""
     session = TestingSessionLocal()
 
     # Create SEO content
@@ -199,33 +196,13 @@ def test_auto_approval_seo_content():
     session.add(seo_content)
     session.flush()
 
-    # Simulate auto-approval logic
-    draft_hash = compute_draft_hash(seo_content)
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(hours=24)
-
-    approval = ApprovalModel(
-        content_id=seo_content.id,
-        draft_hash=draft_hash,
-        status="approved",
-        approved_by="System (Auto-Approval for SEO)",
-        expires_at=expires_at,
-        decided_at=now
-    )
-    session.add(approval)
-    session.flush()
-
-    seo_content.status = "approved"
-    if not seo_content.scheduled_at:
-        seo_content.scheduled_at = now + timedelta(days=1)
-
+    # Simulate compliance passing - content goes to pending_review for human approval
+    seo_content.status = "pending_review"
     session.commit()
 
-    # Verify auto-approval worked
-    assert seo_content.status == "approved"
-    assert seo_content.scheduled_at is not None
-    assert approval.status == "approved"
-    assert approval.approved_by == "System (Auto-Approval for SEO)"
+    # Verify content stays pending_review (no auto-approval)
+    assert seo_content.status == "pending_review"
+    assert seo_content.author_agent == "SEO Content"
 
 
 def test_publisher_resolution_all_channels():

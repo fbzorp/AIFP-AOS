@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """
-Automate all agents to make real and reasonable posts to their respective channels.
+DEMO SCRIPT: Automate all agents to make real and reasonable posts to their respective channels.
 Each agent uses their specific Moltbook credentials and DeepSeek reasoning.
+
+⚠️  WARNING: This is a DEMO script for testing purposes only.
+- It creates content in PENDING_REVIEW status (requires human approval)
+- It does NOT auto-approve or auto-publish content
+- Set DEMO_MODE=true environment variable to run this script
+- DO NOT use in production without explicit operator approval
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -14,12 +21,16 @@ sys.path.insert(0, str(project_root))
 import asyncio
 from apps.models.base import get_sync_session
 from apps.models.content_item import ContentItemModel
-from apps.models.approval import ApprovalModel
-from apps.core.policy.engine import compute_draft_hash
 from apps.agents.registry import get_agent
 
+# Safety check: require DEMO_MODE=true
+if os.environ.get("DEMO_MODE") != "true":
+    print("❌ ERROR: This is a demo script. Set DEMO_MODE=true environment variable to run.")
+    print("⚠️  This script creates PENDING_REVIEW content only - no auto-approval.")
+    sys.exit(1)
+
 async def automate_agent(agent_name: str, channel: str, objective: str):
-    """Automate a single agent to create and publish content."""
+    """Automate a single agent to create content in PENDING_REVIEW status."""
     print(f"🤖 Automating {agent_name}...")
     print("-" * 70)
     
@@ -27,7 +38,7 @@ async def automate_agent(agent_name: str, channel: str, objective: str):
         try:
             # Create content item
             content = ContentItemModel(
-                title=f'Autonomous Post - {agent_name}',
+                title=f'Demo Post - {agent_name}',
                 body='',
                 channel=channel,
                 status='draft',
@@ -54,73 +65,18 @@ async def automate_agent(agent_name: str, channel: str, objective: str):
             # Refresh content to get generated body
             session.refresh(content)
             
-            # Auto-approve
-            draft_hash = compute_draft_hash(content)
-            approval = ApprovalModel(
-                content_id=content.id,
-                status='approved',
-                approved_by='System Automation',
-                draft_hash=draft_hash
-            )
-            session.add(approval)
-            content.status = 'approved'
+            # Set to pending_review for human approval (NO auto-approval)
+            content.status = 'pending_review'
             session.commit()
-            print(f"✅ Auto-approved content")
+            print(f"✅ Content set to PENDING_REVIEW (requires human approval)")
             
-            # Publish
-            from apps.workers.tasks import _perform_publish_logic
-            result = await _perform_publish_logic(session, content.id, approval.id, draft_hash)
-            print(f"📤 Publishing result: {result.get('status')}")
-            
-            if result.get("status") == "published":
-                url = result.get("post_url")
-                post_id = result.get("post_id")
-                
-                # Generate clickable URL
-                if url:
-                    print(f"✅ SUCCESS: Live URL: {url}")
-                    return {
-                        "agent": agent_name,
-                        "success": True,
-                        "url": url,
-                        "post_id": post_id,
-                        "title": content.title
-                    }
-                elif post_id and channel == "moltbook":
-                    api_url = f"https://www.moltbook.com/api/v1/posts/{post_id}"
-                    print(f"✅ SUCCESS: API URL: {api_url}")
-                    return {
-                        "agent": agent_name,
-                        "success": True,
-                        "url": api_url,
-                        "post_id": post_id,
-                        "title": content.title
-                    }
-                elif post_id and channel == "telegram":
-                    telegram_url = f"https://t.me/c/{post_id}"
-                    print(f"✅ SUCCESS: Telegram URL: {telegram_url}")
-                    return {
-                        "agent": agent_name,
-                        "success": True,
-                        "url": telegram_url,
-                        "post_id": post_id,
-                        "title": content.title
-                    }
-                else:
-                    print(f"✅ SUCCESS: Post ID {post_id}")
-                    return {
-                        "agent": agent_name,
-                        "success": True,
-                        "post_id": post_id,
-                        "title": content.title
-                    }
-            else:
-                print(f"❌ FAILED: {result}")
-                return {
-                    "agent": agent_name,
-                    "success": False,
-                    "error": result
-                }
+            return {
+                "agent": agent_name,
+                "success": True,
+                "content_id": content.id,
+                "title": content.title,
+                "status": "pending_review"
+            }
                 
         except Exception as e:
             print(f"❌ Error: {e}")
@@ -133,10 +89,11 @@ async def automate_agent(agent_name: str, channel: str, objective: str):
             }
 
 async def automate_all_agents():
-    """Automate all major agents to publish real content."""
+    """Automate all major agents to create content in PENDING_REVIEW status."""
     print("="*70)
-    print("🚀 AUTOMATING ALL AGENTS WITH REAL CONTENT")
+    print("🚀 DEMO: CREATING CONTENT IN PENDING_REVIEW STATUS")
     print("="*70)
+    print("⚠️  Content requires human approval via the approvals API")
     print()
     
     # Define agents with their specific channels and objectives
@@ -154,7 +111,7 @@ async def automate_all_agents():
         {
             "name": "Technical Content",
             "channel": "moltbook", 
-            "objective": "Create technical tutorials and development guides for AiFinPay"
+            "objective": "Create technical tutorials and development guides"
         }
     ]
     
@@ -173,7 +130,7 @@ async def automate_all_agents():
     
     # Summary
     print("="*70)
-    print("📊 AUTOMATION SUMMARY")
+    print("📊 DEMO SUMMARY")
     print("="*70)
     print()
     
@@ -186,11 +143,11 @@ async def automate_all_agents():
     print()
     
     if successful:
-        print("🎉 SUCCESSFUL AGENTS:")
+        print("🎉 SUCCESSFUL AGENTS (Content in PENDING_REVIEW):")
         for result in successful:
             print(f"✅ {result['agent']}")
-            if result.get("url"):
-                print(f"   🔗 {result['url']}")
+            print(f"   📝 Content ID: {result.get('content_id')}")
+            print(f"   � Status: {result.get('status')}")
             print(f"   📝 {result.get('title', 'N/A')}")
             print()
     
@@ -202,13 +159,16 @@ async def automate_all_agents():
             print()
     
     print("="*70)
-    print("📋 BOSS VERIFICATION URLS")
+    print("📋 NEXT STEPS")
     print("="*70)
+    print()
+    print("To approve and publish content, use the approvals API:")
+    print("  POST /api/v1/content/{content_id}/approve")
+    print("  POST /api/v1/content/{content_id}/publish")
     print()
     
     for result in successful:
-        if result.get("url"):
-            print(f"🔗 {result['agent']}: {result['url']}")
+        print(f"🔗 {result['agent']}: Content ID {result.get('content_id')}")
     
     print()
     return len(successful) == len(results)

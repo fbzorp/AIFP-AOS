@@ -81,10 +81,7 @@ async def test_analytics_real_publications_count():
         
         session.commit()
     
-    with patch("apps.agents.specialized.mcp_client") as mock_mcp, \
-         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
-        
-        mock_mcp.enabled = False
+    with patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
         
         result = await agent.execute({"timeframe": "daily"})
         
@@ -97,10 +94,7 @@ async def test_analytics_unavailable_metrics():
     """Test that unavailable metrics return 'unavailable/not configured' with data source name."""
     agent = AnalyticsAgent()
     
-    with patch("apps.agents.specialized.mcp_client") as mock_mcp, \
-         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
-        
-        mock_mcp.enabled = False
+    with patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
         
         result = await agent.execute({"timeframe": "daily"})
         
@@ -126,7 +120,7 @@ async def test_analytics_unavailable_metrics():
         assert metrics["github_activity_data_source"] == "github"
         
         assert metrics["conversions"] == "unavailable/not configured"
-        assert metrics["conversions_data_source"] == "aifinpay_payments"
+        assert metrics["conversions_data_source"] == "analytics"
 
 @pytest.mark.asyncio
 async def test_analytics_available_metrics():
@@ -144,10 +138,7 @@ async def test_analytics_available_metrics():
         session.add(audit_event)
         session.flush()  # Flush to ensure hash is computed
     
-    with patch("apps.agents.specialized.mcp_client") as mock_mcp, \
-         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
-        
-        mock_mcp.enabled = False
+    with patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
         
         result = await agent.execute({"timeframe": "daily"})
         
@@ -168,10 +159,7 @@ async def test_analytics_weekly_report():
     """Test that AnalyticsAgent generates weekly reports."""
     agent = AnalyticsAgent()
     
-    with patch("apps.agents.specialized.mcp_client") as mock_mcp, \
-         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
-        
-        mock_mcp.enabled = False
+    with patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
         
         result = await agent.execute({"timeframe": "weekly"})
         
@@ -186,10 +174,7 @@ async def test_analytics_no_fabrication():
     """Test that AnalyticsAgent never fabricates metric values."""
     agent = AnalyticsAgent()
     
-    with patch("apps.agents.specialized.mcp_client") as mock_mcp, \
-         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
-        
-        mock_mcp.enabled = False
+    with patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
         
         result = await agent.execute({"timeframe": "daily"})
         
@@ -214,10 +199,7 @@ async def test_analytics_data_source_summary():
     """Test that AnalyticsAgent provides accurate data source summary."""
     agent = AnalyticsAgent()
     
-    with patch("apps.agents.specialized.mcp_client") as mock_mcp, \
-         patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
-        
-        mock_mcp.enabled = False
+    with patch("apps.agents.specialized.get_sync_session", side_effect=mock_get_sync_session):
         
         result = await agent.execute({"timeframe": "daily"})
         

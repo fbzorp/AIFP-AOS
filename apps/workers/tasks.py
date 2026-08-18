@@ -126,49 +126,16 @@ def run_agent_task(task_id: str):
             elif task.task_type == "Compliance & Brand" and result.get("outcome") == "compliance_passed":
                 item_id = result.get("item_id")
                 if item_id:
-                    # Auto-approve SEO content for autonomous publishing
+                    # ALL content (including SEO) transitions to pending_review for human approval
                     content = session.query(ContentItemModel).filter(ContentItemModel.id == item_id).first()
-                    if content and content.author_agent == "SEO Content":
-                        from apps.core.policy.engine import compute_draft_hash
-                        from datetime import datetime, timedelta
-
-                        draft_hash = compute_draft_hash(content)
-                        now = datetime.now(timezone.utc)
-                        expires_at = now + timedelta(hours=24)
-
-                        approval = ApprovalModel(
-                            content_id=item_id,
-                            draft_hash=draft_hash,
-                            status="approved",
-                            approved_by="System (Auto-Approval for SEO)",
-                            expires_at=expires_at,
-                            decided_at=now
-                        )
-                        session.add(approval)
-                        session.flush()
-
-                        content.status = "approved"
-                        if not content.scheduled_at:
-                            content.scheduled_at = now + timedelta(days=1)
-
-                        record_event(
-                            session,
-                            agent_name="System",
-                            event_type="auto_approval_seo",
-                            message=f"Auto-approved SEO content: {content.title}",
-                            metadata={"content_id": item_id, "approval_id": approval.id, "draft_hash": draft_hash}
-                        )
-
-                        logger.info(f"Auto-approved SEO content {item_id}")
-                    else:
-                        # For non-SEO content, keep it at pending_review for human approval
+                    if content:
                         content.status = "pending_review"
                         record_event(
                             session,
                             agent_name="System",
                             event_type="compliance_pending_review",
                             message=f"Compliance passed, pending human review: {content.title}",
-                            metadata={"content_id": item_id}
+                            metadata={"content_id": item_id, "author_agent": content.author_agent}
                         )
 
         except Exception as e:

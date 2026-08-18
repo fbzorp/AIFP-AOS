@@ -61,58 +61,6 @@ async def setup_db():
 
 
 @pytest.mark.asyncio
-async def test_unauthenticated_payment_creation():
-    """Test that payment creation requires authentication."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        payment_data = {
-            "recipient_address": "test_recipient",
-            "amount": 10.0,
-            "currency": "SOL",
-            "network": "solana",
-            "purpose": "Test payment"
-        }
-        
-        response = await client.post("/api/v1/payments/", json=payment_data)
-        # Should fail with 401 (unauthenticated)
-        assert response.status_code == 401
-        # Error message may vary depending on auth implementation
-        assert "credentials" in response.json()["detail"].lower() or "authenticated" in response.json()["detail"].lower()
-
-
-@pytest.mark.asyncio
-async def test_authenticated_payment_creation_with_writer():
-    """Test that payment creation succeeds with write permission."""
-    token = create_test_token(role="founder_admin")
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        payment_data = {
-            "recipient_address": "test_recipient",
-            "amount": 10.0,
-            "currency": "SOL",
-            "network": "solana",
-            "purpose": "Test payment"
-        }
-        
-        response = await client.post("/api/v1/payments/", json=payment_data, headers=headers)
-        # Should succeed (may fail with 403 due to other validations, but auth check passed)
-        assert response.status_code in [201, 500, 403]
-
-
-@pytest.mark.asyncio
-async def test_authenticated_payment_approval():
-    """Test that payment approval succeeds with approve permission."""
-    token = create_test_token(role="smm_manager")
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.post("/api/v1/payments/test_id/approve", json={
-            "approved_by": "test_user"
-        }, headers=headers)
-        # Should fail with 404 (payment not found) but auth check passed
-        assert response.status_code == 404
-
-@pytest.mark.asyncio
 async def test_authenticated_content_approval():
     """Test that content approval succeeds with approve permission."""
     token = create_test_token(role="smm_manager")
@@ -125,42 +73,6 @@ async def test_authenticated_content_approval():
         }, headers=headers)
         # Should fail with 404 (content not found) but auth check passed
         assert response.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_unauthenticated_payment_execution():
-    """Test that payment execution requires admin role."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.post("/api/v1/payments/test_id/execute")
-        # Should fail with 401 (unauthenticated)
-        assert response.status_code == 401
-        # Error message may vary depending on auth implementation
-        assert "credentials" in response.json()["detail"].lower() or "authenticated" in response.json()["detail"].lower()
-
-
-@pytest.mark.asyncio
-async def test_authenticated_payment_execution_with_admin():
-    """Test that payment execution succeeds with admin permission."""
-    token = create_test_token(role="founder_admin")
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.post("/api/v1/payments/test_id/execute", headers=headers)
-        # Should fail with 404 (payment not found) but auth check passed
-        assert response.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_authenticated_payment_execution_with_smm_manager_insufficient_role():
-    """Test that payment execution fails with smm_manager role (insufficient permissions)."""
-    token = create_test_token(role="smm_manager")
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.post("/api/v1/payments/test_id/execute", headers=headers)
-        # Should fail with 403 (insufficient permissions)
-        assert response.status_code == 403
-        assert "Insufficient permissions" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -226,20 +138,6 @@ async def test_service_agent_cannot_approve_or_publish():
         # Test publish endpoint
         response = await client.post("/api/v1/content/test_id/publish", headers=headers)
         # Should fail with 403 (insufficient permissions)
-        assert response.status_code == 403
-        assert "Insufficient permissions" in response.json()["detail"]
-
-
-@pytest.mark.asyncio
-async def test_service_agent_cannot_execute_payments():
-    """Test that service_agent role cannot execute payments (requires admin permission)."""
-    token = create_test_token(role="service_agent")
-    headers = {"Authorization": f"Bearer {token}"}
-    
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        # Test execute endpoint - should fail with 403 (service_agent lacks admin permission)
-        response = await client.post("/api/v1/payments/test_id/execute", headers=headers)
-        # Service_agent has execute permission but payment execute requires admin permission
         assert response.status_code == 403
         assert "Insufficient permissions" in response.json()["detail"]
 
