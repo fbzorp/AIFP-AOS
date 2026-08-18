@@ -223,13 +223,13 @@ class TestPostgresTriggerProtection:
     
     def test_insert_still_works(self, postgres_session):
         """Test that INSERT operations still work with the trigger."""
-        # Clear any existing events by disabling trigger temporarily
-        with postgres_session.connection().execution_options(isolation_level="AUTOCOMMIT") as conn:
-            conn.execute(text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_prevent_update"))
-            conn.execute(text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_prevent_delete"))
+        # Clear any existing events using a separate connection with autocommit
+        engine = postgres_session.bind
+        with engine.connect() as conn:
+            conn.execute(text("SET session_replication_role = replica"))
             conn.execute(text("DELETE FROM audit_events"))
-            conn.execute(text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_prevent_update"))
-            conn.execute(text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_prevent_delete"))
+            conn.execute(text("SET session_replication_role = DEFAULT"))
+            conn.commit()
         
         event = record_event(postgres_session, "TestAgent", "test", "Test message")
         postgres_session.commit()
@@ -241,13 +241,13 @@ class TestPostgresTriggerProtection:
 
     def test_record_event_with_populated_hash_succeeds(self, postgres_session):
         """Test that normal record_event call succeeds with populated record_hash under active trigger."""
-        # Clear any existing events by disabling trigger temporarily
-        with postgres_session.connection().execution_options(isolation_level="AUTOCOMMIT") as conn:
-            conn.execute(text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_prevent_update"))
-            conn.execute(text("ALTER TABLE audit_events DISABLE TRIGGER audit_events_prevent_delete"))
+        # Clear any existing events using a separate connection with autocommit
+        engine = postgres_session.bind
+        with engine.connect() as conn:
+            conn.execute(text("SET session_replication_role = replica"))
             conn.execute(text("DELETE FROM audit_events"))
-            conn.execute(text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_prevent_update"))
-            conn.execute(text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_prevent_delete"))
+            conn.execute(text("SET session_replication_role = DEFAULT"))
+            conn.commit()
         
         # This test proves the fix: record_event now computes hash before INSERT
         # avoiding the UPDATE that would trigger append-only protection
