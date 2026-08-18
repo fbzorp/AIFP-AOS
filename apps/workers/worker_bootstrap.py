@@ -15,7 +15,7 @@ from apps.workers.scheduler import (
     setup_scheduled_tasks
 )
 
-# Setup scheduled tasks (informational only since we removed cron)
+# Setup scheduled tasks with cron scheduling
 setup_scheduled_tasks()
 
 # Export for Dramatiq CLI

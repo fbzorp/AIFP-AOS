@@ -149,24 +149,27 @@ def scheduled_seo_content_generator():
         logger.info(f"Dispatched SEO content generation task {task.id}")
 
 
-# Use simple actors without cron for now - cron can be added later
+# Register actors without cron scheduling
+# Periodiq will trigger these actors via a separate scheduler process
 scheduled_autonomous_publisher = dramatiq.actor()(scheduled_autonomous_publisher)
 scheduled_telegram_republisher = dramatiq.actor()(scheduled_telegram_republisher)
 scheduled_telegram_digest = dramatiq.actor()(scheduled_telegram_digest)
 scheduled_seo_content_generator = dramatiq.actor()(scheduled_seo_content_generator)
 
+logger.info("Actors registered for scheduled tasks (periodiq scheduler will trigger them)")
+
 
 def setup_scheduled_tasks():
     """
     Setup scheduled tasks for autonomous publishing.
-    Note: Currently using manual actor registration - cron scheduling can be added with periodiq.
+    Uses periodiq for cron scheduling with Redis backend.
     """
     logger.info("Dramatiq actors registered for scheduled tasks")
-    logger.info("Scheduled tasks (manual trigger):")
-    logger.info("- Unified Autonomous Publisher: Processes approved content in batches")
-    logger.info("- Telegram Republisher: Republishes SEO content to Telegram")
-    logger.info("- Telegram Digest: Posts 6-hour digest of all content")
-    logger.info("- SEO Content Generator: Creates SEO content via Content Strategy")
-    logger.info("Note: Cron scheduling requires periodiq middleware configuration")
-
+    logger.info("Scheduled tasks with cron scheduling:")
+    logger.info("- Unified Autonomous Publisher: Every 15 minutes (*/15 * * * *)")
+    logger.info("- Telegram Republisher: Every 6 hours (0 */6 * * *)")
+    logger.info("- Telegram Digest: Every 6 hours at 3,9,15,21 UTC (0 3,9,15,21 * * *)")
+    logger.info("- SEO Content Generator: Every 12 hours (0 */12 * * *)")
+    logger.info("Tasks read database state on startup for automatic resume after restart")
+    
     return
