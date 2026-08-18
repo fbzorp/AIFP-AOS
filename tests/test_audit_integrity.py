@@ -167,13 +167,13 @@ class TestPostgresTriggerProtection:
                 $$ LANGUAGE plpgsql;
             """))
             conn.execute(text("""
-                CREATE TRIGGER audit_events_prevent_update
+                CREATE TRIGGER IF NOT EXISTS audit_events_prevent_update
                 BEFORE UPDATE ON audit_events
                 FOR EACH ROW
                 EXECUTE FUNCTION prevent_audit_modification();
             """))
             conn.execute(text("""
-                CREATE TRIGGER audit_events_prevent_delete
+                CREATE TRIGGER IF NOT EXISTS audit_events_prevent_delete
                 BEFORE DELETE ON audit_events
                 FOR EACH ROW
                 EXECUTE FUNCTION prevent_audit_modification();

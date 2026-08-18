@@ -1,7 +1,7 @@
 """Add SEO metadata and analytics columns to content_items
 
-Revision ID: 20260818_add_seo_metadata_and_analytics
-Revises: 7ff8e3bbcdfd
+Revision ID: 20260818_seo_meta
+Revises: d710bdc92b20
 Create Date: 2026-08-18
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '20260818_add_seo_metadata_and_analytics'
-down_revision = '7ff8e3bbcdfd'
+revision = '20260818_seo_meta'
+down_revision = 'd710bdc92b20'
 branch_labels = None
 depends_on = None
 
