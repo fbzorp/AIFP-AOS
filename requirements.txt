@@ -39,7 +39,7 @@ aifinpay-agent>=1.0.0
 
 # Blockchain & Cryptography (Payment functionality removed)
 # solana==0.40.1
-# solana==0.28.0
+# solders==0.28.0
 # web3>=6.0.0
 # eth-account>=0.9.0
 
