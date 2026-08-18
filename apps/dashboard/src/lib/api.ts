@@ -106,27 +106,6 @@ export interface Metrics {
   mcp_calls?: number;
 }
 
-export interface Payment {
-  id: string;
-  purpose: string;
-  recipient_address: string;
-  amount: number;
-  currency: string;
-  network: string;
-  status: string;
-  tx_hash?: string;
-  tx_url?: string;
-  x402_request_url?: string;
-  approved_by?: string;
-  error?: string;
-  created_at: string;
-  mcp_tool?: string;
-  request_id?: string;
-  latency_ms?: number;
-  cost_usd?: number;
-  wallet?: string;
-}
-
 export interface Health {
   status: string;
   version: string;
@@ -271,16 +250,6 @@ export const publishContentItem = async (contentId: string) => {
   }
 };
 
-export const fetchPayments = async (): Promise<Payment[]> => {
-  try {
-    const { data } = await api.get('/payments');
-    return data;
-  } catch (error) {
-    console.error('Failed to fetch payments:', error);
-    return [];
-  }
-};
-
 export const createCampaign = async (objective: string) => {
   try {
     const { data } = await api.post('/campaigns', { objective });
@@ -289,27 +258,6 @@ export const createCampaign = async (objective: string) => {
     console.error('Failed to create campaign:', error);
     throw error;
   }
-};
-
-export const createPayment = async (payment: {
-  purpose: string;
-  recipient_address: string;
-  amount: number;
-  currency: string;
-  network: string;
-}): Promise<Payment> => {
-  const { data } = await api.post('/payments', payment);
-  return data;
-};
-
-export const approvePayment = async (paymentId: string, approvedBy: string): Promise<Payment> => {
-  const { data } = await api.post(`/payments/${paymentId}/approve`, { approved_by: approvedBy });
-  return data;
-};
-
-export const executePayment = async (paymentId: string): Promise<Payment> => {
-  const { data } = await api.post(`/payments/${paymentId}/execute`);
-  return data;
 };
 
 export interface CredentialStatus {

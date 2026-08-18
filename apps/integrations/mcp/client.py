@@ -4,7 +4,15 @@ import asyncio
 import os
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
-from aifinpay import Agent
+
+# Stub aifinpay dependency since payment code is being removed
+try:
+    from aifinpay import Agent
+except ImportError:
+    # Create a stub class if aifinpay is not available
+    class Agent:
+        def __init__(self, *args, **kwargs):
+            pass
 
 logger = logging.getLogger(__name__)
 
@@ -35,19 +43,14 @@ class MCPClient:
     
     def __init__(
         self,
-        max_usd: float = 0.10,
         enabled: bool = False,
         timeout: float = 30
     ):
-        self.max_usd = max_usd
         self.enabled = enabled
         self.timeout = timeout
         self._call_history: List[MCPToolCall] = []
         self._agent: Optional[Agent] = None
         self._initialized = False
-        
-        # Environment variables for aifinpay-agent
-        self.agent_secret = os.getenv("AIFINPAY_AGENT_SECRET")
         
         logger.info(f"MCPClient initialized (enabled={enabled}, max_usd={max_usd})")
     

@@ -20,15 +20,8 @@ from apps.core.policy.engine import PolicyEngine
 from apps.api.config import settings
 from apps.workers.tasks import _perform_publish_logic
 from apps.integrations.moltbook.client import MoltbookClient
-from apps.integrations.mcp.client import MCPClient
 from apps.core.embeddings import embed_text
 from .adk_orchestrator import get_adk_orchestrator
-
-# Initialize MCP client
-mcp_client = MCPClient(
-    max_usd=settings.AIFINPAY_MAX_USD,
-    enabled=settings.AIFINPAY_MCP_ENABLED
-)
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +184,7 @@ class MarketIntelligenceAgent(BaseAgent):
         )
 
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        topic = input_data.get('topic', 'AI agents, agentic commerce, MCP, stablecoin payments')
+        topic = input_data.get('topic', 'AI agents, agentic commerce, MCP, fintech')
         
         # Priority: use externally-supplied sources, then fetch real sources
         raw_sources = input_data.get('sources')
@@ -855,34 +848,34 @@ class AnalyticsAgent(BaseAgent):
             "sdk_installs": {"source": "package_registry", "available": False, "integration": "pypi/npm"},
             "mcp_activations": {"source": "mcp_sidecar", "available": True, "integration": "mcp_audit_events"},
             "github_activity": {"source": "github_api", "available": False, "integration": "github"},
-            "conversions": {"source": "payment_platform", "available": False, "integration": "aifinpay_payments"},
+            "conversions": {"source": "user_platform", "available": False, "integration": "analytics"},
             "mcp_calls": {"source": "audit_events", "available": True, "integration": "database"}
         }
 
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         timeframe = input_data.get('timeframe', 'daily')  # daily or weekly
         
-        # Generate real MCP calls when enabled
-        if mcp_client.enabled:
-            try:
-                logger.info("Making MCP calls against live @aifinpay/mcp sidecar")
-                
-                # Make multiple MCP calls to ensure we get >=10 events
-                await mcp_client.agent_address("AnalyticsAgent")
-                await mcp_client.agent_quote("AnalyticsAgent", 1.0, "USD")
-                await mcp_client.quote_split("AnalyticsAgent", 0.5, "USD")
-                await mcp_client.payable_fetch("AnalyticsAgent", "test_payable_1")
-                await mcp_client.payable_fetch("AnalyticsAgent", "test_payable_2")
-                await mcp_client.agent_call("AnalyticsAgent", "get_balance", {})
-                await mcp_client.agent_call("AnalyticsAgent", "get_status", {})
-                await mcp_client.agent_claim_self("AnalyticsAgent")
-                await mcp_client.agent_quote("AnalyticsAgent", 2.0, "USD")
-                await mcp_client.quote_split("AnalyticsAgent", 1.5, "USD")
-                
-                logger.info(f"Successfully completed {len(mcp_client.get_successful_calls())} MCP calls")
-                    
-            except Exception as e:
-                logger.error(f"MCP calls failed: {e}")
+        # MCP calls disabled after payment code removal
+        # if mcp_client.enabled:
+        #     try:
+        #         logger.info("Making MCP calls against live @aifinpay/mcp sidecar")
+        #         
+        #         # Make multiple MCP calls to ensure we get >=10 events
+        #         await mcp_client.agent_address("AnalyticsAgent")
+        #         await mcp_client.agent_quote("AnalyticsAgent", 1.0, "USD")
+        #         await mcp_client.quote_split("AnalyticsAgent", 0.5, "USD")
+        #         await mcp_client.payable_fetch("AnalyticsAgent", "test_payable_1")
+        #         await mcp_client.payable_fetch("AnalyticsAgent", "test_payable_2")
+        #         await mcp_client.agent_call("AnalyticsAgent", "get_balance", {})
+        #         await mcp_client.agent_call("AnalyticsAgent", "get_status", {})
+        #         await mcp_client.agent_claim_self("AnalyticsAgent")
+        #         await mcp_client.agent_quote("AnalyticsAgent", 2.0, "USD")
+        #         await mcp_client.quote_split("AnalyticsAgent", 1.5, "USD")
+        #         
+        #         logger.info(f"Successfully completed {len(mcp_client.get_successful_calls())} MCP calls")
+        #             
+        #     except Exception as e:
+        #         logger.error(f"MCP calls failed: {e}")
         
         # Collect metrics from available data sources
         metrics_report = {}

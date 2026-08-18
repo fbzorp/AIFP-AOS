@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from redis import Redis
 from apps.api.config import settings as config_settings
 from apps.models.base import get_db
-from apps.api.routers import system, approvals, payments
+from apps.api.routers import system, approvals
 from apps.api.routers import settings as settings_router
 from apps.api.routers.marketing import router as marketing_router
 from apps.api.auth import create_access_token, create_test_token
@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AiFinPay Autonomous Growth OS",
-    description="AiFinPay Autonomous OS API - Payment processing, content approvals, MCP/x402 integration, and system health monitoring with JWT-based authentication and role-based access control",
+    description="AiFinPay Autonomous OS API - Content approvals, MCP integration, and system health monitoring with JWT-based authentication and role-based access control",
     version="1.0.0",
     lifespan=lifespan,
     openapi_tags=[
@@ -62,10 +62,6 @@ app = FastAPI(
         {
             "name": "Approvals",
             "description": "Content approval workflow, engagement proposals, and calendar management"
-        },
-        {
-            "name": "Payments",
-            "description": "Payment processing, approval workflows, and transaction execution"
         },
         {
             "name": "Settings",
@@ -94,7 +90,6 @@ app.add_middleware(RequestIDMiddleware)
 
 app.include_router(system.router, prefix="/api/v1", tags=["System"])
 app.include_router(approvals.router, prefix="/api/v1", tags=["Approvals"])
-app.include_router(payments.router, prefix="/api/v1/payments", tags=["Payments"])
 app.include_router(settings_router.router, prefix="/api/v1", tags=["Settings"])
 app.include_router(marketing_router, prefix="/api/v1", tags=["Marketing"])
 

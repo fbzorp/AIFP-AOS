@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { Menu } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import CalendarPage from './pages/Calendar'
-import Payments from './pages/Payments'
 import Settings from './pages/Settings'
 import ContentQueue from './pages/ContentQueue'
 import AgentDetails from './pages/AgentDetails'
@@ -77,7 +76,6 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/payments" element={<Payments />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/content-queue" element={<ContentQueue />} />
             <Route path="/agents" element={<Agents />} />

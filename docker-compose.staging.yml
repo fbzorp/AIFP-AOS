@@ -42,18 +42,6 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/${POSTGRES_DB:-aifp_staging}
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: INFO
-      PAYMENTS_KILL_SWITCH: false
-      PAYMENTS_NETWORK: devnet
-      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-https://api.devnet.solana.com}
-      EVM_RPC_URL: ${EVM_RPC_URL}
-      AIFINPAY_AGENT_SECRET: ${AIFINPAY_AGENT_SECRET}
-      AIFINPAY_AGENT_PUBKEY: ${AIFINPAY_AGENT_PUBKEY}
-      AIFINPAY_MAX_USD: 0.10
-      AIFINPAY_MCP_ENABLED: ${AIFINPAY_MCP_ENABLED:-false}
-      DAILY_SPENDING_LIMIT: ${DAILY_SPENDING_LIMIT:-100.00}
-      PER_TRANSACTION_LIMIT: ${PER_TRANSACTION_LIMIT:-50.00}
-      HUMAN_APPROVAL_THRESHOLD: ${HUMAN_APPROVAL_THRESHOLD:-25.00}
-      RECIPIENT_ALLOWLIST: ${RECIPIENT_ALLOWLIST:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,10 +64,6 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/${POSTGRES_DB:-aifp_staging}
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: INFO
-      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-https://api.devnet.solana.com}
-      EVM_RPC_URL: ${EVM_RPC_URL}
-      AIFINPAY_AGENT_SECRET: ${AIFINPAY_AGENT_SECRET}
-      AIFINPAY_AGENT_PUBKEY: ${AIFINPAY_AGENT_PUBKEY}
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,31 +72,6 @@ services:
     networks:
       - aifp-network
     restart: unless-stopped
-
-  scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile.prod
-    image: aifp-aos-scheduler:latest
-    container_name: aifp_scheduler_staging
-    restart: unless-stopped
-    command: ["uv", "run", "python", "-m", "periodiq", "apps.workers.tasks:broker", "apps.workers.periodic_scheduler:SCHEDULES"]
-    environment:
-      APP_ENV: staging
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/${POSTGRES_DB:-aifp_staging}
-      REDIS_URL: redis://redis:6379/0
-      LOG_LEVEL: INFO
-      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-https://api.devnet.solana.com}
-      EVM_RPC_URL: ${EVM_RPC_URL}
-      AIFINPAY_AGENT_SECRET: ${AIFINPAY_AGENT_SECRET}
-      AIFINPAY_AGENT_PUBKEY: ${AIFINPAY_AGENT_PUBKEY}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - aifp-network
 
   dashboard:
     build:

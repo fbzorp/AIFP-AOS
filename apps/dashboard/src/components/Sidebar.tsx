@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   FileText,
-  CreditCard,
   Calendar,
   Settings,
   Moon,
@@ -77,7 +76,6 @@ export default function Sidebar({ onToggle, mobileMenuOpen = false, onMobileMenu
     { icon: Users, label: 'Agents', path: '/agents' },
     { icon: FileText, label: 'Content Queue', path: '/content-queue' },
     { icon: Globe, label: 'Marketing Activity', path: '/marketing-activity' },
-    { icon: CreditCard, label: 'Payments', path: '/payments' },
     { icon: Calendar, label: 'Calendar', path: '/calendar' },
     { icon: Settings, label: 'Settings', path: '/settings' },
   ];

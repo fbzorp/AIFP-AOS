@@ -32,10 +32,6 @@ class Settings(BaseSettings):
     # AiFinPay SDK
     AIFP_API_KEY: Optional[str] = None
     AIFP_BASE_URL: str = "https://api.aifinpay.io"
-    AIFINPAY_AGENT_SECRET: Optional[str] = None  # base58 Ed25519 secret key
-    AIFINPAY_AGENT_PUBKEY: Optional[str] = None  # Ed25519 public key
-    AIFINPAY_MAX_USD: float = 0.10  # per payable_fetch cap
-    AIFINPAY_MCP_ENABLED: bool = False
     
     # Moltbook / Social
     MOLTBOOK_BASE_URL: str = "https://www.moltbook.com"
@@ -107,25 +103,7 @@ class Settings(BaseSettings):
     SEO_CONTENT_MOLTBOOK_AUTOPUBLISH: bool = False
     SEO_CONTENT_MULTI_CHANNEL_AUTOPUBLISH: bool = False
     
-    # Blockchain
-    SOLANA_RPC_URL: str = "https://api.devnet.solana.com"
-    SOLANA_PRIVATE_KEY: Optional[str] = None
-    EVM_RPC_URL: Optional[str] = None
-    EVM_PRIVATE_KEY: Optional[str] = None
-    
-    # X402 Settings
-    X402_ENABLED: bool = True
-    X402_FACILITATOR_URL: str = "https://api.aifinpay.io"
-    PAYMENTS_NETWORK: str = "devnet"
 
-    # Security / Limits
-    DAILY_SPENDING_LIMIT: float = 100.00
-    PER_TRANSACTION_LIMIT: float = 50.00
-    HUMAN_APPROVAL_THRESHOLD: float = 25.00
-    
-    # Payment Security
-    RECIPIENT_ALLOWLIST: str = "" # Comma-separated addresses
-    PAYMENTS_KILL_SWITCH: bool = False
     
     model_config = SettingsConfigDict(
         env_file=".env",
