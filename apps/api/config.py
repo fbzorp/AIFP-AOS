@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     NEWS_API_KEY: Optional[str] = None
     SERPER_API_KEY: Optional[str] = None
     
+    # SEO Pages (Static HTML publishing for Google indexing)
+    SEO_PAGES_OUTPUT_DIR: str = "/var/www/html/seo"
+    SEO_PAGES_BASE_URL: str = "https://example.com/seo"
+    
     # Agent-Specific Credentials (Single Source of Truth)
     # Founder Content Agent
     FOUNDER_CONTENT_X_API_KEY: Optional[str] = None

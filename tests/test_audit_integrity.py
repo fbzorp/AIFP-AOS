@@ -297,7 +297,10 @@ class TestProductionValidation:
             SECRET_KEY='dev-secret-key-change-in-production',
             DEEPSEEK_API_KEY='test-key',
             DATABASE_URL='postgresql+asyncpg://aifp:realpassword@localhost:5432/aifp_prod',
-            MOLTBOOK_AUTOPUBLISH=False
+            MOLTBOOK_AUTOPUBLISH=False,
+            FOUNDER_CONTENT_MOLTBOOK_AUTOPUBLISH=False,
+            TECHNICAL_CONTENT_MOLTBOOK_AUTOPUBLISH=False,
+            SEO_CONTENT_MOLTBOOK_AUTOPUBLISH=False
         )
         errors = settings.validate_production_startup()
         assert len(errors) == 1
@@ -310,7 +313,10 @@ class TestProductionValidation:
             SECRET_KEY='real-secret-key',
             DEEPSEEK_API_KEY=None,
             DATABASE_URL='postgresql+asyncpg://aifp:realpassword@localhost:5432/aifp_prod',
-            MOLTBOOK_AUTOPUBLISH=False
+            MOLTBOOK_AUTOPUBLISH=False,
+            FOUNDER_CONTENT_MOLTBOOK_AUTOPUBLISH=False,
+            TECHNICAL_CONTENT_MOLTBOOK_AUTOPUBLISH=False,
+            SEO_CONTENT_MOLTBOOK_AUTOPUBLISH=False
         )
         errors = settings.validate_production_startup()
         assert len(errors) == 1
@@ -323,7 +329,10 @@ class TestProductionValidation:
             SECRET_KEY='real-secret-key',
             DEEPSEEK_API_KEY='test-key',
             DATABASE_URL='postgresql+asyncpg://aifp:prod_password@localhost:5432/aifp_prod',
-            MOLTBOOK_AUTOPUBLISH=False
+            MOLTBOOK_AUTOPUBLISH=False,
+            FOUNDER_CONTENT_MOLTBOOK_AUTOPUBLISH=False,
+            TECHNICAL_CONTENT_MOLTBOOK_AUTOPUBLISH=False,
+            SEO_CONTENT_MOLTBOOK_AUTOPUBLISH=False
         )
         errors = settings.validate_production_startup()
         assert len(errors) == 1
@@ -336,7 +345,10 @@ class TestProductionValidation:
             SECRET_KEY='real-secret-key',
             DEEPSEEK_API_KEY='test-key',
             DATABASE_URL='postgresql+asyncpg://aifp:realpassword@localhost:5432/aifp_prod',
-            MOLTBOOK_AUTOPUBLISH=False
+            MOLTBOOK_AUTOPUBLISH=False,
+            FOUNDER_CONTENT_MOLTBOOK_AUTOPUBLISH=False,
+            TECHNICAL_CONTENT_MOLTBOOK_AUTOPUBLISH=False,
+            SEO_CONTENT_MOLTBOOK_AUTOPUBLISH=False
         )
         errors = settings.validate_production_startup()
         assert len(errors) == 0

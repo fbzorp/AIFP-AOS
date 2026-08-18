@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, JSON, Boolean, Integer
 from sqlalchemy.sql import func
 from uuid import uuid4
 from .base import Base
@@ -29,7 +29,17 @@ class ContentItemModel(Base):
     kpi = Column(String)
     
     source_id = Column(String, index=True) # Soft reference or FK
+    source_urls = Column(JSON, nullable=True)  # List of source URLs for content
     author_agent = Column(String)
+    
+    # SEO Metadata (for SEO/page publishing)
+    target_keyword = Column(String, nullable=True)
+    search_intent = Column(String, nullable=True)
+    meta_title = Column(String, nullable=True)
+    meta_description = Column(Text, nullable=True)
+    canonical_url = Column(String, nullable=True)
+    indexing_status = Column(String, nullable=True)  # 'pending', 'indexed', 'not_indexed'
+    internal_links = Column(JSON, nullable=True)  # List of internal links
     
     # Publication & Calendar
     scheduled_at = Column(DateTime(timezone=True), nullable=True)
@@ -37,6 +47,14 @@ class ContentItemModel(Base):
     post_url = Column(String, nullable=True)
     post_id = Column(String, nullable=True)
     publish_error = Column(Text, nullable=True)
+    
+    # Analytics Metrics
+    impressions = Column(Integer, nullable=True)
+    clicks = Column(Integer, nullable=True)
+    engagement = Column(Integer, nullable=True)
+    referrals = Column(Integer, nullable=True)
+    conversions = Column(Integer, nullable=True)
+    last_analytics_update = Column(DateTime(timezone=True), nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())

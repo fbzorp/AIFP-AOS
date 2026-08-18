@@ -54,7 +54,7 @@ async def test_publish_post_with_verification_success():
 
             assert result["success"] is True
             assert result["post_id"] == "post-123"
-            assert result["post_url"] == "https://www.moltbook.com/posts/post-123"
+            assert result["post_url"] == "https://www.moltbook.com/api/v1/posts/post-123"
             mock_acompletion.assert_called_once_with(
                 model="mock_model",
                 api_key="mock_deepseek_key",

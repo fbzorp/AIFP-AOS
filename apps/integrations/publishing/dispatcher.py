@@ -10,6 +10,7 @@ from apps.api.config import settings
 from apps.integrations.moltbook.client import MoltbookClient
 from apps.integrations.x.client import XClient
 from apps.integrations.telegram.client import TelegramClient
+from apps.integrations.publishing.seo_page_publisher import SeoPagePublisher
 
 logger = logging.getLogger(__name__)
 
@@ -325,13 +326,13 @@ _CHANNEL_PUBLISHERS: Dict[str, Type[PublisherBase]] = {
     "general": MoltbookPublisher,  # Moltbook submolt
     "aifintech": MoltbookPublisher,  # Moltbook submolt
     "aiagents": MoltbookPublisher,  # Moltbook submolt
-    "google": MoltbookPublisher,  # SEO content routes to Moltbook with google submolt
+    "google": SeoPagePublisher,  # SEO content routes to static HTML pages for Google indexing
     "x": XPublisher,
     "twitter": XPublisher,
     "telegram": TelegramPublisher,
-    # SEO/Blog channels map to multi-channel publisher for maximum reach
-    "seo": MultiChannelPublisher,
-    "blog": MultiChannelPublisher,
+    # SEO/Blog channels map to SEO page publisher for indexable content
+    "seo": SeoPagePublisher,
+    "blog": SeoPagePublisher,
 }
 
 

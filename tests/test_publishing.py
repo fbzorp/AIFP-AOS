@@ -110,22 +110,28 @@ def test_publish_denied_not_approved(mock_get_session):
 
 
 def test_seo_google_publisher_mapping():
-    """Test that get_publisher resolves SEO/google channel to MultiChannelPublisher."""
-    from apps.integrations.publishing.dispatcher import MultiChannelPublisher
+    """Test that get_publisher resolves SEO/google channel to SeoPagePublisher."""
+    from apps.integrations.publishing.dispatcher import SeoPagePublisher
 
-    # Test various SEO-related channel names
-    for channel in ["google", "seo", "blog"]:
+    # google channel routes to SeoPagePublisher for indexable HTML pages
+    publisher = get_publisher("google")
+    assert isinstance(publisher, SeoPagePublisher)
+    assert publisher._agent_name is None  # No agent-specific credentials
+
+    # seo and blog channels also route to SeoPagePublisher
+    for channel in ["seo", "blog"]:
         publisher = get_publisher(channel)
-        assert isinstance(publisher, MultiChannelPublisher)
+        assert isinstance(publisher, SeoPagePublisher)
         assert publisher._agent_name is None  # No agent-specific credentials
 
 
 def test_seo_google_publisher_with_agent():
     """Test that SEO publisher respects agent-specific credentials."""
-    from apps.integrations.publishing.dispatcher import MultiChannelPublisher
+    from apps.integrations.publishing.dispatcher import SeoPagePublisher
 
+    # google channel with agent routes to SeoPagePublisher
     publisher = get_publisher("google", agent_name="SEO Content")
-    assert isinstance(publisher, MultiChannelPublisher)
+    assert isinstance(publisher, SeoPagePublisher)
     assert publisher._agent_name == "SEO Content"
 
 
@@ -208,7 +214,7 @@ def test_auto_approval_seo_content():
 def test_publisher_resolution_all_channels():
     """Test that get_publisher returns real publishers for all channels agents can emit."""
     from apps.integrations.publishing.dispatcher import (
-        MoltbookPublisher, XPublisher, TelegramPublisher, MultiChannelPublisher
+        MoltbookPublisher, XPublisher, TelegramPublisher, SeoPagePublisher
     )
 
     # Test all supported channels
@@ -217,12 +223,12 @@ def test_publisher_resolution_all_channels():
         "general": MoltbookPublisher,
         "aifintech": MoltbookPublisher,
         "aiagents": MoltbookPublisher,
+        "google": SeoPagePublisher,  # SEO content routes to static HTML pages
         "x": XPublisher,
         "twitter": XPublisher,
         "telegram": TelegramPublisher,
-        "google": MultiChannelPublisher,
-        "seo": MultiChannelPublisher,
-        "blog": MultiChannelPublisher,
+        "seo": SeoPagePublisher,
+        "blog": SeoPagePublisher,
     }
 
     for channel, expected_publisher in channels_and_publishers.items():

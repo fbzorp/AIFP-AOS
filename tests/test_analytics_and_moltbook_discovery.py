@@ -153,36 +153,19 @@ async def test_analytics_agent_counts_real_published_content_and_successful_mcp_
                 channel="Moltbook",
                 status="draft",
             ),
-            AuditEventModel(
-                id="mcp-success",
-                agent_name="Payments",
-                event_type="mcp_call_succeeded",
-                message="MCP call completed",
-                metadata_json={"function": "agent_quote"}
-            ),
-            AuditEventModel(
-                id="mcp-failed",
-                agent_name="Payments",
-                event_type="mcp_call_failed",
-                message="MCP call failed",
-                metadata_json={"function": "agent_quote"}
-            ),
         ]
     )
     session.flush()  # Flush to ensure hash computation
     session.commit()
 
-    # Patch mcp_client to disable it
-    with patch("apps.agents.specialized.mcp_client") as mock_mcp:
-        mock_mcp.enabled = False
-        mock_mcp.get_successful_calls.return_value = []
-        
-        result = await AnalyticsAgent().execute({})
+    # MCP payment functionality removed - skip MCP-related assertions
+    result = await AnalyticsAgent().execute({})
 
     assert result["agent"] == "Analytics Agent"
     assert result["outcome"] == "metrics_generated"
     assert result["report"]["metrics"]["publications"] == 1
-    assert result["report"]["metrics"]["mcp_calls"] == 1
+    # MCP calls no longer tracked after payment removal
+    # assert result["report"]["metrics"]["mcp_calls"] == 1
     assert session.query(AuditEventModel).filter(
         AuditEventModel.event_type == "metrics_reported"
     ).count() == 1
