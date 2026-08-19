@@ -1,10 +1,11 @@
 import logging
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from redis import Redis
+import prometheus_client as prom
 from apps.api.config import settings as config_settings
 from apps.models.base import get_db
 from apps.api.routers import system, approvals
@@ -88,6 +89,15 @@ init_tracing(app)
 # Add request ID middleware for tracing
 app.add_middleware(RequestIDMiddleware)
 
+# Prometheus metrics
+http_requests = prom.Counter('http_requests_total', 'Total HTTP requests', ['method', 'endpoint'])
+api_up = prom.Gauge('api_up', 'API status')
+
+@app.middleware("http")
+async def track_requests(request, call_next):
+    http_requests.labels(method=request.method, endpoint=request.url.path).inc()
+    return await call_next(request)
+
 app.include_router(system.router, prefix="/api/v1", tags=["System"])
 app.include_router(approvals.router, prefix="/api/v1", tags=["Approvals"])
 app.include_router(settings_router.router, prefix="/api/v1", tags=["Settings"])
@@ -135,3 +145,10 @@ async def root():
         "docs": "/docs",
         "health": "/health"
     }
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint."""
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

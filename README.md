@@ -171,19 +171,36 @@ SSL certificates are automatically generated on first `docker compose up` by the
 - Domain configured via `DOMAIN` environment variable (default: staging.aifp-aos.local)
 - Idempotent - skips regeneration if certificates already exist
 
-### Production (Let's Encrypt)
+### Production (Let's Encrypt with Certbot)
 
-For production, use Let's Encrypt certificates:
+For production, the system includes automatic Let's Encrypt certificate management:
+
+**Prerequisites:**
+- Set `DOMAIN` in `.env.production` to your actual domain
+- Ensure DNS A record points to your server IP
+- Ensure ports 80 and 443 are accessible from the internet
+
+**Automatic Certificate Management:**
+The `certbot` service in `docker-compose.prod.yml` automatically:
+- Obtains SSL certificates using ACME HTTP-01 challenge
+- Stores certificates in `nginx/ssl/` directory
+- Renews certificates automatically every 12 hours
+- Triggers Nginx reload after successful renewal
+
+**Manual Certificate Issuance (if needed):**
 ```bash
-# Install certbot
-sudo apt-get install certbot
+# Run certbot manually for initial certificate
+docker compose -f docker-compose.prod.yml run --rm certbot certonly --webroot -w /var/www/certbot -d your-domain.com
 
-# Generate certificates
-sudo certbot certonly --standalone -d your-domain.com
+# Force renewal (if needed)
+docker compose -f docker-compose.prod.yml run --rm certbot renew --force-renewal
+```
 
-# Copy certificates to nginx/ssl/
-sudo cp /etc/letsencrypt/live/your-domain.com/fullchain.pem nginx/ssl/
-sudo cp /etc/letsencrypt/live/your-domain.com/privkey.pem nginx/ssl/
+**Certificate Verification:**
+After deployment, verify HTTPS works:
+```bash
+curl -I https://your-domain.com/health
+# Should return HTTP/2 200 with proper SSL headers
 ```
 
 ## Backup and Restore

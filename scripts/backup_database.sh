@@ -7,10 +7,12 @@ set -e
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
-BACKUP_DIR="${PROJECT_DIR}/backups"
-RETENTION_DAYS=7
-DB_NAME="aifp_dev"
-DB_USER="aifp"
+BACKUP_DIR="${BACKUP_DIR:-/backups}"
+RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
+DB_NAME="${POSTGRES_DB:-aifp_prod}"
+DB_USER="${POSTGRES_USER:-aifp}"
+DB_HOST="${POSTGRES_HOST:-postgres}"
+DB_PORT="${POSTGRES_PORT:-5432}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="${BACKUP_DIR}/aifp_backup_${TIMESTAMP}.sql.gz"
 LOG_FILE="${PROJECT_DIR}/logs/aifp_backup.log"
@@ -22,6 +24,7 @@ mkdir -p "$(dirname "${LOG_FILE}")"
 # Logging function
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "${LOG_FILE}"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
 log "Starting backup process"
@@ -29,7 +32,14 @@ log "Starting backup process"
 # Perform backup
 log "Creating backup: ${BACKUP_FILE}"
 cd "${PROJECT_DIR}"
-if docker compose -f docker-compose.dev.yml exec -T postgres pg_dump -U "${DB_USER}" -d "${DB_NAME}" | gzip > "${BACKUP_FILE}"; then
+
+# Determine which compose file to use
+COMPOSE_FILE="docker-compose.prod.yml"
+if [ ! -f "${COMPOSE_FILE}" ]; then
+    COMPOSE_FILE="docker-compose.dev.yml"
+fi
+
+if docker compose -f "${COMPOSE_FILE}" exec -T postgres pg_dump -U "${DB_USER}" -h "${DB_HOST}" -p "${DB_PORT}" -d "${DB_NAME}" | gzip > "${BACKUP_FILE}"; then
     log "Backup created successfully: ${BACKUP_FILE}"
     
     # Get backup size

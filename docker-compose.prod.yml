@@ -350,6 +350,113 @@ services:
       - aifp-network
     restart: unless-stopped
 
+  certbot:
+    image: certbot/certbot:latest
+    container_name: aifp_certbot
+    volumes:
+      - ./nginx/ssl:/etc/letsencrypt
+      - ./nginx/certbot-webroot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aifp_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aifp_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: aifp_postgres_exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aifp_prod}?sslmode=disable
+    depends_on:
+      - postgres
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: aifp_redis_exporter
+    environment:
+      - REDIS_ADDR=redis:6379
+    depends_on:
+      - redis
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    image: aifp-aos-backup:latest
+    container_name: aifp_backup
+    command: >
+      sh -c "
+      chmod +x /app/scripts/backup_database.sh /app/scripts/test_restore.sh /app/scripts/monitor_backups.sh
+      while true; do
+        echo 'Running scheduled backup...'
+        /app/scripts/backup_database.sh
+        echo 'Running backup monitoring...'
+        /app/scripts/monitor_backups.sh
+        echo 'Backup cycle completed. Next run in 24 hours.'
+        sleep 86400
+      done
+      "
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aifp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-aifp_prod}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      BACKUP_DIR: /backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./backups:/backups
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
   dashboard:
     build:
       context: apps/dashboard
@@ -386,6 +493,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/templates:/etc/nginx/templates:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/certbot-webroot:/var/www/certbot:ro
       - seo_pages:/var/www/html/seo:ro
     environment:
       - DOMAIN=${DOMAIN}
@@ -406,3 +514,5 @@ volumes:
   postgres_data:
   redis_data:
   seo_pages:
+  prometheus_data:
+  grafana_data:

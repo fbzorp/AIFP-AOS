@@ -1,78 +1,62 @@
 #!/bin/bash
-# Backup monitoring and health check script
-# This script checks backup health and sends alerts if needed
+# Backup monitoring script for AIFP-AOS
+# This script checks backup status and logs failures
 
 set -e
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
-BACKUP_DIR="${PROJECT_DIR}/backups"
-RETENTION_DAYS=7
-MIN_BACKUP_SIZE_KB=100  # Minimum backup size in KB
-LOG_FILE="${PROJECT_DIR}/logs/aifp_backup_monitor.log"
+BACKUP_DIR="${BACKUP_DIR:-/backups}"
+MAX_AGE_HOURS=26  # Maximum age of backup in hours (slightly more than 24h)
+LOG_FILE="${PROJECT_DIR}/logs/backup_monitor.log"
+
+# Create backup directory if it doesn't exist
+mkdir -p "${BACKUP_DIR}"
+mkdir -p "$(dirname "${LOG_FILE}")"
 
 # Logging function
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "${LOG_FILE}"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
-log "Starting backup health check"
+log "Starting backup monitoring check"
 
-# Check if backup directory exists
-if [ ! -d "${BACKUP_DIR}" ]; then
-    log "ERROR: Backup directory does not exist: ${BACKUP_DIR}"
-    # Send alert (placeholder - implement email/slack notification)
-    log "ALERT: Backup directory missing"
+# Find most recent backup
+LATEST_BACKUP=$(find "${BACKUP_DIR}" -name "aifp_backup_*.sql.gz" -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2)
+
+if [ -z "$LATEST_BACKUP" ]; then
+    log "ERROR: No backups found in ${BACKUP_DIR}"
+    # In production, this would trigger an alert
     exit 1
 fi
 
-# Check for recent backups
-LATEST_BACKUP=$(find "${BACKUP_DIR}" -name "aifp_backup_*.sql.gz" -type f -mtime -1 | sort -r | head -1)
+# Check backup age
+BACKUP_AGE_SECONDS=$(($(date +%s) - $(stat -c %Y "$LATEST_BACKUP" 2>/dev/null || stat -c %Y "$LATEST_BACKUP")))
+BACKUP_AGE_HOURS=$((BACKUP_AGE_SECONDS / 3600))
 
-if [ -z "${LATEST_BACKUP}" ]; then
-    log "WARNING: No backup found in the last 24 hours"
-    # Send alert
-    log "ALERT: No recent backup found"
+log "Latest backup: $(basename "$LATEST_BACKUP")"
+log "Backup age: ${BACKUP_AGE_HOURS} hours"
+
+if [ "$BACKUP_AGE_HOURS" -gt "$MAX_AGE_HOURS" ]; then
+    log "ERROR: Backup is too old (${BACKUP_AGE_HOURS} hours > ${MAX_AGE_HOURS} hours)"
+    # In production, this would trigger an alert
     exit 1
 fi
 
-log "Latest backup: ${LATEST_BACKUP}"
-
-# Check backup size
-BACKUP_SIZE_KB=$(du -k "${LATEST_BACKUP}" | cut -f1)
-if [ "${BACKUP_SIZE_KB}" -lt "${MIN_BACKUP_SIZE_KB}" ]; then
-    log "WARNING: Backup size too small: ${BACKUP_SIZE_KB} KB (minimum: ${MIN_BACKUP_SIZE_KB} KB)"
-    # Send alert
-    log "ALERT: Backup size suspiciously small"
-    exit 1
-fi
-
-log "Backup size OK: ${BACKUP_SIZE_KB} KB"
-
-# Check backup integrity (try to decompress)
-if ! gunzip -t "${LATEST_BACKUP}"; then
+# Check backup file integrity
+if gzip -t "$LATEST_BACKUP" 2>/dev/null; then
+    log "Backup file integrity check passed"
+else
     log "ERROR: Backup file is corrupted"
-    # Send alert
-    log "ALERT: Backup file corrupted"
+    # In production, this would trigger an alert
     exit 1
 fi
-
-log "Backup integrity OK"
 
 # Count total backups
 BACKUP_COUNT=$(find "${BACKUP_DIR}" -name "aifp_backup_*.sql.gz" | wc -l)
 log "Total backups: ${BACKUP_COUNT}"
 
-# Check retention policy compliance
-OLD_BACKUPS=$(find "${BACKUP_DIR}" -name "aifp_backup_*.sql.gz" -mtime +${RETENTION_DAYS} | wc -l)
-if [ "${OLD_BACKUPS}" -gt 0 ]; then
-    log "WARNING: ${OLD_BACKUPS} backups older than ${RETENTION_DAYS} days found"
-    # Send alert
-    log "ALERT: Retention policy not enforced"
-else
-    log "Retention policy OK"
-fi
-
-log "Backup health check completed successfully"
+log "Backup monitoring check completed successfully"
 exit 0

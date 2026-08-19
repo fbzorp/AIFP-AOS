@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /blog/
+Disallow: /api/
+Disallow: /admin/
+
+Sitemap: https://aifinpay.io/blog/sitemap.xml
