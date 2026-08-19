@@ -1,7 +1,7 @@
 """Tests for embeddings module to improve coverage."""
 
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from apps.core.embeddings import embed_text, embed_texts, get_embedding_dimension, is_model_available
 
 
