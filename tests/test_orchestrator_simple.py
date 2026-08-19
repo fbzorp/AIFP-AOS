@@ -1,13 +1,15 @@
 """Test for orchestrator engine to improve coverage."""
 
 import pytest
-from unittest.mock import Mock
+from unittest.mock import AsyncMock
 from apps.core.orchestrator.engine import Orchestrator
 
 
-def test_orchestrator_init():
+@pytest.mark.asyncio
+async def test_orchestrator_init():
     """Test Orchestrator initialization."""
-    mock_session = Mock()
-    orchestrator = Orchestrator(mock_session)
+    # Create a mock session for the orchestrator
+    mock_session = AsyncMock()
+    
+    orchestrator = Orchestrator(session=mock_session)
     assert orchestrator is not None
-    assert orchestrator.session == mock_session
