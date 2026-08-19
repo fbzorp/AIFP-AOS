@@ -25,6 +25,7 @@ dependencies = [
     "torch>=2.2.0",
     "periodiq>=0.14.0",
     "prometheus-client>=0.20.0",
+    "numpy>=1.24.0",
 ]
 
 [dependency-groups]
