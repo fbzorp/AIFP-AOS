@@ -1,6 +1,7 @@
 """Tests for embeddings module to improve coverage."""
 
 import pytest
+import numpy as np
 from unittest.mock import patch, Mock
 from apps.core.embeddings import embed_text, embed_texts, get_embedding_dimension, is_model_available
 
@@ -9,7 +10,9 @@ def test_embed_text():
     """Test text embedding."""
     with patch('apps.core.embeddings.SentenceTransformer') as mock_model:
         mock_instance = Mock()
-        mock_instance.encode = Mock(return_value=[[0.1, 0.2, 0.3]])
+        # Return numpy array that has tolist() method
+        mock_array = np.array([0.1] * 384)
+        mock_instance.encode = Mock(return_value=mock_array)
         mock_model.return_value = mock_instance
         
         result = embed_text("test text")
@@ -27,7 +30,9 @@ def test_embed_texts():
     """Test batch text embedding."""
     with patch('apps.core.embeddings.SentenceTransformer') as mock_model:
         mock_instance = Mock()
-        mock_instance.encode = Mock(return_value=[[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+        # Return numpy array that has tolist() method
+        mock_array = np.array([[0.1] * 384, [0.2] * 384])
+        mock_instance.encode = Mock(return_value=mock_array)
         mock_model.return_value = mock_instance
         
         result = embed_texts(["text1", "text2"])
