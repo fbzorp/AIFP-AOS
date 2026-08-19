@@ -68,17 +68,17 @@ async def test_telegram_publisher_publish_post():
 async def test_multi_channel_publisher_publish():
     """Test MultiChannelPublisher publish method."""
     publisher = MultiChannelPublisher()
-    
-    with patch('apps.integrations.publishing.dispatcher.TelegramPublisher') as mock_telegram:
-        mock_telegram_instance = Mock()
-        mock_telegram_instance.publish_post = AsyncMock(return_value={
+
+    with patch('apps.integrations.publishing.dispatcher.get_publisher') as mock_get_publisher:
+        mock_publisher = Mock()
+        mock_publisher.publish_post = AsyncMock(return_value={
             "success": True,
             "dry_run": False,
             "post_id": "test-123",
             "post_url": "https://t.me/test/123"
         })
-        mock_telegram.return_value = mock_telegram_instance
-        
+        mock_get_publisher.return_value = mock_publisher
+
         result = await publisher.publish_post("Test Title", "Test Body", channel="telegram")
         assert result["success"] is True
 
@@ -86,7 +86,7 @@ async def test_multi_channel_publisher_publish():
 def test_get_publisher_function():
     """Test get_publisher function."""
     from apps.integrations.publishing.dispatcher import get_publisher
-    
+
     # Test that it returns a publisher for known channels
     for channel in ["moltbook", "x", "telegram", "google"]:
         try:
@@ -95,3 +95,30 @@ def test_get_publisher_function():
         except Exception:
             # May raise if credentials missing, that's ok
             pass
+
+
+@pytest.mark.asyncio
+async def test_multi_channel_publisher_no_publishers():
+    """Test MultiChannelPublisher when no publishers are available."""
+    publisher = MultiChannelPublisher()
+
+    with patch('apps.integrations.publishing.dispatcher.get_publisher') as mock_get_publisher:
+        mock_get_publisher.side_effect = Exception("No credentials")
+
+        result = await publisher.publish_post("Test Title", "Test Body")
+        assert result["success"] is False
+        assert "No publishers available" in result.get("error", "")
+
+
+@pytest.mark.asyncio
+async def test_multi_channel_publisher_all_fail():
+    """Test MultiChannelPublisher when all publishers fail."""
+    publisher = MultiChannelPublisher()
+
+    with patch('apps.integrations.publishing.dispatcher.get_publisher') as mock_get_publisher:
+        mock_publisher = Mock()
+        mock_publisher.publish_post = AsyncMock(return_value={"success": False})
+        mock_get_publisher.return_value = mock_publisher
+
+        result = await publisher.publish_post("Test Title", "Test Body")
+        assert result["success"] is False
