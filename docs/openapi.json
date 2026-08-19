@@ -1,1345 +1,207 @@
 {
-  "openapi": "3.1.0",
+  "openapi": "3.0.0",
   "info": {
     "title": "AiFinPay Autonomous Growth OS",
     "description": "AiFinPay Autonomous OS API - Content approvals, MCP integration, and system health monitoring with JWT-based authentication and role-based access control",
     "version": "1.0.0"
   },
   "paths": {
-    "/api/v1/agents": {
+    "/health": {
       "get": {
-        "tags": [
-          "System"
-        ],
-        "summary": "List all available agents",
-        "description": "Retrieve information about all registered agents including their roles, descriptions, and capabilities.",
-        "operationId": "get_agents_api_v1_agents_get",
+        "summary": "Health check",
+        "description": "Check API and dependency health",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
+            "description": "Health status"
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "summary": "Prometheus metrics",
+        "description": "Prometheus metrics endpoint",
+        "responses": {
+          "200": {
+            "description": "Metrics"
+          }
+        }
+      }
+    },
+    "/api/v1/agents": {
+      "get": {
+        "summary": "List all available agents",
+        "description": "Retrieve information about all registered agents including their roles, descriptions, and capabilities",
+        "responses": {
+          "200": {
+            "description": "List of agents"
           }
         }
       }
     },
     "/api/v1/tasks": {
-      "get": {
-        "tags": [
-          "System"
-        ],
-        "summary": "List recent tasks",
-        "description": "Retrieve a list of recent task execution records with their current status.",
-        "operationId": "get_tasks_api_v1_tasks_get",
+      "post": {
+        "summary": "Create a task",
+        "description": "Create a new task",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
+            "description": "Task created"
           }
         }
-      },
-      "post": {
-        "tags": [
-          "System"
-        ],
-        "summary": "Create Task",
-        "operationId": "create_task_api_v1_tasks_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TaskCreateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
       }
     },
     "/api/v1/audit": {
       "get": {
-        "tags": [
-          "System"
-        ],
-        "summary": "Get Audit",
-        "operationId": "get_audit_api_v1_audit_get",
+        "summary": "Get audit log",
+        "description": "Retrieve recent audit events",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
+            "description": "Audit events"
           }
         }
       }
     },
     "/api/v1/campaigns": {
-      "get": {
-        "tags": [
-          "System"
-        ],
-        "summary": "Get Campaigns",
-        "operationId": "get_campaigns_api_v1_campaigns_get",
+      "post": {
+        "summary": "Create campaign",
+        "description": "Create a new campaign",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
+            "description": "Campaign created"
           }
         }
-      },
-      "post": {
-        "tags": [
-          "System"
-        ],
-        "summary": "Create Campaign",
-        "operationId": "create_campaign_api_v1_campaigns_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CampaignCreateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
       }
     },
     "/api/v1/sources": {
       "get": {
-        "tags": [
-          "System"
-        ],
-        "summary": "Get Sources",
-        "operationId": "get_sources_api_v1_sources_get",
+        "summary": "List sources",
+        "description": "Retrieve sources sorted by relevance",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
+            "description": "List of sources"
           }
         }
       }
     },
     "/api/v1/metrics": {
       "get": {
-        "tags": [
-          "System"
-        ],
         "summary": "Get system metrics",
-        "description": "Retrieve system-wide metrics including agent counts, task statistics, campaign counts, source counts, and recent audit activity.",
-        "operationId": "get_metrics_api_v1_metrics_get",
+        "description": "Retrieve system-wide metrics including agent counts, task statistics, campaign counts, source counts, and recent audit activity",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
+            "description": "System metrics"
           }
         }
       }
     },
     "/api/v1/approvals": {
       "get": {
-        "tags": [
-          "Approvals"
-        ],
-        "summary": "List all approvals",
-        "description": "Retrieve a list of all approval records with their current status. Requires viewer role.",
-        "operationId": "list_approvals_api_v1_approvals_get",
+        "summary": "List approvals",
+        "description": "Retrieve content approvals (requires viewer role)",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
+            "description": "List of approvals"
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/content": {
       "get": {
-        "tags": [
-          "Approvals"
-        ],
         "summary": "List content queue",
-        "description": "Returns content items ordered by status and creation date for the approval queue. Requires viewer role.",
-        "operationId": "list_content_queue_api_v1_content_get",
+        "description": "Returns content items ordered by status and creation date for the approval queue (requires viewer role)",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
+            "description": "Content queue"
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Approvals"
-        ],
-        "summary": "Create new content item",
-        "description": "Create a new content item for the approval queue. Requires write permission.",
-        "operationId": "create_content_api_v1_content_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "additionalProperties": true,
-                "type": "object",
-                "title": "Content"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/content/{content_id}": {
       "patch": {
-        "tags": [
-          "Approvals"
-        ],
         "summary": "Edit content item",
-        "description": "Edit an existing content item (title, body, variants). Resets status to draft. Requires write permission.",
-        "operationId": "edit_content_api_v1_content__content_id__patch",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "content_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Content Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ContentEditRequest"
-              }
-            }
-          }
-        },
+        "description": "Edit an existing content item (title, body, variants). Resets status to draft. Requires write permission",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
+            "description": "Content updated"
           }
         }
       }
     },
     "/api/v1/content/{content_id}/submit": {
       "post": {
-        "tags": [
-          "Approvals"
-        ],
-        "summary": "Submit Content",
-        "operationId": "submit_content_api_v1_content__content_id__submit_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "content_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Content Id"
-            }
-          }
-        ],
+        "summary": "Submit content for approval",
+        "description": "Submit content for approval queue. Requires write permission",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
+            "description": "Content submitted"
           }
         }
       }
     },
-    "/api/v1/content/{content_id}/approve": {
-      "post": {
-        "tags": [
-          "Approvals"
-        ],
-        "summary": "Approve content for publishing",
-        "description": "Approve content item and set scheduled date. Requires approve permission.",
-        "operationId": "approve_content_api_v1_content__content_id__approve_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "content_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Content Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApprovalDecisionRequest"
-              }
-            }
-          }
-        },
+    "/api/v1/approvals/{approval_id}": {
+      "get": {
+        "summary": "Get approval",
+        "description": "Retrieve a specific approval record",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
+            "description": "Approval details"
           }
         }
       }
     },
-    "/api/v1/content/{content_id}/reject": {
+    "/api/v1/approvals/{approval_id}/approve": {
       "post": {
-        "tags": [
-          "Approvals"
-        ],
-        "summary": "Reject Content",
-        "operationId": "reject_content_api_v1_content__content_id__reject_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "content_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Content Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApprovalDecisionRequest"
-              }
-            }
-          }
-        },
+        "summary": "Approve content",
+        "description": "Approve content for publishing. Requires approver role",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
+            "description": "Content approved"
           }
         }
       }
     },
-    "/api/v1/content/{content_id}/publish": {
+    "/api/v1/approvals/{approval_id}/reject": {
       "post": {
-        "tags": [
-          "Approvals"
-        ],
+        "summary": "Reject content",
+        "description": "Reject content. Requires approver role",
+        "responses": {
+          "200": {
+            "description": "Content rejected"
+          }
+        }
+      }
+    },
+    "/api/v1/approvals/{approval_id}/publish": {
+      "post": {
         "summary": "Publish approved content",
-        "description": "Enqueue approved content for publishing to external platforms. Requires publish permission.",
-        "operationId": "trigger_publish_api_v1_content__content_id__publish_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "content_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Content Id"
-            }
-          }
-        ],
+        "description": "Publish content that has been approved. Requires publisher role",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
+            "description": "Content published"
           }
         }
       }
     },
-    "/api/v1/engagement/proposals": {
-      "get": {
-        "tags": [
-          "Approvals"
-        ],
-        "summary": "List Proposals",
-        "operationId": "list_proposals_api_v1_engagement_proposals_get",
+    "/api/v1/settings": {
+      "put": {
+        "summary": "Update settings",
+        "description": "Update system settings (admin only)",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/engagement/proposals/{proposal_id}/approve": {
-      "post": {
-        "tags": [
-          "Approvals"
-        ],
-        "summary": "Approve Proposal",
-        "operationId": "approve_proposal_api_v1_engagement_proposals__proposal_id__approve_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "proposal_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Proposal Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
+            "description": "Settings updated"
           }
         }
-      }
-    },
-    "/api/v1/engagement/proposals/{proposal_id}/reject": {
-      "post": {
-        "tags": [
-          "Approvals"
-        ],
-        "summary": "Reject Proposal",
-        "operationId": "reject_proposal_api_v1_engagement_proposals__proposal_id__reject_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "proposal_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Proposal Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/calendar": {
-      "get": {
-        "tags": [
-          "Approvals"
-        ],
-        "summary": "Get Calendar",
-        "description": "Returns content items that are scheduled or published. Excludes dry-run items.",
-        "operationId": "get_calendar_api_v1_calendar_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/settings/credentials": {
-      "get": {
-        "tags": [
-          "Settings"
-        ],
-        "summary": "Get Credentials",
-        "description": "Get masked status of all configured credentials.\nReturns only masked values, never the raw secrets.",
-        "operationId": "get_credentials_api_v1_settings_credentials_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/CredentialStatus"
-                  },
-                  "type": "array",
-                  "title": "Response Get Credentials Api V1 Settings Credentials Get"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      },
-      "patch": {
-        "tags": [
-          "Settings"
-        ],
-        "summary": "Update Credential",
-        "description": "Update a credential value in the process-local settings.\n\nNote: This updates the runtime settings object only. For durable changes,\nyou must update the environment variable and redeploy the service.\nThis design ensures secrets are never written to the database or committed files.",
-        "operationId": "update_credential_api_v1_settings_credentials_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CredentialUpdateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CredentialUpdateResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
       }
     },
     "/api/v1/marketing/activity": {
-      "get": {
-        "tags": [
-          "Marketing"
-        ],
-        "summary": "Get Marketing Activity & Evidence Registry",
-        "description": "Retrieve all marketing content with full lineage: created \u2192 approved \u2192 published \u2192 live URL",
-        "operationId": "get_marketing_activity_api_v1_marketing_activity_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "start_date",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by start date",
-              "title": "Start Date"
-            },
-            "description": "Filter by start date"
-          },
-          {
-            "name": "end_date",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by end date",
-              "title": "End Date"
-            },
-            "description": "Filter by end date"
-          },
-          {
-            "name": "channel",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by channel",
-              "title": "Channel"
-            },
-            "description": "Filter by channel"
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by status",
-              "title": "Status"
-            },
-            "description": "Filter by status"
-          },
-          {
-            "name": "only_real",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "description": "Only show real (non-dry-run) publications",
-              "default": false,
-              "title": "Only Real"
-            },
-            "description": "Only show real (non-dry-run) publications"
-          }
-        ],
+      "post": {
+        "summary": "Record marketing activity",
+        "description": "Record a marketing activity event",
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
+            "description": "Activity recorded"
           }
         }
-      }
-    },
-    "/api/v1/marketing/activity/{content_id}": {
-      "get": {
-        "tags": [
-          "Marketing"
-        ],
-        "summary": "Get specific marketing activity",
-        "description": "Retrieve detailed information for a specific content item",
-        "operationId": "get_marketing_activity_detail_api_v1_marketing_activity__content_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "content_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Content Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/marketing/activity/export/csv": {
-      "get": {
-        "tags": [
-          "Marketing"
-        ],
-        "summary": "Export Marketing Activity to CSV",
-        "description": "Export full marketing activity registry to CSV format",
-        "operationId": "export_marketing_activity_csv_api_v1_marketing_activity_export_csv_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "start_date",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by start date",
-              "title": "Start Date"
-            },
-            "description": "Filter by start date"
-          },
-          {
-            "name": "end_date",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by end date",
-              "title": "End Date"
-            },
-            "description": "Filter by end date"
-          },
-          {
-            "name": "channel",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by channel",
-              "title": "Channel"
-            },
-            "description": "Filter by channel"
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by status",
-              "title": "Status"
-            },
-            "description": "Filter by status"
-          },
-          {
-            "name": "only_real",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "description": "Only include real (non-dry-run) publications",
-              "default": false,
-              "title": "Only Real"
-            },
-            "description": "Only include real (non-dry-run) publications"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/health": {
-      "get": {
-        "summary": "Health Check",
-        "operationId": "health_check_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/": {
-      "get": {
-        "summary": "Root",
-        "operationId": "root__get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "components": {
-    "schemas": {
-      "ApprovalDecisionRequest": {
-        "properties": {
-          "approved_by": {
-            "type": "string",
-            "title": "Approved By"
-          },
-          "expires_in_hours": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expires In Hours",
-            "default": 24
-          },
-          "reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reason"
-          }
-        },
-        "type": "object",
-        "required": [
-          "approved_by"
-        ],
-        "title": "ApprovalDecisionRequest"
-      },
-      "CampaignCreateRequest": {
-        "properties": {
-          "objective": {
-            "type": "string",
-            "title": "Objective"
-          }
-        },
-        "type": "object",
-        "required": [
-          "objective"
-        ],
-        "title": "CampaignCreateRequest"
-      },
-      "ContentEditRequest": {
-        "properties": {
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          },
-          "body": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Body"
-          },
-          "variants": {
-            "anyOf": [
-              {
-                "items": {
-                  "additionalProperties": true,
-                  "type": "object"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Variants"
-          }
-        },
-        "type": "object",
-        "title": "ContentEditRequest"
-      },
-      "CredentialStatus": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "configured": {
-            "type": "boolean",
-            "title": "Configured"
-          },
-          "masked": {
-            "type": "string",
-            "title": "Masked"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "configured",
-          "masked",
-          "description"
-        ],
-        "title": "CredentialStatus"
-      },
-      "CredentialUpdateRequest": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "value": {
-            "type": "string",
-            "title": "Value"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "value"
-        ],
-        "title": "CredentialUpdateRequest"
-      },
-      "CredentialUpdateResponse": {
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "title": "Success"
-          },
-          "message": {
-            "type": "string",
-            "title": "Message"
-          },
-          "credential_name": {
-            "type": "string",
-            "title": "Credential Name"
-          }
-        },
-        "type": "object",
-        "required": [
-          "success",
-          "message",
-          "credential_name"
-        ],
-        "title": "CredentialUpdateResponse"
-      },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "title": "HTTPValidationError"
-      },
-      "TaskCreateRequest": {
-        "properties": {
-          "task_type": {
-            "type": "string",
-            "title": "Task Type"
-          },
-          "input_data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Input Data"
-          }
-        },
-        "type": "object",
-        "required": [
-          "task_type",
-          "input_data"
-        ],
-        "title": "TaskCreateRequest"
-      },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
-          }
-        },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError"
-      }
-    },
-    "securitySchemes": {
-      "HTTPBearer": {
-        "type": "http",
-        "scheme": "bearer"
       }
     }
   },

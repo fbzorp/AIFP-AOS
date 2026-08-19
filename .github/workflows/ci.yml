@@ -55,7 +55,8 @@ jobs:
     
     - name: Check OpenAPI spec freshness
       run: |
-        uv run python scripts/export_openapi.py --check
+        python scripts/generate_openapi.py
+        git diff --exit-code docs/openapi.json
     
     - name: Run database migrations
       run: |
