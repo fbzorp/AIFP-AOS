@@ -398,6 +398,21 @@ services:
       - aifp-network
     restart: unless-stopped
 
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: aifp_alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - aifp-network
+    restart: unless-stopped
+
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: aifp_postgres_exporter
@@ -516,3 +531,4 @@ volumes:
   seo_pages:
   prometheus_data:
   grafana_data:
+  alertmanager_data:

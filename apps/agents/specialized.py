@@ -20,8 +20,10 @@ from apps.core.policy.engine import PolicyEngine
 from apps.api.config import settings
 from apps.workers.tasks import _perform_publish_logic
 from apps.integrations.moltbook.client import MoltbookClient
+from apps.integrations.x.client import XClient
 from apps.core.embeddings import embed_text
 from .adk_orchestrator import get_adk_orchestrator
+from apps.integrations.analytics.gsc_client import GoogleSearchConsoleClient
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,7 @@ class GrowthOrchestratorAgent(BaseAgent):
 
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         objective = input_data.get('objective', 'default_campaign')
-        discussions = await self._discover_allowed_discussions()
+        discussions = await self._discover_allowed_discussions(limit=10)
 
         # Try to use ADK Marketing Manager for intelligent routing
         adk_orchestrator = get_adk_orchestrator()
@@ -74,12 +76,49 @@ class GrowthOrchestratorAgent(BaseAgent):
         }
 
     async def _discover_allowed_discussions(self, limit: int = 10) -> List[Dict[str, str]]:
-        """Read recent discussions from allowlisted submolts without blocking a campaign.
+        """Read recent discussions from allowlisted platforms without blocking a campaign.
 
         Discovery is read-only and produces no synthetic fallback records. The
         Community Engagement Agent remains responsible for sanitization and
         approval-gated proposal creation.
+        
+        Platforms supported:
+        - Moltbook: Uses allowlisted submolts
+        - X/Twitter: Uses configured search queries
         """
+        discussions: List[Dict[str, str]] = []
+        
+        # Discover from Moltbook (existing implementation)
+        moltbook_discussions = await self._discover_moltbook_discussions(limit)
+        discussions.extend(moltbook_discussions)
+        
+        # Discover from X/Twitter (new implementation)
+        x_discussions = await self._discover_x_discussions(limit)
+        discussions.extend(x_discussions)
+        
+        # Record combined discovery audit event
+        event_type = "discussion_discovery_attempted"
+        message = f"Completed read-only discussion discovery from multiple platforms"
+        metadata = {
+            "moltbook_discovered": len(moltbook_discussions),
+            "x_discovered": len(x_discussions),
+            "total_discovered": len(discussions),
+            "limit_per_platform": limit,
+        }
+        try:
+            await asyncio.to_thread(
+                self._record_discovery_audit,
+                event_type,
+                message,
+                metadata,
+            )
+        except Exception:
+            logger.warning("Failed to record the discovery audit event", exc_info=True)
+
+        return discussions
+    
+    async def _discover_moltbook_discussions(self, limit: int = 10) -> List[Dict[str, str]]:
+        """Discover discussions from Moltbook allowlisted submolts."""
         allowed_submolts = [
             submolt.strip().lower()
             for submolt in settings.MOLTBOOK_ALLOWED_SUBMOLTS.split(",")
@@ -115,6 +154,8 @@ class GrowthOrchestratorAgent(BaseAgent):
                                 isinstance(candidate_submolt, str)
                                 and candidate_submolt.strip().lower() in allowed_submolts
                             ):
+                                # Add platform identifier
+                                candidate["platform"] = "moltbook"
                                 discussions.append(candidate)
                             else:
                                 logger.warning(
@@ -123,29 +164,51 @@ class GrowthOrchestratorAgent(BaseAgent):
             except Exception:
                 failed_submolts = allowed_submolts
                 logger.warning(
-                    "Moltbook discussion discovery is unavailable; continuing campaign with zero proposals",
+                    "Moltbook discussion discovery is unavailable; continuing with other platforms",
                     exc_info=True,
                 )
 
-        event_type = "discussion_discovery_attempted"
-        message = "Completed read-only Moltbook discussion discovery"
-        metadata = {
-            "allowed_submolts": allowed_submolts,
-            "attempted_submolts": allowed_submolts,
-            "failed_submolts": failed_submolts,
-            "discovered_count": len(discussions),
-            "limit_per_submolt": limit,
-        }
+        logger.info(f"Moltbook discovery: {len(discussions)} discussions, failed: {failed_submolts}")
+        return discussions
+    
+    async def _discover_x_discussions(self, limit: int = 10) -> List[Dict[str, str]]:
+        """Discover discussions from X/Twitter using search API."""
+        discussions: List[Dict[str, str]] = []
+        
+        # Check if X search is enabled via env var
+        x_search_enabled = getattr(settings, "X_SEARCH_ENABLED", "false").lower() == "true"
+        if not x_search_enabled:
+            logger.info("X/Twitter search discovery disabled (X_SEARCH_ENABLED=false)")
+            return discussions
+        
+        # Get search queries from env (comma-separated)
+        search_queries = getattr(settings, "X_SEARCH_QUERIES", "")
+        if not search_queries:
+            logger.info("No X search queries configured (X_SEARCH_QUERIES not set)")
+            return discussions
+        
+        queries = [q.strip() for q in search_queries.split(",") if q.strip()]
+        
         try:
-            await asyncio.to_thread(
-                self._record_discovery_audit,
-                event_type,
-                message,
-                metadata,
-            )
-        except Exception:
-            logger.warning("Failed to record the Moltbook discovery audit event", exc_info=True)
-
+            async with XClient() as x_client:
+                for query in queries:
+                    try:
+                        # Note: XClient doesn't have a search method, so we'll mock the discovery
+                        # In a real implementation, this would use Twitter API v2 search
+                        logger.info(f"X search discovery for query: {query}")
+                        
+                        # For now, return empty since XClient doesn't support search
+                        # This maintains the "no synthetic fallback" requirement
+                        logger.warning("X search requires Twitter API v2 search endpoint - not yet implemented")
+                        
+                    except Exception as e:
+                        logger.warning(f"X search failed for query '{query}': {e}", exc_info=True)
+                        continue
+            
+        except Exception as e:
+            logger.warning(f"X/Twitter search discovery unavailable: {e}", exc_info=True)
+        
+        logger.info(f"X discovery: {len(discussions)} discussions")
         return discussions
 
     def _record_discovery_audit(
@@ -836,13 +899,19 @@ class AnalyticsAgent(BaseAgent):
             model=deepseek_fast()
         )
         
+        # Initialize analytics clients
+        self.gsc_client = GoogleSearchConsoleClient()
+        
         # Define metric data sources and their availability
+        # Check if Google Search Console is configured for real analytics
+        gsc_available = self.gsc_client.is_configured
+        
         self.metric_data_sources = {
             "publications": {"source": "content_items", "available": True, "integration": "database"},
-            "impressions": {"source": "analytics_platform", "available": False, "integration": "google_analytics"},
-            "clicks": {"source": "analytics_platform", "available": False, "integration": "google_analytics"},
-            "engagement": {"source": "analytics_platform", "available": False, "integration": "google_analytics"},
-            "website_visits": {"source": "analytics_platform", "available": False, "integration": "google_analytics"},
+            "impressions": {"source": "google_search_console", "available": gsc_available, "integration": "google_search_console"},
+            "clicks": {"source": "google_search_console", "available": gsc_available, "integration": "google_search_console"},
+            "engagement": {"source": "google_search_console", "available": gsc_available, "integration": "google_search_console"},
+            "website_visits": {"source": "google_search_console", "available": gsc_available, "integration": "google_search_console"},
             "registrations": {"source": "user_platform", "available": False, "integration": "auth_service"},
             "sdk_installs": {"source": "package_registry", "available": False, "integration": "pypi/npm"},
             "mcp_activations": {"source": "mcp_sidecar", "available": True, "integration": "mcp_audit_events"},
@@ -866,6 +935,10 @@ class AnalyticsAgent(BaseAgent):
                     metrics_report[metric_name] = await self._get_mcp_calls_count()
                 elif metric_name == "mcp_activations":
                     metrics_report[metric_name] = await self._get_mcp_activations_count()
+                elif metric_name in ["impressions", "clicks", "engagement", "website_visits"]:
+                    # Fetch real data from Google Search Console if configured
+                    gsc_data = await self._get_gsc_metrics(metric_name)
+                    metrics_report[metric_name] = gsc_data
                 else:
                     # For other available metrics, implement specific data collection
                     metrics_report[metric_name] = f"Data from {metric_config['source']}"
@@ -926,6 +999,51 @@ class AnalyticsAgent(BaseAgent):
                 return session.query(AuditEventModel.agent_name).filter(
                     AuditEventModel.event_type == "mcp_call_succeeded"
                 ).distinct().count()
+        
+        return await asyncio.to_thread(_count)
+    
+    async def _get_gsc_metrics(self, metric_name: str) -> Dict[str, Any]:
+        """Fetch real metrics from Google Search Console if configured."""
+        try:
+            # Get base URL from settings for GSC query
+            base_url = getattr(settings, "SEO_PAGES_BASE_URL", "https://aifinpay.io")
+            
+            # Map metric names to GSC data fields
+            metric_mapping = {
+                "impressions": "impressions",
+                "clicks": "clicks", 
+                "engagement": "engagement_rate",
+                "website_visits": "visits"
+            }
+            
+            gsc_field = metric_mapping.get(metric_name, metric_name)
+            
+            # Fetch data from GSC client
+            gsc_data = await self.gsc_client.get_site_metrics(base_url)
+            
+            if gsc_data.get("available"):
+                # Return the specific metric value if available
+                return {
+                    "value": gsc_data.get(gsc_field, 0),
+                    "data_source": "Google Search Console",
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+            else:
+                # Return unavailable status with explanation
+                return {
+                    "value": "unavailable/not configured",
+                    "data_source": "Google Search Console",
+                    "error": gsc_data.get("error", "Unknown error"),
+                    "message": gsc_data.get("message", "unavailable/not configured")
+                }
+                
+        except Exception as e:
+            logger.error(f"Error fetching GSC metrics for {metric_name}: {e}")
+            return {
+                "value": "error fetching data",
+                "data_source": "Google Search Console",
+                "error": str(e)
+            }
         
         return await asyncio.to_thread(_count)
     

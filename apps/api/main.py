@@ -71,6 +71,10 @@ app = FastAPI(
         {
             "name": "Marketing",
             "description": "Marketing activity and evidence registry"
+        },
+        {
+            "name": "Alerts",
+            "description": "Alertmanager webhook integration"
         }
     ]
 )

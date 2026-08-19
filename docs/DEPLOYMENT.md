@@ -124,50 +124,75 @@ http://your-domain.com:9090
 
 ### Alert Configuration
 
-Alerts are configured in Prometheus rules. Default alerts include:
+Alerts are configured in Prometheus rules with Alertmanager for routing. Default alerts include:
 - API service down
 - High error rate (>5%)
 - Database connection failures
 - High memory usage (>80%)
 
-**Alert Channels:**
+**Alert Flow:**
 
-Configure alert notification channels in `.env.production`:
+The alerting system uses the following flow:
+1. **Prometheus** evaluates alert rules every 15s
+2. **Alertmanager** receives firing alerts and groups them
+3. **Webhook** forwards alerts to API endpoint `/api/v1/alerts/webhook`
+4. **API** formats alert messages and forwards to Telegram
+5. **Audit** logs all alert events for traceability
+
+**Telegram Alert Integration:**
+
+Configure Telegram credentials in `.env.production` for alert delivery:
 ```bash
-# Email alerts (SMTP configuration)
-ALERT_EMAIL_ENABLED=true
-ALERT_EMAIL_SMTP_HOST=smtp.gmail.com
-ALERT_EMAIL_SMTP_PORT=587
-ALERT_EMAIL_SMTP_USER=your-email@gmail.com
-ALERT_EMAIL_SMTP_PASSWORD=your-app-password
-ALERT_EMAIL_TO=alerts@your-domain.com
-
-# Telegram alerts
-ALERT_TELEGRAM_ENABLED=true
-ALERT_TELEGRAM_BOT_TOKEN=your-bot-token
-ALERT_TELEGRAM_CHAT_ID=your-chat-id
-
-# Webhook alerts
-ALERT_WEBHOOK_ENABLED=true
-ALERT_WEBHOOK_URL=https://your-webhook-url.com/alerts
+# Telegram bot for alerts
+TELEGRAM_BOT_TOKEN=your-bot-token
+TELEGRAM_CHAT_ID=your-chat-id
+TELEGRAM_DEFAULT_CHANNEL=@your-channel
+TELEGRAM_AUTOPUBLISH=true
 ```
+
+The webhook endpoint:
+- Receives Alertmanager POST requests
+- Formats alerts with emoji status indicators (🔴 firing, 🟢 resolved)
+- Sends formatted messages to Telegram via existing TelegramClient
+- Records audit events for all alert processing
+- Handles both firing and resolved alerts
 
 ### Test Alert Procedure
 
 To test that alerts are working:
 
 ```bash
-# Trigger a test alert (simulates service down)
-docker compose -f docker-compose.prod.yml exec prometheus wget -O /dev/null http://api:8000/nonexistent-endpoint
+# Send a synthetic test alert to Alertmanager
+chmod +x scripts/send_test_alert.sh
+./scripts/send_test_alert.sh
 
-# Check Grafana alerts panel for alert firing
-# Verify alert received via configured channel (email/Telegram/webhook)
+# Or manually via curl
+curl -XPOST http://localhost:9093/api/v1/alerts \
+  -H 'Content-Type: application/json' \
+  -d '[
+    {
+      "labels": {
+        "alertname": "TestAlert",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "Manual test alert"
+      }
+    }
+  ]'
+
+# Check Alertmanager UI
+http://your-domain.com:9093
+
+# Verify Telegram notification received
+# Check audit logs: docker compose -f docker-compose.prod.yml logs api | grep Alertmanager
 ```
 
 **Evidence Required:**
-- [ ] Test alert triggered successfully
-- [ ] Alert received via configured channel
-- [ ] Alert shows correct information
+- [ ] Test alert appears in Alertmanager UI
+- [ ] Alert forwarded to Telegram successfully
+- [ ] Audit event recorded for alert processing
+- [ ] Alert message shows correct formatting with emoji
 
 ## Automated Backups
 
