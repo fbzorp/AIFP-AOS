@@ -48,6 +48,8 @@ asyncio_mode = "strict"
 filterwarnings = [
     "ignore:.*Using .httpx. with .starlette.testclient. is deprecated.*",
     "ignore:.*BaseAgentConfig is deprecated.*:DeprecationWarning",
+    "ignore:.*crypt.*:DeprecationWarning",
+    "ignore::DeprecationWarning:passlib.*",
 ]
 markers = [
     "integration: marks tests as integration tests requiring real credentials (deselect with '-m \"not integration\"')",
