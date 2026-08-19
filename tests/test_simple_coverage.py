@@ -3,6 +3,7 @@
 import pytest
 from apps.core.sanitizer import sanitize_external
 from apps.core.news_fetcher import NewsFetcher
+from apps.workers.scheduler import setup_scheduled_tasks
 
 
 def test_sanitize_external():
@@ -30,3 +31,9 @@ def test_news_fetcher_no_keys():
     fetcher = NewsFetcher()
     assert fetcher.news_api_key is None
     assert fetcher.serper_api_key is None
+
+
+def test_setup_scheduled_tasks():
+    """Test scheduled tasks setup function."""
+    result = setup_scheduled_tasks()
+    assert result is None
