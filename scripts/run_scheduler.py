@@ -11,22 +11,14 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 if __name__ == "__main__":
-    # Import the necessary modules in the correct order
-    # First, set up the broker with periodiq middleware
+    # Import tasks which sets up broker with periodiq middleware and imports scheduler
     from apps.workers import tasks
     
-    # Then import the scheduler to register actors
-    from apps.workers import scheduler
-    
-    # Then import periodic_scheduler to define SCHEDULES
-    from apps.workers import periodic_scheduler
-    
     # Now run periodiq using the entrypoint directly
-    # Set sys.argv for periodiq CLI
+    # Set sys.argv for periodiq CLI - only pass broker, it will discover actors via middleware
     sys.argv = [
         "periodiq",
-        "apps.workers.tasks:broker",
-        "apps.workers.periodic_scheduler"
+        "apps.workers.tasks:broker"
     ]
     
     # Import and run periodiq's entrypoint
