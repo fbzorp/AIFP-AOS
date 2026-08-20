@@ -222,6 +222,94 @@ class XClient:
             logger.error(f"X client error: {e}")
             raise
     
+    @retry(retry=retry_if_exception(is_transient_error), stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
+    async def search(self, query: str, max_results: int = 10, **kwargs) -> Dict[str, Any]:
+        """
+        Search for recent tweets using X API v2 recent search endpoint.
+        
+        Args:
+            query: Search query (supports X search operators)
+            max_results: Maximum number of results to return (1-100)
+            **kwargs: Additional parameters (e.g., tweet_fields, expansions)
+        
+        Returns:
+            Dict with keys: success, data (list of tweets), meta (pagination info)
+        """
+        # Validate query first before checking enabled status
+        if not query.strip():
+            raise ValueError("Search query cannot be empty")
+        
+        # Validate max_results
+        if not 1 <= max_results <= 100:
+            raise ValueError("max_results must be between 1 and 100")
+        
+        # Check if search is enabled
+        if not getattr(settings, "X_SEARCH_ENABLED", False):
+            logger.info("X/Twitter search disabled (X_SEARCH_ENABLED=false)")
+            return {
+                "success": True,
+                "data": [],
+                "meta": {"result_count": 0}
+            }
+        
+        # Check if credentials are configured
+        if not all([self.api_key, self.api_secret, self.access_token, self.access_token_secret]):
+            logger.warning("X API credentials not fully configured, returning empty results")
+            return {
+                "success": True,
+                "data": [],
+                "meta": {"result_count": 0}
+            }
+        
+        # Real X API v2 search implementation
+        url = f"{self.base_url}/tweets/search/recent"
+        
+        # Prepare query parameters
+        params = {
+            "query": query,
+            "max_results": str(max_results),
+            "tweet.fields": "created_at,author_id,public_metrics,lang,reply_settings,source",
+            "expansions": "author_id"
+        }
+        
+        # Generate OAuth headers
+        headers = self._generate_oauth_headers("GET", url, params)
+        
+        try:
+            response = await self.http.get(url, params=params, headers=headers)
+            
+            # Handle rate limiting
+            if response.status_code == 429:
+                rate_limit_reset = response.headers.get("x-rate-limit-reset")
+                logger.warning(f"X API rate limit hit. Reset at: {rate_limit_reset}")
+                raise httpx.HTTPStatusError(
+                    "Rate limit exceeded",
+                    request=response.request,
+                    response=response
+                )
+            
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            tweets = data.get("data", [])
+            meta = data.get("meta", {})
+            
+            logger.info(f"X search returned {len(tweets)} results for query: {query}")
+            
+            return {
+                "success": True,
+                "data": tweets,
+                "meta": meta
+            }
+            
+        except httpx.HTTPStatusError as e:
+            logger.error(f"X API search failed: {e.response.status_code} - {e.response.text}")
+            raise
+        except Exception as e:
+            logger.error(f"X search error: {e}")
+            raise
+    
     async def close(self):
         await self.http.aclose()
     

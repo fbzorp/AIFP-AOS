@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     X_ACCESS_TOKEN: Optional[str] = None
     X_ACCESS_TOKEN_SECRET: Optional[str] = None
     X_AUTOPUBLISH: bool = False
+    X_SEARCH_ENABLED: bool = False
+    X_SEARCH_QUERIES: str = ""
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     TELEGRAM_AUTOPUBLISH: bool = False
     TELEGRAM_CHAT_ID: Optional[str] = None
@@ -58,6 +60,9 @@ class Settings(BaseSettings):
     # News/Search APIs for Market Intelligence
     NEWS_API_KEY: Optional[str] = None
     SERPER_API_KEY: Optional[str] = None
+    
+    # Google Search Console for Analytics
+    GOOGLE_SEARCH_CONSOLE_JSON_KEY: Optional[str] = None
     
     # SEO Pages (Static HTML publishing for Google indexing)
     SEO_PAGES_OUTPUT_DIR: str = "/var/www/html/seo"

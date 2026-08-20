@@ -102,13 +102,13 @@ async def test_analytics_unavailable_metrics():
         
         # Check unavailable metrics
         assert metrics["impressions"] == "unavailable/not configured"
-        assert metrics["impressions_data_source"] == "google_analytics"
+        assert metrics["impressions_data_source"] == "google_search_console"
         
         assert metrics["clicks"] == "unavailable/not configured"
-        assert metrics["clicks_data_source"] == "google_analytics"
+        assert metrics["clicks_data_source"] == "google_search_console"
         
         assert metrics["website_visits"] == "unavailable/not configured"
-        assert metrics["website_visits_data_source"] == "google_analytics"
+        assert metrics["website_visits_data_source"] == "google_search_console"
         
         assert metrics["registrations"] == "unavailable/not configured"
         assert metrics["registrations_data_source"] == "auth_service"

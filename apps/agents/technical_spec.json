@@ -1,0 +1,57 @@
+{
+  "api_endpoints": [
+    "/api/v1/health",
+    "/api/v1/auth/login",
+    "/api/v1/auth/logout",
+    "/api/v1/sources",
+    "/api/v1/content",
+    "/api/v1/approvals",
+    "/api/v1/publish",
+    "/api/v1/analytics",
+    "/api/v1/agents",
+    "/api/v1/tasks",
+    "/api/v1/audit"
+  ],
+  "supported_networks": [],
+  "authentication_methods": [
+    "api_key",
+    "session_token"
+  ],
+  "rate_limits": {
+    "default": "100 requests/minute",
+    "authenticated": "1000 requests/minute"
+  },
+  "sdk_languages": [
+    "python",
+    "javascript"
+  ],
+  "data_models": [
+    "Source",
+    "ContentItem",
+    "Approval",
+    "Agent",
+    "Task",
+    "AuditEvent"
+  ],
+  "supported_features": [
+    "content_generation",
+    "source_discovery",
+    "approval_workflow",
+    "multi_channel_publishing",
+    "analytics_tracking",
+    "audit_logging"
+  ],
+  "integrations": [
+    "x_twitter",
+    "telegram",
+    "moltbook",
+    "google_search_console"
+  ],
+  "agent_types": [
+    "founder_content",
+    "technical_content",
+    "seo_content",
+    "social_publishing",
+    "community_engagement"
+  ]
+}

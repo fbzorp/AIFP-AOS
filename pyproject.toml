@@ -26,6 +26,8 @@ dependencies = [
     "periodiq>=0.14.0",
     "prometheus-client>=0.20.0",
     "numpy>=1.24.0",
+    "google-auth>=2.23.0",
+    "google-api-python-client>=2.100.0",
 ]
 
 [dependency-groups]

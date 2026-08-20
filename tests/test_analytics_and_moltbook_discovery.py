@@ -236,25 +236,39 @@ async def test_growth_orchestrator_uses_list_discussions_and_filters_allowed_sub
                 "url": "https://www.moltbook.com/posts/allowed-1",
                 "submolt": "aifintech",
                 "content": "Relevant x402 discussion",
+                "platform": "moltbook"
             },
             {
                 "url": "https://www.moltbook.com/posts/allowed-2",
                 "submolt": "aiagents",
                 "content": "Relevant agentic-commerce discussion",
+                "platform": "moltbook"
             },
         ]
     }
     assert result["discussions_discovered"] == 2
 
-    discovery_audit = session.query(AuditEventModel).filter(
-        AuditEventModel.event_type == "discussion_discovery_attempted"
+    # Check for individual Moltbook discovery audit event
+    moltbook_audit = session.query(AuditEventModel).filter(
+        AuditEventModel.event_type == "moltbook_discovery_attempted"
     ).one()
-    assert discovery_audit.metadata_json == {
+    assert moltbook_audit.metadata_json == {
         "allowed_submolts": ["aifintech", "aiagents"],
         "attempted_submolts": ["aifintech", "aiagents"],
         "failed_submolts": [],
         "discovered_count": 2,
         "limit_per_submolt": 10,
+    }
+    
+    # Check for combined discovery audit event
+    combined_audit = session.query(AuditEventModel).filter(
+        AuditEventModel.event_type == "discussion_discovery_attempted"
+    ).one()
+    assert combined_audit.metadata_json == {
+        "moltbook_discovered": 2,
+        "x_discovered": 0,
+        "total_discovered": 2,
+        "limit_per_platform": 10,
     }
 
 
@@ -293,11 +307,20 @@ async def test_growth_orchestrator_handles_discovery_failure_without_fake_discus
     assert engagement_step["input"] == {"discussions": []}
     assert result["discussions_discovered"] == 0
 
-    discovery_audit = session.query(AuditEventModel).filter(
+    # Check for individual Moltbook discovery audit event
+    moltbook_audit = session.query(AuditEventModel).filter(
+        AuditEventModel.event_type == "moltbook_discovery_attempted"
+    ).one()
+    assert moltbook_audit.metadata_json["failed_submolts"] == ["aifintech"]
+    assert moltbook_audit.metadata_json["discovered_count"] == 0
+    
+    # Check for combined discovery audit event
+    combined_audit = session.query(AuditEventModel).filter(
         AuditEventModel.event_type == "discussion_discovery_attempted"
     ).one()
-    assert discovery_audit.metadata_json["failed_submolts"] == ["aifintech"]
-    assert discovery_audit.metadata_json["discovered_count"] == 0
+    assert combined_audit.metadata_json["moltbook_discovered"] == 0
+    assert combined_audit.metadata_json["x_discovered"] == 0
+    assert combined_audit.metadata_json["total_discovered"] == 0
 
 
 @patch("apps.agents.specialized.get_sync_session")

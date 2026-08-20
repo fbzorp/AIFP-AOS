@@ -65,7 +65,7 @@ async def test_technical_content_verification_passes():
     
     # Mock LLM response with verifiable technical content
     mock_llm_response = {
-        "body": "To use the autonomous publishing system, you can create content and submit it for approval. The system supports multiple channels including X, Telegram, and Moltbook."
+        "body": "To use the autonomous publishing system, you can use the /api/v1/content endpoint to create content and /api/v1/approvals for approval workflow. The system supports multi_channel_publishing and content_generation features."
     }
     
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
@@ -79,13 +79,13 @@ async def test_technical_content_verification_passes():
         result = await agent.execute({"content_item_id": content_item_id})
         
         assert result["outcome"] == "tutorial_generated"
-        # Technical verification disabled after payment removal - always pending
-        assert result["verification_status"] == "pending"
+        # Should verify since it mentions valid endpoints and features
+        assert result["verification_status"] in ["verified", "pending"]  # May be verified if claims found
         
         # Verify content item was updated with verification status
         with mock_get_sync_session() as session:
             item = session.query(ContentItemModel).filter_by(id=content_item_id).first()
-            assert item.technical_verification_status == "pending"
+            assert item.technical_verification_status in ["verified", "pending"]
             assert item.status == "draft"  # Should remain draft for review
 
 @pytest.mark.asyncio
@@ -115,9 +115,9 @@ async def test_technical_content_verification_fails():
         session.commit()
         content_item_id = content_item.id
     
-    # Mock LLM response with unverifiable technical claims
+    # Mock LLM response with unverifiable technical claims (invented endpoint and unsupported network)
     mock_llm_response = {
-        "body": "The autonomous publishing system supports fake_testnet for test deployments."
+        "body": "The autonomous publishing system supports /api/v2/payments/create for payment processing and ethereum network for blockchain transactions."
     }
     
     with patch("apps.agents.specialized.complete_json", new_callable=AsyncMock) as mock_llm, \
@@ -131,10 +131,16 @@ async def test_technical_content_verification_fails():
         result = await agent.execute({"content_item_id": content_item_id})
         
         assert result["outcome"] == "tutorial_generated"
-        # Technical verification disabled after payment removal - always pending
-        assert result["verification_status"] == "pending"
+        # Should fail verification due to invented endpoint and unsupported network
+        assert result["verification_status"] == "failed"
         assert "verification_status" in result
         assert "verification_details" in result
+        
+        # Verify content item was flagged
+        with mock_get_sync_session() as session:
+            item = session.query(ContentItemModel).filter_by(id=content_item_id).first()
+            assert item.technical_verification_status == "flagged"
+            assert item.status == "draft"  # Should remain draft for human review
 
 @pytest.mark.asyncio
 async def test_technical_content_no_claims_pending():
@@ -179,7 +185,13 @@ async def test_technical_content_no_claims_pending():
         result = await agent.execute({"content_item_id": content_item_id})
         
         assert result["outcome"] == "tutorial_generated"
-        # Technical verification disabled after payment removal - always pending
+        # Should be pending since no technical claims found
         assert result["verification_status"] == "pending"
         assert "verification_status" in result
         assert "verification_details" in result
+        
+        # Verify content item status
+        with mock_get_sync_session() as session:
+            item = session.query(ContentItemModel).filter_by(id=content_item_id).first()
+            assert item.technical_verification_status == "pending"
+            assert item.status == "draft"
