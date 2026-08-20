@@ -24,17 +24,13 @@ __all__ = ['broker']
 
 logger = logging.getLogger(__name__)
 
-# Add periodiq middleware for cron scheduling BEFORE importing scheduler
+# Add periodiq middleware for cron scheduling
 try:
     from periodiq import PeriodiqMiddleware
     broker.add_middleware(PeriodiqMiddleware(skip_delay=30))
     logger.info("Periodiq middleware installed for scheduled tasks")
 except ImportError:
     logger.warning("Periodiq not available, using manual scheduling")
-
-# Import scheduler AFTER middleware is added to broker
-# This ensures actors can be registered with periodiq decorator
-from apps.workers import scheduler
 
 @dramatiq.actor(max_retries=3, min_backoff=1000, max_backoff=30000)
 def run_agent_task(task_id: str):

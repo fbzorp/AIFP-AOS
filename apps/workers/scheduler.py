@@ -197,11 +197,11 @@ def scheduled_seo_sitemap_update():
 
 
 # Register actors with periodiq cron scheduling
-scheduled_autonomous_publisher = dramatiq.actor(periodiq=cron("*/15 * * * *"))(scheduled_autonomous_publisher)
-scheduled_telegram_republisher = dramatiq.actor(periodiq=cron("0 */6 * * *"))(scheduled_telegram_republisher)
-scheduled_telegram_digest = dramatiq.actor(periodiq=cron("0 3,9,15,21 * * *"))(scheduled_telegram_digest)
-scheduled_seo_content_generator = dramatiq.actor(periodiq=cron("0 */12 * * *"))(scheduled_seo_content_generator)
-scheduled_seo_sitemap_update = dramatiq.actor(periodiq=cron("0 */6 * * *"))(scheduled_seo_sitemap_update)
+scheduled_autonomous_publisher = dramatiq.actor(periodic=cron("*/15 * * * *"))(scheduled_autonomous_publisher)
+scheduled_telegram_republisher = dramatiq.actor(periodic=cron("0 */6 * * *"))(scheduled_telegram_republisher)
+scheduled_telegram_digest = dramatiq.actor(periodic=cron("0 3,9,15,21 * * *"))(scheduled_telegram_digest)
+scheduled_seo_content_generator = dramatiq.actor(periodic=cron("0 */12 * * *"))(scheduled_seo_content_generator)
+scheduled_seo_sitemap_update = dramatiq.actor(periodic=cron("0 */6 * * *"))(scheduled_seo_sitemap_update)
 
 logger.info("Actors registered for scheduled tasks (periodiq scheduler will trigger them)")
 
