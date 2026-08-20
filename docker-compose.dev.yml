@@ -84,7 +84,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: aifp_scheduler_dev
     restart: unless-stopped
-    command: ["uv", "run", "python", "-m", "periodiq", "apps.workers.tasks:broker", "apps.workers.periodic_scheduler:SCHEDULES"]
+    command: ["sh", "scripts/run_scheduler.sh"]
     env_file:
       - .env
     volumes:

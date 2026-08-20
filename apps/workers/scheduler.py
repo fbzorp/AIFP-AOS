@@ -6,6 +6,7 @@ Unified publisher actor handles all approved content for simpler, more robust sc
 import logging
 import asyncio
 import dramatiq
+from periodiq import cron
 from apps.api.config import settings
 from apps.models.base import get_sync_session
 from apps.models.content_item import ContentItemModel
@@ -195,13 +196,12 @@ def scheduled_seo_sitemap_update():
         raise
 
 
-# Register actors without cron scheduling
-# Periodiq will trigger these actors via a separate scheduler process
-scheduled_autonomous_publisher = dramatiq.actor()(scheduled_autonomous_publisher)
-scheduled_telegram_republisher = dramatiq.actor()(scheduled_telegram_republisher)
-scheduled_telegram_digest = dramatiq.actor()(scheduled_telegram_digest)
-scheduled_seo_content_generator = dramatiq.actor()(scheduled_seo_content_generator)
-scheduled_seo_sitemap_update = dramatiq.actor()(scheduled_seo_sitemap_update)
+# Register actors with periodiq cron scheduling
+scheduled_autonomous_publisher = dramatiq.actor(periodiq=cron("*/15 * * * *"))(scheduled_autonomous_publisher)
+scheduled_telegram_republisher = dramatiq.actor(periodiq=cron("0 */6 * * *"))(scheduled_telegram_republisher)
+scheduled_telegram_digest = dramatiq.actor(periodiq=cron("0 3,9,15,21 * * *"))(scheduled_telegram_digest)
+scheduled_seo_content_generator = dramatiq.actor(periodiq=cron("0 */12 * * *"))(scheduled_seo_content_generator)
+scheduled_seo_sitemap_update = dramatiq.actor(periodiq=cron("0 */6 * * *"))(scheduled_seo_sitemap_update)
 
 logger.info("Actors registered for scheduled tasks (periodiq scheduler will trigger them)")
 

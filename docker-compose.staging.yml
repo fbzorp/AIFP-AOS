@@ -240,7 +240,7 @@ services:
     image: aifp-aos-scheduler:latest
     container_name: aifp_scheduler_staging
     restart: unless-stopped
-    command: ["uv", "run", "python", "-m", "periodiq", "apps.workers.tasks:broker", "apps.workers.periodic_scheduler:SCHEDULES"]
+    command: ["sh", "scripts/run_scheduler.sh"]
     environment:
       APP_ENV: staging
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/${POSTGRES_DB:-aifp_staging}
@@ -342,7 +342,7 @@ services:
     image: aifp-aos-scheduler:latest
     container_name: aifp_scheduler_staging
     restart: unless-stopped
-    command: ["uv", "run", "python", "-m", "periodiq", "apps.workers.tasks:broker", "apps.workers.periodic_scheduler:SCHEDULES"]
+    command: ["sh", "scripts/run_scheduler.sh"]
     environment:
       APP_ENV: staging
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD:-staging_password}@postgres:5432/${POSTGRES_DB:-aifp_staging}
