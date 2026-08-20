@@ -33,6 +33,9 @@ services:
     restart: unless-stopped
 
   api:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
     image: aifp-aos-api:latest
     expose:
       - "8000"
@@ -138,6 +141,9 @@ services:
     restart: unless-stopped
 
   worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
     image: aifp-aos-worker:latest
     container_name: aifp_worker_prod
     restart: unless-stopped
@@ -243,6 +249,9 @@ services:
       - aifp-network
 
   scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
     image: aifp-aos-api:latest
     container_name: aifp_scheduler_prod
     restart: unless-stopped
@@ -350,6 +359,9 @@ services:
     restart: unless-stopped
 
   backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
     image: aifp-aos-api:latest
     container_name: aifp_backup
     command: >
@@ -395,6 +407,9 @@ services:
     restart: unless-stopped
 
   cert-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
     image: aifp-aos-api:latest
     working_dir: /app
     command: ["uv", "run", "python", "scripts/generate_ssl_cert.py", "--cert-dir", "/certs"]
