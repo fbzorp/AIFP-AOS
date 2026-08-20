@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Entry point for the periodiq scheduler.
-This script loads the scheduler module (which registers actors with periodiq) and runs periodiq.
+This script sets up the environment and runs periodiq with the proper configuration.
 """
 
 import sys
@@ -11,21 +11,24 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 if __name__ == "__main__":
-    # Import the scheduler module to register actors with periodiq
+    # Import the necessary modules in the correct order
+    # First, set up the broker with periodiq middleware
+    from apps.workers import tasks
+    
+    # Then import the scheduler to register actors
     from apps.workers import scheduler
     
-    # Import periodiq's main function and argument parser
-    from periodiq import main, make_argument_parser
+    # Then import periodic_scheduler to define SCHEDULES
+    from apps.workers import periodic_scheduler
     
-    # Set up the arguments for periodiq (only need broker since actors are registered via decorator)
+    # Now run periodiq using the entrypoint directly
+    # Set sys.argv for periodiq CLI
     sys.argv = [
         "periodiq",
-        "apps.workers.tasks:broker"
+        "apps.workers.tasks:broker",
+        "apps.workers.periodic_scheduler"
     ]
     
-    # Parse arguments
-    parser = make_argument_parser()
-    args = parser.parse_args()
-    
-    # Run periodiq's main function with parsed arguments
-    main(args)
+    # Import and run periodiq's entrypoint
+    from periodiq import entrypoint
+    entrypoint()
