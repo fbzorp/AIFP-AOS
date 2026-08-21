@@ -113,4 +113,4 @@ jobs:
     - name: Run gitleaks
       run: |
         curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz | tar -xz -C /tmp
-        /tmp/gitleaks detect --source . --redact --exit-code 1 --log-opts="--all"
+        /tmp/gitleaks detect --source . --redact --exit-code 1 --log-opts="--all" --config .gitleaks.toml
