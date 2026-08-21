@@ -402,6 +402,8 @@ services:
       args:
         VITE_API_URL: ""
     image: aifp-aos-dashboard:latest
+    ports:
+      - "3001:80"
     networks:
       - aifp-network
     restart: unless-stopped

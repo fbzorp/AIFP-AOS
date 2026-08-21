@@ -8,18 +8,15 @@ import {
   Clock,
   Filter,
   Download,
-  Calendar,
   Globe,
   Share2,
   Zap,
   Search,
   TrendingUp
 } from 'lucide-react';
-import { 
+import {
   fetchMarketingActivity,
-  exportMarketingActivityCSV,
-  MarketingActivityItem,
-  cn 
+  exportMarketingActivityCSV
 } from '../lib/api';
 
 const MarketingActivity: React.FC = () => {
