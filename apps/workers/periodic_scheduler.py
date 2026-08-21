@@ -3,7 +3,8 @@ Periodic scheduler using periodiq to trigger dramatiq actors on cron schedules.
 This runs as a separate process alongside the dramatiq worker.
 
 This module imports the broker and all scheduled actors to ensure they are registered
-when periodiq imports this module.
+when periodiq imports this module. The actors are decorated with @dramatiq.actor(periodic=...)
+in scheduler.py, so periodiq can discover and schedule them.
 """
 
 import logging
@@ -18,4 +19,4 @@ from apps.workers.scheduler import (
 
 logger = logging.getLogger(__name__)
 
-logger.info("Periodic scheduler module loaded - actors are registered via periodic decorator in scheduler.py")
+logger.info("Periodic scheduler module loaded - actors decorated with periodic= in scheduler.py")
