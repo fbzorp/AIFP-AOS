@@ -255,7 +255,7 @@ services:
     image: aifp-aos-api:latest
     container_name: aifp_scheduler_prod
     restart: unless-stopped
-    command: ["uv", "run", "periodiq", "apps.workers.periodic_scheduler"]
+    command: ["uv", "run", "periodiq", "apps.workers.tasks:broker", "apps.workers.periodic_scheduler"]
     env_file:
       - .env.production
     environment:

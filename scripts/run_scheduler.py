@@ -19,10 +19,11 @@ if __name__ == "__main__":
     from apps.workers import scheduler
     
     # Now run periodiq using the entrypoint directly
-    # Set sys.argv for periodiq CLI - only pass broker, it will discover actors via middleware
+    # Set sys.argv for periodiq CLI - match compose file invocation
     sys.argv = [
         "periodiq",
-        "apps.workers.tasks:broker"
+        "apps.workers.tasks:broker",
+        "apps.workers.periodic_scheduler"
     ]
     
     # Import and run periodiq's entrypoint
