@@ -19,6 +19,16 @@ from apps.agents.registry import get_agent
 broker = RedisBroker(url=settings.REDIS_URL)
 dramatiq.set_broker(broker)
 
+# Import periodic actors to register them on the broker
+# This must happen after the broker is set
+from apps.workers.scheduler import (
+    scheduled_autonomous_publisher,
+    scheduled_telegram_republisher,
+    scheduled_telegram_digest,
+    scheduled_seo_content_generator,
+    scheduled_seo_sitemap_update
+)
+
 # Export for Dramatiq CLI
 __all__ = ['broker']
 
