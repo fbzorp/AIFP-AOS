@@ -2,11 +2,8 @@
 # Automated database backup script for AIFP-AOS
 # This script creates daily backups with retention policies
 
-set -e
-
 # Configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_DIR="${BACKUP_DIR:-/backups}"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
 DB_NAME="${POSTGRES_DB:-aifp_prod}"
@@ -15,11 +12,12 @@ DB_HOST="${POSTGRES_HOST:-postgres}"
 DB_PORT="${POSTGRES_PORT:-5432}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="${BACKUP_DIR}/aifp_backup_${TIMESTAMP}.sql.gz"
-LOG_FILE="${PROJECT_DIR}/logs/aifp_backup.log"
+LOG_DIR="${LOG_DIR:-/app/logs}"
+LOG_FILE="${LOG_DIR}/aifp_backup.log"
 
-# Create backup directory if it doesn't exist
+# Create backup and log directories if they don't exist
 mkdir -p "${BACKUP_DIR}"
-mkdir -p "$(dirname "${LOG_FILE}")"
+mkdir -p "${LOG_DIR}"
 
 # Logging function
 log() {
@@ -31,7 +29,6 @@ log "Starting backup process"
 
 # Perform backup
 log "Creating backup: ${BACKUP_FILE}"
-cd "${PROJECT_DIR}"
 
 # Determine which compose file to use
 COMPOSE_FILE="docker-compose.prod.yml"

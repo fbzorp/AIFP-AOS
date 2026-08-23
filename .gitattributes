@@ -1,0 +1,6 @@
+# Ensure shell scripts use LF line endings for proper execution in containers
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf

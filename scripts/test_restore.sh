@@ -2,11 +2,8 @@
 # Automated restore test script for AIFP-AOS
 # This script tests the backup and restore functionality
 
-set -e
-
 # Configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_DIR="${BACKUP_DIR:-/backups}"
 DB_NAME="${POSTGRES_DB:-aifp_prod}"
 DB_USER="${POSTGRES_USER:-aifp}"
@@ -14,11 +11,12 @@ DB_HOST="${POSTGRES_HOST:-postgres}"
 DB_PORT="${POSTGRES_PORT:-5432}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 TEST_BACKUP_FILE="${BACKUP_DIR}/test_restore_${TIMESTAMP}.sql.gz"
-LOG_FILE="${PROJECT_DIR}/logs/test_restore.log"
+LOG_DIR="${LOG_DIR:-/app/logs}"
+LOG_FILE="${LOG_DIR}/test_restore.log"
 
-# Create backup directory if it doesn't exist
+# Create backup and log directories if they don't exist
 mkdir -p "${BACKUP_DIR}"
-mkdir -p "$(dirname "${LOG_FILE}")"
+mkdir -p "${LOG_DIR}"
 
 # Logging function
 log() {

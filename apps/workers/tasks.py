@@ -19,8 +19,18 @@ from apps.agents.registry import get_agent
 broker = RedisBroker(url=settings.REDIS_URL)
 dramatiq.set_broker(broker)
 
+logger = logging.getLogger(__name__)
+
+# Add periodiq middleware for cron scheduling
+try:
+    from periodiq import PeriodiqMiddleware
+    broker.add_middleware(PeriodiqMiddleware(skip_delay=30))
+    logger.info("Periodiq middleware installed for scheduled tasks")
+except ImportError:
+    logger.warning("Periodiq not available, using manual scheduling")
+
 # Import periodic actors to register them on the broker
-# This must happen after the broker is set
+# This must happen AFTER the PeriodiqMiddleware is installed
 from apps.workers.scheduler import (
     scheduled_autonomous_publisher,
     scheduled_telegram_republisher,
@@ -31,16 +41,6 @@ from apps.workers.scheduler import (
 
 # Export for Dramatiq CLI
 __all__ = ['broker']
-
-logger = logging.getLogger(__name__)
-
-# Add periodiq middleware for cron scheduling
-try:
-    from periodiq import PeriodiqMiddleware
-    broker.add_middleware(PeriodiqMiddleware(skip_delay=30))
-    logger.info("Periodiq middleware installed for scheduled tasks")
-except ImportError:
-    logger.warning("Periodiq not available, using manual scheduling")
 
 @dramatiq.actor(max_retries=3, min_backoff=1000, max_backoff=30000)
 def run_agent_task(task_id: str):

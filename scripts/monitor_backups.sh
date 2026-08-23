@@ -2,18 +2,16 @@
 # Backup monitoring script for AIFP-AOS
 # This script checks backup status and logs failures
 
-set -e
-
 # Configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_DIR="${BACKUP_DIR:-/backups}"
 MAX_AGE_HOURS=26  # Maximum age of backup in hours (slightly more than 24h)
-LOG_FILE="${PROJECT_DIR}/logs/backup_monitor.log"
+LOG_DIR="${LOG_DIR:-/app/logs}"
+LOG_FILE="${LOG_DIR}/backup_monitor.log"
 
-# Create backup directory if it doesn't exist
+# Create backup and log directories if they don't exist
 mkdir -p "${BACKUP_DIR}"
-mkdir -p "$(dirname "${LOG_FILE}")"
+mkdir -p "${LOG_DIR}"
 
 # Logging function
 log() {
