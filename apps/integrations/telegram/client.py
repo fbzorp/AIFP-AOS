@@ -62,7 +62,7 @@ class TelegramClient:
             **kwargs: Additional parameters (e.g., parse_mode, disable_notification)
 
         Returns:
-            Dict with keys: success, post_id, post_url
+            Dict with keys: success, dry_run, post_id, post_url
         """
         # Idempotency check - skip if already has post_id
         existing_post_id = kwargs.get("post_id")
@@ -71,8 +71,19 @@ class TelegramClient:
             channel = self.chat_id or "unknown"
             return {
                 "success": True,
+                "dry_run": False,
                 "post_id": existing_post_id,
                 "post_url": f"https://t.me/{channel}/{existing_post_id}"
+            }
+
+        # Enforce dry-run if autopublish is disabled
+        if not self.autopublish_enabled:
+            logger.info("[DRY-RUN] Telegram publishing disabled (TELEGRAM_AUTOPUBLISH=false)")
+            return {
+                "success": True,
+                "dry_run": True,
+                "post_id": None,
+                "post_url": None
             }
 
         # Validate text
@@ -81,21 +92,21 @@ class TelegramClient:
 
         # Check if credentials are configured
         if not self.bot_token:
-            logger.error("Telegram bot token not configured")
+            logger.warning("Telegram bot token not configured, falling back to dry-run")
             return {
-                "success": False,
+                "success": True,
+                "dry_run": True,
                 "post_id": None,
-                "post_url": None,
-                "error": "Telegram bot token not configured"
+                "post_url": None
             }
 
         if not self.chat_id:
-            logger.error("Telegram chat_id not configured")
+            logger.warning("Telegram chat_id not configured, falling back to dry-run")
             return {
-                "success": False,
+                "success": True,
+                "dry_run": True,
                 "post_id": None,
-                "post_url": None,
-                "error": "Telegram chat_id not configured"
+                "post_url": None
             }
         
         # Telegram Bot API sendMessage endpoint
@@ -137,6 +148,7 @@ class TelegramClient:
             
             return {
                 "success": True,
+                "dry_run": False,
                 "post_id": str(message_id),
                 "post_url": post_url
             }

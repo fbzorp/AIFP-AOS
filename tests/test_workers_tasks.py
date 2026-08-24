@@ -707,6 +707,7 @@ class TestPublishingLogic:
         # Mock publisher
         mock_publisher = AsyncMock()
         mock_publisher.publish_post = AsyncMock(return_value={
+            "success": True,
             "post_id": "post-123",
             "post_url": "https://moltbook.com/posts/post-123",
             "dry_run": False
@@ -714,7 +715,7 @@ class TestPublishingLogic:
         mock_publisher.__aenter__ = AsyncMock(return_value=mock_publisher)
         mock_publisher.__aexit__ = AsyncMock()
         mock_get_publisher.return_value = mock_publisher
-        
+
         # Create content
         content = ContentItemModel(
             id="content-1",
@@ -725,7 +726,7 @@ class TestPublishingLogic:
         )
         session.add(content)
         session.commit()
-        
+
         publish_content("content-1", "appr-123", "hash-123")
         
         # Verify content updated
@@ -829,6 +830,7 @@ class TestPublishingLogic:
         
         mock_publisher = AsyncMock()
         mock_publisher.publish_post = AsyncMock(return_value={
+            "success": True,
             "post_id": "post-123",
             "post_url": "https://moltbook.com/posts/post-123",
             "dry_run": False
@@ -836,7 +838,7 @@ class TestPublishingLogic:
         mock_publisher.__aenter__ = AsyncMock(return_value=mock_publisher)
         mock_publisher.__aexit__ = AsyncMock()
         mock_get_publisher.return_value = mock_publisher
-        
+
         # Create content without body but with variants
         content = ContentItemModel(
             id="content-1",
@@ -848,7 +850,7 @@ class TestPublishingLogic:
         )
         session.add(content)
         session.commit()
-        
+
         with patch("apps.api.config.settings.MOLTBOOK_ALLOWED_SUBMOLTS", "general"):
             publish_content("content-1", "appr-123", "hash-123")
         
