@@ -95,22 +95,20 @@ class SeoPagePublisher:
     async def publish_post(self, title: str, body: str, **kwargs) -> Dict:
         """
         Render and save SEO content as static HTML page.
-        
+
         Returns normalized dict with keys:
         - success: bool
-        - dry_run: bool
         - post_id: Optional[str]
         - post_url: Optional[str]
         """
         self._ensure_initialized()
-        
+
         content_id = kwargs.get("content_id")
         variants = kwargs.get("variants", {})
-        
+
         if not content_id:
             return {
                 "success": False,
-                "dry_run": True,
                 "post_id": None,
                 "post_url": None,
                 "error": "content_id required for SEO page publishing"
@@ -152,7 +150,6 @@ class SeoPagePublisher:
             # Return metadata for updating content item
             return {
                 "success": True,
-                "dry_run": False,
                 "post_id": content_id,
                 "post_url": post_url,
                 "canonical_url": post_url,
@@ -161,16 +158,24 @@ class SeoPagePublisher:
                 "meta_description": variants.get("meta_description", ""),
                 "indexing_status": indexing_status
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to publish SEO page: {e}")
             return {
                 "success": False,
-                "dry_run": True,
                 "post_id": None,
                 "post_url": None,
                 "error": str(e)
             }
+    
+    async def __aenter__(self):
+        """Async context manager entry."""
+        self._ensure_initialized()
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.close()
     
     async def close(self):
         """No resources to clean up."""

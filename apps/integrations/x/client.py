@@ -126,50 +126,39 @@ class XClient:
     async def publish_post(self, text: str, **kwargs) -> Dict[str, Any]:
         """
         Publish a tweet using X API v2.
-        
+
         Args:
             text: Tweet text (max 280 characters)
             **kwargs: Additional parameters (e.g., reply_to, media_ids)
-        
+
         Returns:
-            Dict with keys: success, dry_run, post_id, post_url
+            Dict with keys: success, post_id, post_url
         """
-        # Enforce dry-run if autopublish is disabled
-        if not self.autopublish_enabled:
-            logger.info("[DRY-RUN] X/Twitter publishing disabled (X_AUTOPUBLISH=false)")
-            return {
-                "success": True,
-                "dry_run": True,
-                "post_id": None,
-                "post_url": None
-            }
-        
         # Idempotency check - skip if already has post_id
         existing_post_id = kwargs.get("post_id")
         if existing_post_id:
             logger.info(f"Tweet already published with post_id: {existing_post_id}")
             return {
                 "success": True,
-                "dry_run": False,
                 "post_id": existing_post_id,
                 "post_url": f"https://x.com/i/status/{existing_post_id}"
             }
-        
+
         # Validate text length
         if len(text) > 280:
             raise ValueError(f"Tweet text exceeds 280 characters: {len(text)}")
-        
+
         if not text.strip():
             raise ValueError("Tweet text cannot be empty")
-        
+
         # Check if credentials are configured
         if not all([self.api_key, self.api_secret, self.access_token, self.access_token_secret]):
-            logger.warning("X API credentials not fully configured, falling back to dry-run")
+            logger.error("X API credentials not fully configured")
             return {
-                "success": True,
-                "dry_run": True,
+                "success": False,
                 "post_id": None,
-                "post_url": None
+                "post_url": None,
+                "error": "X API credentials not fully configured"
             }
         
         # Real X API v2 implementation
@@ -210,7 +199,6 @@ class XClient:
             
             return {
                 "success": True,
-                "dry_run": False,
                 "post_id": tweet_id,
                 "post_url": post_url
             }

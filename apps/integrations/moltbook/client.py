@@ -183,24 +183,15 @@ class MoltbookClient:
         Returns:
             Dict with keys: success, dry_run, post_id, post_url
         """
-        # Enforce dry-run if autopublish is disabled
-        if not self.autopublish_enabled:
-            logger.info(f"[DRY-RUN] Publishing to {submolt}: {title}")
-            return {
-                "success": True,
-                "dry_run": True,
-                "post_id": None,
-                "post_url": None
-            }
-
         # Check if credentials are configured
         if not self.agent_key:
-            logger.warning("Moltbook agent key not configured, falling back to dry-run")
+            logger.error("Moltbook agent key not configured")
             return {
-                "success": True,
-                "dry_run": True,
+                "success": False,
+                "dry_run": False,
                 "post_id": None,
-                "post_url": None
+                "post_url": None,
+                "error": "Moltbook agent key not configured"
             }
 
         payload = {
@@ -238,7 +229,6 @@ class MoltbookClient:
                         logger.error("DEEPSEEK_API_KEY not found - cannot solve challenge")
                         return {
                             "success": False,
-                            "dry_run": False,
                             "post_id": None,
                             "post_url": None,
                             "error": "DEEPSEEK_API_KEY not found for verification"
@@ -261,7 +251,6 @@ class MoltbookClient:
                         logger.error(f"LiteLLM completion failed for verification challenge: {e}")
                         return {
                             "success": False,
-                            "dry_run": False,
                             "post_id": None,
                             "post_url": None,
                             "error": f"LLM verification failed: {str(e)}"
@@ -278,7 +267,6 @@ class MoltbookClient:
                         post_url = f"{self.base_url}/api/v1/posts/{post_id}"
                         return {
                             "success": True,
-                            "dry_run": False,
                             "post_id": post_id,
                             "post_url": post_url
                         }
@@ -286,7 +274,6 @@ class MoltbookClient:
                         logger.error(f"Verification failed: {verify_result.get('error')}")
                         return {
                             "success": False,
-                            "dry_run": False,
                             "post_id": None,
                             "post_url": None,
                             "error": f"Verification failed: {verify_result.get('error')}"
@@ -300,7 +287,6 @@ class MoltbookClient:
                 
                 return {
                     "success": True,
-                    "dry_run": False,
                     "post_id": post_id,
                     "post_url": post_url
                 }
@@ -309,7 +295,6 @@ class MoltbookClient:
             logger.error(f"Moltbook publish_post failed: {e.response.status_code} - {e.response.text}")
             return {
                 "success": False,
-                "dry_run": False,
                 "post_id": None,
                 "post_url": None,
                 "error": f"HTTP {e.response.status_code}: {e.response.text}"
@@ -318,7 +303,6 @@ class MoltbookClient:
             logger.error(f"Moltbook client error: {e}")
             return {
                 "success": False,
-                "dry_run": False,
                 "post_id": None,
                 "post_url": None,
                 "error": str(e)
