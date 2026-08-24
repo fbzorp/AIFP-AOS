@@ -76,7 +76,6 @@ async def test_real_publish_flow_non_dry_run():
             assert result["status"] == "published"
             assert result["post_id"] == "real-post-123"
             assert result["post_url"] == "https://www.moltbook.com/posts/real-post-123"
-            assert result["dry_run"] is False
             
             # Verify database persistence
             with get_sync_session() as session:
@@ -93,7 +92,6 @@ async def test_real_publish_flow_non_dry_run():
                     AuditEventModel.agent_name == "System"
                 ).order_by(AuditEventModel.created_at.desc()).first()
                 assert audit is not None
-                assert audit.metadata_json.get("dry_run") is False
                 assert audit.metadata_json.get("post_id") == "real-post-123"
                 
         finally:

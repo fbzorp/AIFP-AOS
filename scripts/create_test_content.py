@@ -1,11 +1,12 @@
 import sys
+import os
 import requests
 import time
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 
 API_BASE = "http://localhost:8000/api/v1"
-SECRET_KEY = "StrongProductionSecretKey123!ChangeThisInProduction"
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
 
 def create_test_token():
     """Create a test JWT token with admin role."""

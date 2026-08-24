@@ -188,7 +188,6 @@ class MoltbookClient:
             logger.error("Moltbook agent key not configured")
             return {
                 "success": False,
-                "dry_run": False,
                 "post_id": None,
                 "post_url": None,
                 "error": "Moltbook agent key not configured"

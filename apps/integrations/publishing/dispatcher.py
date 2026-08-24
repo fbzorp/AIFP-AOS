@@ -17,17 +17,17 @@ logger = logging.getLogger(__name__)
 
 class PublisherBase(ABC):
     """Base class for all publishing clients."""
-    
+
     @abstractmethod
     async def publish_post(self, title: str, body: str, **kwargs) -> Dict:
         """
         Publish content to the platform.
-        
+
         Returns normalized dict with keys:
         - success: bool
-        - dry_run: bool
         - post_id: Optional[str]
         - post_url: Optional[str]
+        - error: Optional[str]
         """
         pass
     
@@ -100,10 +100,10 @@ class MoltbookPublisher(PublisherBase):
         )
         
         return {
-            "success": True,
-            "dry_run": result.get("dry_run", False),
+            "success": result.get("success", False),
             "post_id": result.get("post_id"),
-            "post_url": result.get("post_url")
+            "post_url": result.get("post_url"),
+            "error": result.get("error")
         }
     
     async def close(self):
@@ -159,9 +159,9 @@ class XPublisher(PublisherBase):
         
         return {
             "success": result.get("success", False),
-            "dry_run": result.get("dry_run", False),
             "post_id": result.get("post_id"),
-            "post_url": result.get("post_url")
+            "post_url": result.get("post_url"),
+            "error": result.get("error")
         }
     
     async def close(self):
@@ -217,9 +217,9 @@ class TelegramPublisher(PublisherBase):
 
         return {
             "success": result.get("success", False),
-            "dry_run": result.get("dry_run", False),
             "post_id": result.get("post_id"),
-            "post_url": result.get("post_url")
+            "post_url": result.get("post_url"),
+            "error": result.get("error")
         }
 
     async def close(self):
@@ -271,7 +271,6 @@ class MultiChannelPublisher(PublisherBase):
         if not self._publishers:
             return {
                 "success": False,
-                "dry_run": True,
                 "post_id": None,
                 "post_url": None,
                 "error": "No publishers available"
@@ -308,7 +307,6 @@ class MultiChannelPublisher(PublisherBase):
         # If no success, return error info
         return {
             "success": False,
-            "dry_run": True,
             "post_id": None,
             "post_url": None,
             "error": f"All publishers failed. Results: {results}"

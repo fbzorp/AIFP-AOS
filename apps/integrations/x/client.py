@@ -132,7 +132,7 @@ class XClient:
             **kwargs: Additional parameters (e.g., reply_to, media_ids)
 
         Returns:
-            Dict with keys: success, dry_run, post_id, post_url
+            Dict with keys: success, post_id, post_url, error
         """
         # Idempotency check - skip if already has post_id
         existing_post_id = kwargs.get("post_id")
@@ -140,19 +140,18 @@ class XClient:
             logger.info(f"Tweet already published with post_id: {existing_post_id}")
             return {
                 "success": True,
-                "dry_run": False,
                 "post_id": existing_post_id,
                 "post_url": f"https://x.com/i/status/{existing_post_id}"
             }
 
-        # Enforce dry-run if autopublish is disabled
+        # Enforce autopublish check - fail if disabled
         if not self.autopublish_enabled:
-            logger.info("[DRY-RUN] X/Twitter publishing disabled (X_AUTOPUBLISH=false)")
+            logger.info("X/Twitter publishing disabled (X_AUTOPUBLISH=false)")
             return {
-                "success": True,
-                "dry_run": True,
+                "success": False,
                 "post_id": None,
-                "post_url": None
+                "post_url": None,
+                "error": "X/Twitter publishing disabled (X_AUTOPUBLISH=false)"
             }
 
         # Validate text length
@@ -164,12 +163,12 @@ class XClient:
 
         # Check if credentials are configured
         if not all([self.api_key, self.api_secret, self.access_token, self.access_token_secret]):
-            logger.warning("X API credentials not fully configured, falling back to dry-run")
+            logger.error("X API credentials not fully configured")
             return {
-                "success": True,
-                "dry_run": True,
+                "success": False,
                 "post_id": None,
-                "post_url": None
+                "post_url": None,
+                "error": "X API credentials not fully configured"
             }
         
         # Real X API v2 implementation
@@ -210,7 +209,6 @@ class XClient:
             
             return {
                 "success": True,
-                "dry_run": False,
                 "post_id": tweet_id,
                 "post_url": post_url
             }

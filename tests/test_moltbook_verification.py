@@ -122,10 +122,9 @@ async def test_publish_post_with_verification_failure():
 
             # With our new implementation, verification failure returns an error structure
             result = await client.publish_post("test-submolt", "Test Title", "Test Body")
-            
+
             # Should return error structure instead of raising ValueError
             assert result["success"] is False
-            assert result["dry_run"] is False
             assert result["post_id"] is None
             assert result["post_url"] is None
             assert "Verification failed" in result["error"]
@@ -173,7 +172,6 @@ async def test_publish_post_with_missing_deepseek_api_key():
 
         # With our new implementation, it returns an error structure when DEEPSEEK_API_KEY is missing
         assert result["success"] is False
-        assert result["dry_run"] is False
         assert result["post_id"] is None
         assert result["post_url"] is None
         assert "DEEPSEEK_API_KEY not found" in result["error"]

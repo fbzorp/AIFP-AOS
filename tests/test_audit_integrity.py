@@ -134,7 +134,13 @@ class TestAuditIntegrityChain:
 
 class TestPostgresTriggerProtection:
     """Tests for PostgreSQL trigger protection of audit events."""
-    
+
+    # Skip these tests if PostgreSQL integration tests are disabled
+    pytestmark = pytest.mark.skipif(
+        os.getenv("SKIP_POSTGRES_INTEGRATION_TESTS", "false").lower() == "true",
+        reason="PostgreSQL trigger tests skipped (SKIP_POSTGRES_INTEGRATION_TESTS=true)"
+    )
+
     @pytest.fixture(scope="module")
     def postgres_engine(self):
         """Create a Postgres engine for integration tests."""

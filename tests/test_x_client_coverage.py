@@ -153,15 +153,15 @@ def test_x_client_generate_oauth_headers():
 
 @pytest.mark.asyncio
 async def test_x_client_publish_post_dry_run():
-    """Test publish_post in dry-run mode."""
+    """Test publish_post when autopublish is disabled."""
     with patch('apps.integrations.x.client.settings') as mock_settings:
         mock_settings.X_AUTOPUBLISH = False
-        
+
         client = XClient()
         result = await client.publish_post("Test tweet")
-        
-        assert result["success"] is True
-        assert result["dry_run"] is True
+
+        assert result["success"] is False
+        assert "error" in result
         assert result["post_id"] is None
         assert result["post_url"] is None
 
@@ -171,12 +171,11 @@ async def test_x_client_publish_post_idempotent():
     """Test publish_post with existing post_id (idempotent)."""
     with patch('apps.integrations.x.client.settings') as mock_settings:
         mock_settings.X_AUTOPUBLISH = True
-        
+
         client = XClient()
         result = await client.publish_post("Test tweet", post_id="123456")
-        
+
         assert result["success"] is True
-        assert result["dry_run"] is False
         assert result["post_id"] == "123456"
         assert result["post_url"] == "https://x.com/i/status/123456"
 
@@ -215,12 +214,12 @@ async def test_x_client_publish_post_missing_credentials():
         mock_settings.X_API_SECRET = None
         mock_settings.X_ACCESS_TOKEN = None
         mock_settings.X_ACCESS_TOKEN_SECRET = None
-        
+
         client = XClient()
         result = await client.publish_post("Test tweet")
-        
-        assert result["success"] is True
-        assert result["dry_run"] is True
+
+        assert result["success"] is False
+        assert "error" in result
         assert result["post_id"] is None
 
 

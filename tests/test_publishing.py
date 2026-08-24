@@ -30,22 +30,20 @@ def setup_db():
 def test_publish_content_dry_run(mock_get_publisher, mock_policy, mock_get_session):
     session = TestingSessionLocal()
     mock_get_session.return_value.__enter__.return_value = session
-    
+
     # Mock policy validation
     mock_policy.return_value.validate_approval.return_value = True
-    
-    # Mock publisher that returns dry_run=True
+
+    # Mock publisher that returns success:False (simulating autopublish disabled)
     mock_publisher = AsyncMock()
     mock_publisher.publish_post = AsyncMock(return_value={
-        "success": True,
-        "dry_run": True,
-        "post_id": "dry-run-id",
-        "post_url": "https://www.moltbook.com/posts/dry-run-id"
+        "success": False,
+        "error": "Publishing disabled (autopublish=false)"
     })
     mock_publisher.__aenter__ = AsyncMock(return_value=mock_publisher)
     mock_publisher.__aexit__ = AsyncMock()
     mock_get_publisher.return_value = mock_publisher
-    
+
     # Create approved content
     content = ContentItemModel(
         title="Test Post",
@@ -55,19 +53,19 @@ def test_publish_content_dry_run(mock_get_publisher, mock_policy, mock_get_sessi
     )
     session.add(content)
     session.commit()
-    
-    # Trigger publish (dry-run by default as settings.MOLTBOOK_AUTOPUBLISH is False)
-    publish_content(content.id, "appr-123", "hash-123")
-    
-    # Assertions - dry_run should set status="dry_run" and NOT stamp fake values
-    assert content.status == "dry_run"
-    assert content.post_id is None  # Should NOT be stamped with fake dry-run-id
-    assert content.post_url is None  # Should NOT be stamped with fake URL
-    assert content.published_at is None  # Should NOT be stamped with fake timestamp
-    
-    audit = session.query(AuditEventModel).filter(AuditEventModel.event_type == "content_dry_run").first()
+
+    # Trigger publish - should raise ValueError when success is False
+    with pytest.raises(ValueError, match="Publishing failed"):
+        publish_content(content.id, "appr-123", "hash-123")
+
+    # Assertions - content should remain unchanged (not stamped)
+    assert content.status == "approved"
+    assert content.post_id is None
+    assert content.post_url is None
+    assert content.published_at is None
+
+    audit = session.query(AuditEventModel).filter(AuditEventModel.event_type == "publish_failed").first()
     assert audit is not None
-    assert audit.metadata_json.get("dry_run") is True
 
 @patch("apps.workers.tasks.get_sync_session")
 @patch("apps.workers.tasks.PolicyEngine")

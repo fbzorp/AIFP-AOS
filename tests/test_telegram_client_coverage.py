@@ -83,15 +83,15 @@ def test_telegram_client_properties_with_local_override():
 
 @pytest.mark.asyncio
 async def test_telegram_client_publish_post_dry_run():
-    """Test publish_post in dry-run mode."""
+    """Test publish_post when autopublish is disabled."""
     with patch('apps.integrations.telegram.client.settings') as mock_settings:
         mock_settings.TELEGRAM_AUTOPUBLISH = False
-        
+
         client = TelegramClient()
         result = await client.publish_post("Test message")
-        
-        assert result["success"] is True
-        assert result["dry_run"] is True
+
+        assert result["success"] is False
+        assert "error" in result
         assert result["post_id"] is None
         assert result["post_url"] is None
 
@@ -102,12 +102,11 @@ async def test_telegram_client_publish_post_idempotent():
     with patch('apps.integrations.telegram.client.settings') as mock_settings:
         mock_settings.TELEGRAM_AUTOPUBLISH = True
         mock_settings.TELEGRAM_CHAT_ID = "test_chat"
-        
+
         client = TelegramClient()
         result = await client.publish_post("Test message", post_id="123456")
-        
+
         assert result["success"] is True
-        assert result["dry_run"] is False
         assert result["post_id"] == "123456"
         assert result["post_url"] == "https://t.me/test_chat/123456"
 
@@ -131,12 +130,12 @@ async def test_telegram_client_publish_post_missing_bot_token():
         mock_settings.TELEGRAM_AUTOPUBLISH = True
         mock_settings.TELEGRAM_BOT_TOKEN = None
         mock_settings.TELEGRAM_CHAT_ID = "test_chat"
-        
+
         client = TelegramClient()
         result = await client.publish_post("Test message")
-        
-        assert result["success"] is True
-        assert result["dry_run"] is True
+
+        assert result["success"] is False
+        assert "error" in result
         assert result["post_id"] is None
 
 
@@ -148,12 +147,12 @@ async def test_telegram_client_publish_post_missing_chat_id():
         mock_settings.TELEGRAM_BOT_TOKEN = "test_token"
         mock_settings.TELEGRAM_CHAT_ID = None
         mock_settings.TELEGRAM_DEFAULT_CHANNEL = None
-        
+
         client = TelegramClient()
         result = await client.publish_post("Test message")
-        
-        assert result["success"] is True
-        assert result["dry_run"] is True
+
+        assert result["success"] is False
+        assert "error" in result
         assert result["post_id"] is None
 
 

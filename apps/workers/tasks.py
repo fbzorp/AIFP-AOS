@@ -210,74 +210,51 @@ async def _perform_publish_logic(session, content_id: str, approval_id: str, dra
         if not pub_result.get("success"):
             raise ValueError(f"Publishing failed: {pub_result.get('error', 'Unknown error')}")
 
-        # Branch on dry_run flag to preserve integrity
-        is_dry_run = pub_result.get("dry_run", False)
+        # Real publication: stamp real post_id/post_url/published_at
+        content.post_id = pub_result.get("post_id")
+        content.post_url = pub_result.get("post_url")
+        content.published_at = func.now()
+        content.status = "published"
 
-        if is_dry_run:
-            # Dry-run: do NOT stamp fake post_id/post_url/published_at
-            content.status = "dry_run"
-            # Leave post_id, post_url, published_at as NULL (do not set fake values)
+        # Capture SEO metadata if available (from SeoPagePublisher)
+        if pub_result.get("canonical_url"):
+            content.canonical_url = pub_result.get("canonical_url")
+        if pub_result.get("target_keyword"):
+            content.target_keyword = pub_result.get("target_keyword")
+        if pub_result.get("meta_title"):
+            content.meta_title = pub_result.get("meta_title")
+        if pub_result.get("meta_description"):
+            content.meta_description = pub_result.get("meta_description")
+        if pub_result.get("indexing_status"):
+            content.indexing_status = pub_result.get("indexing_status")
 
-            record_event(
-                session,
-                "System",
-                "content_dry_run",
-                f"Dry-run published {content_id} to {content.channel}",
-                {
-                    "content_id": content_id,
-                    "dry_run": True,
-                    "channel": content.channel
-                }
-            )
-            session.commit()
-            return {"status": "dry_run", "content_id": content_id, "dry_run": True}
-        else:
-            # Real publication: stamp real post_id/post_url/published_at
-            content.post_id = pub_result.get("post_id")
-            content.post_url = pub_result.get("post_url")
-            content.published_at = func.now()
-            content.status = "published"
+        record_event(
+            session,
+            "System",
+            "content_published",
+            f"Published {content_id} to {content.channel}",
+            {
+                "content_id": content_id,
+                "post_id": content.post_id,
+                "post_url": content.post_url,
+                "channel": content.channel
+            }
+        )
+        session.commit()
 
-            # Capture SEO metadata if available (from SeoPagePublisher)
-            if pub_result.get("canonical_url"):
-                content.canonical_url = pub_result.get("canonical_url")
-            if pub_result.get("target_keyword"):
-                content.target_keyword = pub_result.get("target_keyword")
-            if pub_result.get("meta_title"):
-                content.meta_title = pub_result.get("meta_title")
-            if pub_result.get("meta_description"):
-                content.meta_description = pub_result.get("meta_description")
-            if pub_result.get("indexing_status"):
-                content.indexing_status = pub_result.get("indexing_status")
+        # Trigger Telegram republisher for successful publishes with URLs
+        if content.post_url:
+            try:
+                from apps.agents.registry import get_agent
+                telegram_agent = get_agent("Telegram Republisher")
+                if telegram_agent:
+                    logger.info(f"Triggering Telegram republisher for {content_id}")
+                    # Send republish task with content_id
+                    trigger_telegram_republish.send(content_id)
+            except Exception as e:
+                logger.warning(f"Failed to trigger Telegram republisher: {e}")
 
-            record_event(
-                session,
-                "System",
-                "content_published",
-                f"Published {content_id} to {content.channel}",
-                {
-                    "content_id": content_id,
-                    "post_id": content.post_id,
-                    "post_url": content.post_url,
-                    "dry_run": False,
-                    "channel": content.channel
-                }
-            )
-            session.commit()
-
-            # Trigger Telegram republisher for successful publishes with URLs
-            if content.post_url:
-                try:
-                    from apps.agents.registry import get_agent
-                    telegram_agent = get_agent("Telegram Republisher")
-                    if telegram_agent:
-                        logger.info(f"Triggering Telegram republisher for {content_id}")
-                        # Send republish task with content_id
-                        trigger_telegram_republish.send(content_id)
-                except Exception as e:
-                    logger.warning(f"Failed to trigger Telegram republisher: {e}")
-
-            return {"status": "published", "content_id": content_id, "post_id": content.post_id, "post_url": content.post_url, "dry_run": False}
+        return {"status": "published", "content_id": content_id, "post_id": content.post_id, "post_url": content.post_url}
         
     except Exception as e:
         logger.error(f"Publishing failed for {content_id}: {e}")
