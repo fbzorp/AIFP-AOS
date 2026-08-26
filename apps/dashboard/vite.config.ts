@@ -14,13 +14,13 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: process.env.VITE_DEV_API_PROXY || 'http://aifp_api_dev:8000',
+        target: process.env.VITE_DEV_API_PROXY || 'http://host.docker.internal:8000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path, // Keep path as-is since we now use /api/v1 prefix
       },
       '/health': {
-        target: process.env.VITE_DEV_API_PROXY || 'http://aifp_api_dev:8000',
+        target: process.env.VITE_DEV_API_PROXY || 'http://host.docker.internal:8000',
         changeOrigin: true,
         secure: false,
       },

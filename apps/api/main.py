@@ -150,6 +150,13 @@ async def root():
         "health": "/health"
     }
 
+@app.get("/api/v1/dashboard/token")
+async def get_dashboard_token():
+    """Generate a JWT token for dashboard authentication."""
+    return {
+        "token": create_test_token("founder_admin")
+    }
+
 
 @app.get("/metrics")
 async def metrics():

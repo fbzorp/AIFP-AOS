@@ -24,8 +24,30 @@ const getApiBaseUrl = () => {
 const API_BASE_URL = getApiBaseUrl();
 const API_V1_URL = `${API_BASE_URL}/api/v1`;
 
+// Generate auth token by calling backend API
+const generateAuthToken = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/v1/dashboard/token`);
+    return response.data.token;
+  } catch (error) {
+    console.error('Failed to get dashboard token:', error);
+    return '';
+  }
+};
+
+const AUTH_TOKEN = generateAuthToken();
+
 export const api = axios.create({
   baseURL: API_V1_URL,
+});
+
+// Add auth interceptor
+api.interceptors.request.use(async (config) => {
+  const token = await AUTH_TOKEN;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 
 export interface Agent {

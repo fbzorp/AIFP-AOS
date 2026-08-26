@@ -31,9 +31,7 @@ services:
       retries: 5
 
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    image: aifp-aos-api
     container_name: aifp_api_dev
     restart: unless-stopped
     read_only: false
@@ -59,9 +57,7 @@ services:
         condition: service_healthy
 
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    image: aifp-aos-worker
     container_name: aifp_worker_dev
     restart: unless-stopped
     command: ["uv", "run", "dramatiq", "apps.workers.tasks:broker", "--processes", "1", "--threads", "4"]
@@ -79,9 +75,7 @@ services:
       - redis
 
   scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    image: aifp-aos-api
     container_name: aifp_scheduler_dev
     restart: unless-stopped
     command: ["uv", "run", "periodiq", "apps.workers.tasks:broker", "apps.workers.periodic_scheduler"]
@@ -111,6 +105,7 @@ services:
       - /app/node_modules
     environment:
       - VITE_DEV_API_PROXY=http://host.docker.internal:8000
+      - VITE_SECRET_KEY=dev-secret-key-change-in-production
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

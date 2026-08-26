@@ -4,7 +4,9 @@ COPY package*.json ./
 RUN npm ci --legacy-peer-deps
 COPY . .
 ARG VITE_API_URL
+ARG VITE_SECRET_KEY
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_SECRET_KEY=$VITE_SECRET_KEY
 RUN npm run build
 
 FROM nginx:alpine
