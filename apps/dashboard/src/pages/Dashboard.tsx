@@ -39,6 +39,7 @@ const Dashboard: React.FC = () => {
   const [isCreateContentModalOpen, setIsCreateContentModalOpen] = useState(false);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [selectedContentForPublish, setSelectedContentForPublish] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
   const { data: metrics, isLoading: metricsLoading } = useQuery({
     queryKey: ['metrics'],
     queryFn: fetchMetrics,
@@ -73,6 +74,12 @@ const Dashboard: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content'] });
       queryClient.invalidateQueries({ queryKey: ['metrics'] });
+      setError(null);
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to approve content';
+      setError(errorMessage);
+      setTimeout(() => setError(null), 5000);
     },
   });
 
@@ -81,6 +88,12 @@ const Dashboard: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content'] });
       queryClient.invalidateQueries({ queryKey: ['metrics'] });
+      setError(null);
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to reject content';
+      setError(errorMessage);
+      setTimeout(() => setError(null), 5000);
     },
   });
 
@@ -90,6 +103,12 @@ const Dashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['content'] });
       queryClient.invalidateQueries({ queryKey: ['metrics'] });
       queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      setError(null);
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to publish content';
+      setError(errorMessage);
+      setTimeout(() => setError(null), 5000);
     },
   });
 
@@ -147,6 +166,22 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <AlertCircle size={18} className="text-red-400" />
+            <span className="text-red-400 text-sm">{error}</span>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-400 hover:text-red-300 transition-colors"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">

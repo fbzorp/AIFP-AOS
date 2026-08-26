@@ -28,6 +28,7 @@ const ContentQueue: React.FC = () => {
   const [isCreateContentModalOpen, setIsCreateContentModalOpen] = useState(false);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [selectedContentForPublish, setSelectedContentForPublish] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const { data: content, isLoading } = useQuery({
     queryKey: ['content'],
@@ -39,6 +40,12 @@ const ContentQueue: React.FC = () => {
     mutationFn: ({ id }: { id: string }) => approveContent(id, 'Human Operator'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content'] });
+      setError(null);
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to approve content';
+      setError(errorMessage);
+      setTimeout(() => setError(null), 5000);
     },
   });
 
@@ -46,6 +53,12 @@ const ContentQueue: React.FC = () => {
     mutationFn: ({ id }: { id: string }) => rejectContent(id, 'Human Operator', 'Rejected via queue'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['content'] });
+      setError(null);
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to reject content';
+      setError(errorMessage);
+      setTimeout(() => setError(null), 5000);
     },
   });
 
@@ -55,6 +68,12 @@ const ContentQueue: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['content'] });
       setEditingId(null);
       setEditForm({ title: '', body: '' });
+      setError(null);
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to edit content';
+      setError(errorMessage);
+      setTimeout(() => setError(null), 5000);
     },
   });
 
@@ -116,6 +135,22 @@ const ContentQueue: React.FC = () => {
           <span>Create Content</span>
         </button>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <AlertCircle size={18} className="text-red-400" />
+            <span className="text-red-400 text-sm">{error}</span>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-400 hover:text-red-300 transition-colors"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Pending Review Section */}
       <div className="glass-card p-6">

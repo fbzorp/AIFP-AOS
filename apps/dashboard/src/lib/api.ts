@@ -35,7 +35,22 @@ const generateAuthToken = async () => {
   }
 };
 
-const AUTH_TOKEN = generateAuthToken();
+let AUTH_TOKEN: string | null = null;
+let tokenPromise: Promise<string> | null = null;
+
+// Get token with caching to avoid multiple requests
+const getAuthToken = async () => {
+  if (AUTH_TOKEN) return AUTH_TOKEN;
+  
+  if (tokenPromise) {
+    return tokenPromise;
+  }
+  
+  tokenPromise = generateAuthToken();
+  AUTH_TOKEN = await tokenPromise;
+  tokenPromise = null;
+  return AUTH_TOKEN;
+};
 
 export const api = axios.create({
   baseURL: API_V1_URL,
@@ -43,12 +58,36 @@ export const api = axios.create({
 
 // Add auth interceptor
 api.interceptors.request.use(async (config) => {
-  const token = await AUTH_TOKEN;
+  const token = await getAuthToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+// Add 401 interceptor to refresh token and retry
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // If 401 error and we haven't retried yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      // Clear cached token and fetch a new one
+      AUTH_TOKEN = null;
+      const newToken = await getAuthToken();
+      
+      if (newToken) {
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return api(originalRequest);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 export interface Agent {
   name: string;
