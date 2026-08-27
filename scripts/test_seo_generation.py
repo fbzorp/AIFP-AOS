@@ -21,7 +21,7 @@ async def test_seo_generation():
     # Create publisher with local settings
     publisher = SeoPagePublisher()
     publisher._output_dir = Path("./seo_pages")
-    publisher._base_url = "https://aifinpay.io/blog"
+    publisher._base_url = "http://localhost:8080"
     publisher._initialized = True
     
     # Ensure output directory exists

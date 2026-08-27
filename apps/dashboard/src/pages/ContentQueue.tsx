@@ -8,7 +8,8 @@ import {
   CheckCircle,
   Clock,
   Send,
-  Plus
+  Plus,
+  ExternalLink
 } from 'lucide-react';
 import { useState } from 'react';
 import { 
@@ -94,6 +95,8 @@ const ContentQueue: React.FC = () => {
         return <AlertCircle size={16} className="text-red-400" />;
       case 'pending_review':
         return <Clock size={16} className="text-yellow-400" />;
+      case 'published':
+        return <CheckCircle size={16} className="text-emerald-400" />;
       default:
         return <Clock size={16} className="text-blue-400" />;
     }
@@ -107,6 +110,8 @@ const ContentQueue: React.FC = () => {
         return 'bg-red-500/10 text-red-400';
       case 'pending_review':
         return 'bg-yellow-500/10 text-yellow-400';
+      case 'published':
+        return 'bg-emerald-500/10 text-emerald-400';
       default:
         return 'bg-blue-500/10 text-blue-400';
     }
@@ -119,6 +124,7 @@ const ContentQueue: React.FC = () => {
   const pendingItems = content?.filter(item => item.status === 'draft' || item.status === 'pending_review') || [];
   const approvedItems = content?.filter(item => item.status === 'approved') || [];
   const rejectedItems = content?.filter(item => item.status === 'rejected') || [];
+  const publishedItems = content?.filter(item => item.status === 'published') || [];
 
   return (
     <div className="p-8 space-y-8 animate-fade-in">
@@ -307,6 +313,48 @@ const ContentQueue: React.FC = () => {
                 </div>
                 <h3 className="font-medium text-white">{item.title}</h3>
                 <p className="text-xs text-gray-500 mt-1">By {item.author_agent}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Published Section */}
+      {publishedItems.length > 0 && (
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-2">
+              <CheckCircle size={20} className="text-emerald-400" />
+              <h2 className="text-xl font-semibold">Published ({publishedItems.length})</h2>
+            </div>
+          </div>
+          <div className="space-y-4">
+            {publishedItems.map((item: any) => (
+              <div key={item.id} className="p-4 rounded-xl bg-[#1e1b4b]/30 border border-emerald-500/20 card-clickable cursor-pointer">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#3730a3] text-gray-300 uppercase">
+                    {item.channel}
+                  </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 flex items-center gap-1">
+                    <CheckCircle size={12} /> Published
+                  </span>
+                </div>
+                <h3 className="font-medium text-white">{item.title}</h3>
+                <p className="text-xs text-gray-500 mt-1">By {item.author_agent}</p>
+                {item.published_at && (
+                  <p className="text-xs text-gray-500 mt-1">Published at {new Date(item.published_at).toLocaleString()}</p>
+                )}
+                {item.post_url && (
+                  <a
+                    href={item.post_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
+                  >
+                    <ExternalLink size={14} />
+                    <span>View Post</span>
+                  </a>
+                )}
               </div>
             ))}
           </div>

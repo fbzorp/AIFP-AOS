@@ -114,6 +114,7 @@ const Dashboard: React.FC = () => {
 
   const pendingApprovals = content?.filter(item => item.status === 'draft' || item.status === 'pending_review') || [];
   const readyToPublish = content?.filter(item => item.status === 'approved') || [];
+  const publishedItems = content?.filter(item => item.status === 'published') || [];
 
   const { data: health, isLoading: healthLoading } = useQuery({
     queryKey: ['health'],
@@ -335,6 +336,50 @@ const Dashboard: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Published Content */}
+          {publishedItems.length > 0 && (
+            <div id="published" className="glass-card p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle size={20} className="text-emerald-400" />
+                  <h2 className="text-xl font-semibold">Recently Published</h2>
+                </div>
+                <span className="px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-bold">
+                  {publishedItems.length} Published
+                </span>
+              </div>
+              <div className="space-y-4">
+                {publishedItems.slice(0, 5).map((item) => (
+                  <Link key={item.id} to="/content-queue" className="block">
+                    <div className="p-4 rounded-xl bg-[#1e1b4b]/30 border border-emerald-500/20 flex items-center justify-between card-clickable cursor-pointer">
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#3730a3] text-gray-300 uppercase">
+                            {item.channel}
+                          </span>
+                          <h3 className="font-medium text-white">{item.title}</h3>
+                        </div>
+                        <p className="text-xs text-gray-400 line-clamp-1">{item.objective}</p>
+                        <p className="text-[10px] text-gray-500">Published at {item.published_at ? new Date(item.published_at).toLocaleString() : 'N/A'}</p>
+                      </div>
+                      {item.post_url && (
+                        <a
+                          href={item.post_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.preventDefault()}
+                          className="px-3 py-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                          <ExternalLink size={14} /> View
+                        </a>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Recent Intelligence Sources */}
           <div id="sources" className="glass-card p-6">
