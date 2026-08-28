@@ -127,7 +127,7 @@ services:
       COMMUNITY_ENGAGEMENT_AGENT_MOLTBOOK_AUTOPUBLISH: ${COMMUNITY_ENGAGEMENT_AGENT_MOLTBOOK_AUTOPUBLISH}
       SEO_MULTI_CHANNEL_AUTOPUBLISH: ${SEO_MULTI_CHANNEL_AUTOPUBLISH}
       SEO_PAGES_OUTPUT_DIR: ${SEO_PAGES_OUTPUT_DIR:-/var/www/html/seo}
-      SEO_PAGES_BASE_URL: ${SEO_PAGES_BASE_URL:-https://aifinpay.io/blog}
+      SEO_PAGES_BASE_URL: ${SEO_PAGES_BASE_URL:-https://example.com/blog}
       SEO_INDEXNOW_KEY: ${SEO_INDEXNOW_KEY}
     volumes:
       - seo_pages:${SEO_PAGES_OUTPUT_DIR:-/var/www/html/seo}
@@ -236,7 +236,7 @@ services:
       COMMUNITY_ENGAGEMENT_AGENT_MOLTBOOK_AUTOPUBLISH: ${COMMUNITY_ENGAGEMENT_AGENT_MOLTBOOK_AUTOPUBLISH}
       SEO_MULTI_CHANNEL_AUTOPUBLISH: ${SEO_MULTI_CHANNEL_AUTOPUBLISH}
       SEO_PAGES_OUTPUT_DIR: ${SEO_PAGES_OUTPUT_DIR:-/var/www/html/seo}
-      SEO_PAGES_BASE_URL: ${SEO_PAGES_BASE_URL:-https://aifinpay.io/blog}
+      SEO_PAGES_BASE_URL: ${SEO_PAGES_BASE_URL:-https://example.com/blog}
       SEO_INDEXNOW_KEY: ${SEO_INDEXNOW_KEY}
     volumes:
       - seo_pages:${SEO_PAGES_OUTPUT_DIR:-/var/www/html/seo}
@@ -263,6 +263,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-aifp}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aifp_prod}
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: INFO
+      SEO_PAGES_OUTPUT_DIR: ${SEO_PAGES_OUTPUT_DIR:-/var/www/html/seo}
+      SEO_PAGES_BASE_URL: ${SEO_PAGES_BASE_URL:-https://example.com/blog}
     volumes:
       - seo_pages:${SEO_PAGES_OUTPUT_DIR:-/var/www/html/seo}
     depends_on:

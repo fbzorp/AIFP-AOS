@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     
     # SEO Pages (Static HTML publishing for Google indexing)
     SEO_PAGES_OUTPUT_DIR: str = "/var/www/html/seo"
-    SEO_PAGES_BASE_URL: str = "https://example.com/seo"
+    SEO_PAGES_BASE_URL: str = "https://example.com/blog"
     
     # Agent-Specific Credentials (Single Source of Truth)
     # Founder Content Agent
