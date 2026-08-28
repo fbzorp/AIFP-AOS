@@ -34,8 +34,8 @@
 
 ### ✅ 6. Comprehensive Documentation
 - **Status**: Complete
-- **Files**: docs/DEPLOYMENT.md, docs/ARCHITECTURE.md, docs/DATABASE_SCHEMA.md, docs/ROLLBACK_PROCEDURE.md, docs/KNOWN_LIMITATIONS.md, docs/ACCEPTANCE_MATRIX.md
-- **Content**: Deployment guide, architecture diagram, database schema, rollback procedures, technical debt, acceptance matrix
+- **Files**: docs/DEPLOYMENT.md, docs/ARCHITECTURE.md, docs/DATABASE_SCHEMA.md, docs/ROLLBACK_PROCEDURE.md, docs/KNOWN_LIMITATIONS.md, docs/SYSTEM_STATUS_REPORT.md
+- **Content**: Deployment guide, architecture diagram, database schema, rollback procedures, technical debt, system status report
 
 ### ✅ 7. TypeScript Compilation Fixes
 - **Status**: Complete
@@ -127,15 +127,13 @@ The following items require live verification evidence from the user:
 - Restart/recovery test
 - Repository handover
 
-## Acceptance Matrix
+## System Status
 
-See `docs/ACCEPTANCE_MATRIX.md` for detailed acceptance status of all features.
+See `docs/SYSTEM_STATUS_REPORT.md` for detailed system status and acceptance verification of all features.
 
 ## Deployment Instructions
 
 See `docs/DEPLOYMENT.md` for complete production deployment guide.
-- **File**: docs/evidence/vps_restart_resume_verification.txt
-- **Content**: Restart policy verification, expected behavior, verification commands
 
 ### ✅ 7. Repository Cleanup
 - **Status**: Complete

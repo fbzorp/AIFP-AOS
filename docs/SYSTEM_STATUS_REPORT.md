@@ -1,11 +1,15 @@
-# Acceptance Matrix - AIFP-AOS Production Readiness
+# System Status & Verification Report - AIFP-AOS
+
+## System Overview
+
+The AiFinPay Autonomous Growth OS (AIFP-AOS) is a fully implemented autonomous marketing system that generates, approves, and publishes content across multiple platforms (X/Twitter, Telegram, Moltbook, SEO pages). The system includes specialized marketing agents, real-time content discovery, compliance workflows, multi-platform publishing, analytics, and comprehensive security infrastructure. All code-level features are implemented, tested, and passing CI/CD with green builds.
 
 ## Status Legend
 - **PASS**: Feature implemented with reproducible evidence (commit, test, or live URL)
 - **FAIL**: Feature not implemented or not working correctly
 - **BLOCKED**: Feature implemented but awaiting live verification evidence from user
 
-## Acceptance Matrix
+## System Status Matrix
 
 | Feature | Working live? | Platform | Verifiable URL | Runs without laptop? | Remaining issue | Status |
 |---------|---------------|----------|----------------|---------------------|-----------------|---------|
@@ -59,13 +63,37 @@
 - **FAIL**: 0 features
 - **BLOCKED**: 7 features (awaiting live verification)
 
-## Key Remaining Issues
-1. **5 externally verifiable real publications**: Awaiting user to publish content and provide URLs
-2. **Production TLS**: Certbot configured but awaiting live domain verification
-3. **Monitoring and alerting**: Monitoring stack configured but awaiting live verification
-4. **Automated backups and tested restore**: Backup scripts configured but awaiting live restore verification
-5. **Restart/recovery verification**: Awaiting live restart test on production infrastructure
-6. **Repository handover**: Repository under fbzorp org, needs transfer to AiFinPay control
+## What's Left - Remaining BLOCKED Items
+
+The following features are fully implemented at the code level but require live verification evidence to move to PASS status:
+
+### 1. At least 5 externally verifiable real publications
+**Status**: BLOCKED  
+**Why**: Awaiting user to publish actual content across platforms (X, Telegram, Moltbook, SEO pages) and provide real, externally accessible URLs. Per objective.txt requirements, dry-runs, mocks, and synthetic URLs are excluded from this evidence requirement.
+
+### 2. Production TLS (Let's Encrypt)
+**Status**: BLOCKED  
+**Why**: Certbot service is configured in docker-compose.prod.yml and nginx templates are set up for ACME challenges, but this requires a live domain with DNS pointing to the production server to obtain actual SSL certificates. Needs domain verification and certificate issuance evidence.
+
+### 3. Monitoring and alerting (Prometheus/Grafana)
+**Status**: BLOCKED  
+**Why**: Monitoring stack (Prometheus, Grafana, Alertmanager) is fully configured with service exporters and dashboards, but requires live verification that metrics are being collected, dashboards are accessible, and alert notifications are working. Needs evidence of live monitoring setup and alert functionality.
+
+### 4. Automated backups and tested restore
+**Status**: BLOCKED  
+**Why**: Backup scripts (`scripts/backup_database.sh`, `scripts/test_restore.sh`) are implemented and configured, but require evidence of a successful live backup followed by a verified restore test on production data. Needs demonstration that backup/restore workflow works end-to-end.
+
+### 5. Restart/recovery verification
+**Status**: BLOCKED  
+**Why**: The system is designed to run autonomously via Docker Compose with proper health checks and restart policies, but requires evidence of successful restart/recovery testing on actual production infrastructure after service failures or system reboots.
+
+### 6. Repository handover to AiFinPay
+**Status**: BLOCKED  
+**Why**: Repository is currently under the fbzorp GitHub organization. This requires formal transfer of the repository to AiFinPay-controlled organization along with documentation of the handover process and access controls.
+
+### 7. Real marketing analytics (Google Search Console)
+**Status**: BLOCKED  
+**Why**: Google Search Console integration is fully implemented in `apps/integrations/analytics/gsc_client.py`, but requires a valid `GOOGLE_SEARCH_CONSOLE_JSON_KEY` from Google Cloud Console with proper OAuth credentials. This cannot be automated and requires manual GCP setup and credential configuration.
 
 ## Reproducible Evidence Citations
 - **Agent implementations**: `apps/agents/specialized.py` - All agents implemented and tested
@@ -82,17 +110,21 @@
 - **Marketing registry**: `apps/api/routers/marketing.py` - Activity tracking endpoint
 
 ## Live Evidence Required
-The following features require live verification evidence from the user:
-1. **5 externally verifiable real publications**: Provide actual published URLs from X, Telegram, Moltbook, or SEO pages
+
+The following features require live verification evidence from the human operator:
+
+1. **5 externally verifiable real publications**: Provide actual published URLs from X, Telegram, Moltbook, or SEO pages (no dry-runs, mocks, or synthetic URLs)
 2. **Production TLS**: Provide evidence of Let's Encrypt certificate on production domain
 3. **Monitoring and alerting**: Provide evidence of Prometheus/Grafana dashboards and alert functionality
 4. **Automated backups and tested restore**: Provide evidence of successful backup and restore test
 5. **Restart/recovery**: Provide evidence of successful restart/recovery test on production infrastructure
 6. **Repository handover**: Complete transfer of repository to AiFinPay-controlled organization
+7. **Google Search Console analytics**: Configure valid GOOGLE_SEARCH_CONSOLE_JSON_KEY and provide evidence of data retrieval
 
 ## Notes
 - All code-level features are implemented and tested
 - Infrastructure components are configured and documented
-- CI/CD pipeline enforces security and quality gates
-- Live verification blocked on user-provided evidence (domain, publications, etc.)
+- CI/CD pipeline enforces security and quality gates with green builds
+- Live verification blocked on user-provided evidence (domain, publications, credentials, etc.)
 - System is ready for production deployment pending live verification steps
+- Per objective.txt lines 603-611, only real evidence (external URLs, certificates, live metrics) is acceptable for verification
